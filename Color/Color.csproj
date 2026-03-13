@@ -96,7 +96,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClaudeTokenCorrector.cs" />
+    <Compile Include="ColorimetriaApiClient.cs" />
     <Compile Include="Colorimetriccalculator.cs" />
     <Compile Include="Dataextraxtor.cs" />
     <Compile Include="extractors\Formconfirmacionocr.cs">

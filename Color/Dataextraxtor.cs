@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Net.Http;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
@@ -137,17 +138,6 @@ namespace Color
         private TesseractEngine _sharedEngine;
         private readonly object _engineLock = new object();
 
-        // ── Claude API corrector (opcional) ────────────────────────────
-        private ClaudeTokenCorrector _claudeCorrector;
-
-        /// <summary>
-        /// Asigna el corrector Claude API. Si es null, se omite la corrección externa.
-        /// </summary>
-        public void SetClaudeCorrector(ClaudeTokenCorrector corrector)
-        {
-            _claudeCorrector = corrector;
-        }
-
         // Autocorrección por coherencia (1 dígito) en C* y h°
         private const bool ENABLE_COHERENCE_FIX = true;
 
@@ -235,16 +225,36 @@ namespace Color
                 if (ENABLE_REOCR)
                     ReOcrFailedCells(original, report);
 
-                // B: Corrección via Claude API (solo tokens erróneos — sin datos industriales)
-                if (_claudeCorrector != null && _claudeCorrector.IsEnabled)
+                // B: Corrección via API local (100% local, sin dependencias externas)
+                try
                 {
-                    var corrections = _claudeCorrector.CorrectReport(report);
-                    foreach (var c in corrections)
-                        report.ParseLog.Add(string.Format(
-                            "[CLAUDE] {0}/{1} {2}: {3:F4} → {4:F4} ({5})",
-                            c.Illuminant, c.Type, c.Field,
-                            c.CorrectedValue, c.NewCoherenceError, c.Reason));
+                    var apiClient = new ColorimetriaApiClient("http://localhost:5000");
+                    if (apiClient.IsApiAvailable())
+                    {
+                        var corrections = apiClient.CorrectReport(report);
+                        foreach (var c in corrections)
+                            report.ParseLog.Add(string.Format(
+                                "[API] {0}/{1} {2}: corregido ({3})",
+                                c.Illuminant, c.Type, c.Field, c.Reason));
+                    }
+                    else
+                    {
+                        report.ParseLog.Add("[API] ColorimetriaAPI no disponible en localhost:5000");
+                    }
                 }
+                catch (Exception ex)
+                {
+                    report.ParseLog.Add("[API] Error al llamar ColorimetriaAPI: " + ex.Message);
+                }// B: Corrección via Claude API (solo tokens erróneos — sin datos industriales)
+                /*  if (_claudeCorrector != null && _claudeCorrector.IsEnabled)
+                  {
+                      var corrections = _claudeCorrector.CorrectReport(report);
+                      foreach (var c in corrections)
+                          report.ParseLog.Add(string.Format(
+                              "[CLAUDE] {0}/{1} {2}: {3:F4} → {4:F4} ({5})",
+                              c.Illuminant, c.Type, c.Field,
+                              c.CorrectedValue, c.NewCoherenceError, c.Reason));
+                  }*/
 
                 return report;
             }
