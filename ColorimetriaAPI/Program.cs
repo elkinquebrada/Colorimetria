@@ -16,10 +16,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ClaudeService ahora es local — no necesita HttpClient
 builder.Services.AddScoped<ClaudeService>();
 
-// CORS — permitir llamadas desde la app Windows Forms local
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalApp", policy =>

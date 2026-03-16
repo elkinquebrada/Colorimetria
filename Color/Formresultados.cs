@@ -27,9 +27,16 @@ namespace Color
         private TextBox txtRecomendacion;
         private TextBox txtReceta;
         private SplitContainer splitMedicionesCmc; // IZQ: Receta/Reporte | DER: CMC/Recomendación
-        private SplitContainer splitLeft;           // IZQ arriba: Receta | IZQ abajo: Reporte OCR
         private Button btnExportar;
         private Button btnCerrar;
+        private Button btnRegresar;
+
+        // ======= Referencia al formulario OCR de origen =======
+        /// <summary>
+        /// Asigna el FormConfirmacionOCR que originó este formulario.
+        /// Al presionar "↩ Revisar OCR" se cierra FormResultados y se muestra de nuevo el OCR.
+        /// </summary>
+        public Form FormOcrOrigen { get; set; }
 
         // ======= Datos receta (IlluminantCorrectionResult) =======
         private List<IlluminantCorrectionResult> _recipeResults;
@@ -74,23 +81,21 @@ namespace Color
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
+            this.SuspendLayout();
             this.Text = "Resultados — Corrección Colorimétrica";
-            this.FormBorderStyle = FormBorderStyle.Sizable; // permite min/max y resize
+            this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.ControlBox = true;
             this.ShowIcon = true;
 
-            this.BackColor = DrawingColor.FromArgb(30, 30, 30);
-            this.AutoScaleMode = AutoScaleMode.Dpi; // respeta 125%, 150%, etc.
+            this.BackColor = DrawingColor.White;
+            this.AutoScaleMode = AutoScaleMode.Dpi;
 
-            // Tamaño inicial cómodo (90% del área de trabajo)
-            var wa = Screen.PrimaryScreen.WorkingArea;
-            int targetWidth = (int)(wa.Width * 0.90);
-            int targetHeight = (int)(wa.Height * 0.90);
+            // Arrancar directamente maximizado — sin pasar por tamaño intermedio
             this.MinimumSize = new Size(980, 640);
-            this.Size = new Size(targetWidth, targetHeight);
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.WindowState = FormWindowState.Maximized;
             this.ResizeRedraw = true;
 
             // ---- Título ----
@@ -99,8 +104,11 @@ namespace Color
                 Text = "RESULTADOS DE CORRECCIÓN COLORIMÉTRICA",
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
                 ForeColor = DrawingColor.White,
-                AutoSize = true,
-                Location = new Point(20, 15)
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Padding = new Padding(20, 0, 0, 0),
+                BackColor = DrawingColor.FromArgb(30, 90, 180)
             };
 
             // ---- Controles inferiores ----
@@ -108,32 +116,50 @@ namespace Color
             {
                 Text = "💾 Exportar .txt",
                 Size = new Size(150, 38),
-                BackColor = DrawingColor.FromArgb(0, 100, 180),
+                BackColor = DrawingColor.FromArgb(34, 139, 34),
                 ForeColor = DrawingColor.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
             btnExportar.FlatAppearance.BorderSize = 0;
+            btnExportar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(0, 120, 0);
+            btnExportar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(0, 100, 0);
             btnExportar.Click += BtnExportar_Click;
 
             btnCerrar = new Button
             {
                 Text = "Cerrar",
                 Size = new Size(120, 38),
-                BackColor = DrawingColor.FromArgb(60, 60, 60),
+                BackColor = DrawingColor.FromArgb(200, 30, 30),
                 ForeColor = DrawingColor.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
             btnCerrar.FlatAppearance.BorderSize = 0;
+            btnCerrar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(170, 10, 10);
+            btnCerrar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(140, 0, 0);
             btnCerrar.Click += (s, e) => this.Close();
+
+            btnRegresar = new Button
+            {
+                Text = "↩ Revisar OCR",
+                Size = new Size(150, 38),
+                BackColor = DrawingColor.FromArgb(200, 110, 0),
+                ForeColor = DrawingColor.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10)
+            };
+            btnRegresar.FlatAppearance.BorderSize = 0;
+            btnRegresar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(170, 90, 0);
+            btnRegresar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(140, 70, 0);
+            btnRegresar.Click += BtnRegresar_Click;
 
             // ---- Split central (Dock=Fill) ----
             splitMedicionesCmc = new SplitContainer
             {
                 Dock = DockStyle.Fill,                // clave para crecer con la ventana
                 Orientation = Orientation.Vertical,   // izquierda/derecha
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
+                BackColor = DrawingColor.White
             };
 
             // Panel IZQUIERDO: solo Cálculos de Receta
@@ -142,15 +168,16 @@ namespace Color
                 Text = "🧪 Cálculos de Corrección de Receta",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = DrawingColor.White,
-                AutoSize = true,
+                AutoSize = false,
                 Dock = DockStyle.Top,
+                Height = 30,
                 Padding = new Padding(4, 6, 4, 6),
-                BackColor = DrawingColor.FromArgb(35, 35, 35)
+                BackColor = DrawingColor.FromArgb(30, 90, 180)
             };
-            txtReceta = BuildTextBox(DrawingColor.FromArgb(200, 230, 255));
+            txtReceta = BuildTextBox();
             txtReceta.Dock = DockStyle.Fill;
-            txtReport = BuildTextBox(null); // mantener campo para exportación
-            var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.FromArgb(45, 45, 45) };
+            txtReport = BuildTextBox(); // mantener campo para exportación
+            var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.White };
             panelLeft.Controls.Add(txtReceta);
             panelLeft.Controls.Add(lblReceta);
 
@@ -162,16 +189,17 @@ namespace Color
                 Text = "✅ CMC (2:1) / Recomendación",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = DrawingColor.White,
-                AutoSize = true,
+                AutoSize = false,
                 Dock = DockStyle.Top,
+                Height = 30,
                 Padding = new Padding(4, 6, 4, 6),
-                BackColor = DrawingColor.FromArgb(35, 35, 35)
+                BackColor = DrawingColor.FromArgb(30, 90, 180)
             };
 
-            txtRecomendacion = BuildTextBox(DrawingColor.FromArgb(255, 220, 100)); // ámbar
+            txtRecomendacion = BuildTextBox(); // ámbar
             txtRecomendacion.Dock = DockStyle.Fill;
 
-            var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.FromArgb(45, 45, 45) };
+            var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.White };
             panelRight.Controls.Add(txtRecomendacion);
             panelRight.Controls.Add(panelRightHeader);
 
@@ -190,23 +218,46 @@ namespace Color
             panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Botones
 
             // Fila 0: Título
-            var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = this.BackColor };
+            var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.FromArgb(30, 90, 180) };
             panelHeader.Controls.Add(lblTitulo);
             panelRoot.Controls.Add(panelHeader, 0, 0);
 
             // Fila 1: Split
             panelRoot.Controls.Add(splitMedicionesCmc, 0, 1);
 
-            // Fila 2: Botones a la derecha (Exportar | Cerrar)
-            var panelButtons = new FlowLayoutPanel
+            // Fila 2: Botones — Regresar a la izquierda | Exportar + Cerrar a la derecha
+            var panelButtons = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = this.BackColor,
+                Padding = new Padding(10, 10, 20, 10)
+            };
+            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // izquierda (Regresar)
+            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // derecha (Exportar+Cerrar)
+
+            // Izquierda: Regresar
+            var panelLeft2 = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                BackColor = this.BackColor
+            };
+            panelLeft2.Controls.Add(btnRegresar);
+
+            // Derecha: Exportar + Cerrar
+            var panelRight2 = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 10, 20, 10),
                 BackColor = this.BackColor
             };
-            panelButtons.Controls.Add(btnCerrar);
-            panelButtons.Controls.Add(btnExportar);
+            panelRight2.Controls.Add(btnCerrar);
+            panelRight2.Controls.Add(btnExportar);
+
+            panelButtons.Controls.Add(panelLeft2, 0, 0);
+            panelButtons.Controls.Add(panelRight2, 1, 0);
             panelRoot.Controls.Add(panelButtons, 0, 2);
 
             // Agregar root al formulario
@@ -223,6 +274,20 @@ namespace Color
             // Mantener proporción del divisor en Load/Resize
             this.Load += (s, e) => ApplySplitRatio();
             this.Resize += (s, e) => ApplySplitRatio();
+
+            // Al cargar, traer al frente
+            this.Load += (s, e) =>
+            {
+                try
+                {
+                    this.BringToFront();
+                    this.Activate();
+                    this.Focus();
+                }
+                catch { }
+            };
+
+            this.ResumeLayout(false);
         }
 
         // ======= Aplica proporción del Split (55% izquierda / 45% derecha) =======
@@ -242,21 +307,42 @@ namespace Color
             catch { }
         }
 
-        // ======= Factory de TextBox monoespaciado (oscuro) =======
-        private static TextBox BuildTextBox(DrawingColor? foreColor)
+        // ======= Factory de TextBox monoespaciado =======
+        private static TextBox BuildTextBox()
         {
             return new TextBox
             {
                 Multiline = true,
                 ScrollBars = ScrollBars.Both,
                 Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 10.0f),
-                BackColor = DrawingColor.FromArgb(20, 20, 20),
-                ForeColor = foreColor ?? DrawingColor.LightGreen,
+                Font = new System.Drawing.Font("Consolas", 10.0f),
+                BackColor = DrawingColor.White,
+                ForeColor = DrawingColor.Black,
                 ReadOnly = true,
                 WordWrap = false,
                 Text = string.Empty
             };
+        }
+
+        // ======= Botón Regresar → vuelve al FormConfirmacionOCR =======
+        private void BtnRegresar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (FormOcrOrigen != null && !FormOcrOrigen.IsDisposed)
+                {
+                    this.Hide();
+                    FormOcrOrigen.ShowDialog(this);
+                    // Al cerrar el OCR (Confirmar o Cancelar), cerrar FormResultados
+                    // Form1 detectará si RowsConfirmed tiene datos para reabrir Resultados
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
+                    return;
+                }
+            }
+            catch { }
+
+            this.Close();
         }
 
         // =========================================================

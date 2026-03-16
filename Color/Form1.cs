@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -15,6 +17,8 @@ namespace Color
         // Labels que muestran el nombre de archivo debajo de cada cuadro
         private Label lblLeftLoaded;
         private Label lblRightLoaded;
+        private Button btnCambiarLeft;
+        private Button btnCambiarRight;
 
         // ► AGREGAR: extractor de receta e instancia de resultado
         private readonly ShadeReportExtractor _shadeExtractor =
@@ -25,11 +29,95 @@ namespace Color
         public Form1()
         {
             InitializeComponent();
+            this.WindowState = FormWindowState.Maximized;
+            this.TopMost = true; // Mantener al frente hasta que el navegador se minimice
 
             WireEvents();
             UpdateHints();
             LayoutBottomArea();
             PositionExitButtonAtBottom();
+            MinimizarNavegador();
+        }
+
+
+        // ======= Minimizar navegador — imperceptible =======
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+            int X, int Y, int cx, int cy, uint uFlags);
+        private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
+        private const int SW_MINIMIZE = 6;
+        private const int SW_SHOWMINNOACTIVE = 7; // minimiza sin robar foco
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOACTIVATE = 0x0010;
+
+        private System.Windows.Forms.Timer _timerNavegador;
+        private int _timerTicks = 0;
+        private const int MAX_TICKS = 50; // 5 segundos máximo
+
+        private void MinimizarNavegador()
+        {
+            try
+            {
+                // Paso 1: Form1 al frente inmediatamente con TopMost
+                this.TopMost = true;
+                this.BringToFront();
+                this.Activate();
+                this.Focus();
+
+                // Paso 2: Timer agresivo cada 50ms para minimizar navegador
+                _timerNavegador = new System.Windows.Forms.Timer();
+                _timerNavegador.Interval = 50;
+                _timerNavegador.Tick += TimerNavegador_Tick;
+                _timerNavegador.Start();
+            }
+            catch { }
+        }
+
+        private void TimerNavegador_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                _timerTicks++;
+                string[] navegadores = { "chrome", "msedge", "edge", "firefox", "iexplore" };
+
+                foreach (var proc in Process.GetProcesses())
+                {
+                    try
+                    {
+                        string name = proc.ProcessName.ToLower();
+                        bool esNavegador = false;
+                        foreach (var n in navegadores)
+                            if (name == n) { esNavegador = true; break; }
+
+                        if (esNavegador && proc.MainWindowHandle != IntPtr.Zero)
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_SHOWMINNOACTIVE);
+                            // Enviar al fondo también
+                            SetWindowPos(proc.MainWindowHandle, HWND_BOTTOM,
+                                0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+                        }
+                    }
+                    catch { }
+                }
+
+                // Mantener Form1 siempre al frente durante el proceso
+                this.BringToFront();
+                this.Activate();
+
+                if (_timerTicks >= MAX_TICKS)
+                {
+                    _timerNavegador.Stop();
+                    _timerNavegador.Dispose();
+                    // Quitar TopMost para uso normal
+                    this.TopMost = false;
+                    this.BringToFront();
+                    this.Activate();
+                }
+            }
+            catch { }
         }
 
         // -------------------- Eventos y cableado --------------------
@@ -37,6 +125,43 @@ namespace Color
         {
             btnCargarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Mediciones");
             btnCargarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Receta");
+
+            // Botones Cambiar imagen (aparecen cuando ya hay imagen cargada)
+            btnCambiarLeft = new Button
+            {
+                Text = "🔄 Cambiar imagen",
+                Size = new System.Drawing.Size(160, 32),
+                BackColor = System.Drawing.Color.FromArgb(30, 90, 180),
+                ForeColor = System.Drawing.Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold),
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            btnCambiarLeft.FlatAppearance.BorderSize = 0;
+            btnCambiarLeft.Click += (s, e) =>
+            {
+                SelectAndLoadPng(picLeft, lblLeftHint, "Mediciones");
+            };
+            contentBorder.Controls.Add(btnCambiarLeft);
+
+            btnCambiarRight = new Button
+            {
+                Text = "🔄 Cambiar imagen",
+                Size = new System.Drawing.Size(160, 32),
+                BackColor = System.Drawing.Color.FromArgb(30, 90, 180),
+                ForeColor = System.Drawing.Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold),
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            btnCambiarRight.FlatAppearance.BorderSize = 0;
+            btnCambiarRight.Click += (s, e) =>
+            {
+                SelectAndLoadPng(picRight, lblRightHint, "Receta");
+            };
+            contentBorder.Controls.Add(btnCambiarRight);
 
             EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "Mediciones");
             EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Receta");
@@ -66,6 +191,8 @@ namespace Color
 
                 if (lblLeftLoaded != null) lblLeftLoaded.Visible = false;
                 if (lblRightLoaded != null) lblRightLoaded.Visible = false;
+                if (btnCambiarLeft != null) btnCambiarLeft.Visible = false;
+                if (btnCambiarRight != null) btnCambiarRight.Visible = false;
 
                 UpdateHints();
                 lblStatus.Text = "Cargue dos imágenes para comparación";
@@ -74,6 +201,24 @@ namespace Color
 
             mainArea.Resize += (s, e) => LayoutBottomArea();
             leftNav.Resize += (s, e) => PositionExitButtonAtBottom();
+
+            // Minimizar Visual Studio al iniciar
+            this.Load += (s, e) =>
+            {
+                try
+                {
+                    foreach (var proc in Process.GetProcesses())
+                    {
+                        string name = proc.ProcessName.ToLower();
+                        if ((name.Contains("devenv") || name.Contains("visualstudio")) &&
+                            proc.MainWindowHandle != IntPtr.Zero)
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_SHOWMINNOACTIVE);
+                        }
+                    }
+                }
+                catch { }
+            };
         }
 
         // -------------------- ► NUEVO: flujo de escaneo --------------------
@@ -93,14 +238,50 @@ namespace Color
 
             try
             {
-                // 1) Extraer RECETA (imagen derecha)
-                _lastShadeResult = _shadeExtractor.ExtractFromBitmap(
-                    new Bitmap(picRight.Image));
+                // Medir tiempo de OCR
+                var swOcr = System.Diagnostics.Stopwatch.StartNew();
 
-                // 2) Extraer OcrReport COMPLETO de imagen izquierda (incluye CMC)
-                var medExtractor = new ColorimetricDataExtractor(@".\tessdata");
-                OcrReport ocrReport = medExtractor.ExtractReportFromBitmap(
-                    new Bitmap(picLeft.Image));
+                // 1+2) Extraer RECETA y MEDICIONES en paralelo para reducir tiempo de espera
+                ShadeExtractionResult shadeResultTemp = null;
+                OcrReport ocrReportTemp = null;
+                Exception errorShade = null;
+                Exception errorMed = null;
+
+                var bmpRight = new Bitmap(picRight.Image);
+                var bmpLeft = new Bitmap(picLeft.Image);
+
+                var threadShade = new System.Threading.Thread(() =>
+                {
+                    try { shadeResultTemp = _shadeExtractor.ExtractFromBitmap(bmpRight); }
+                    catch (Exception ex) { errorShade = ex; }
+                });
+
+                var threadMed = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        var medExtractor = new ColorimetricDataExtractor(@".\tessdata");
+                        ocrReportTemp = medExtractor.ExtractReportFromBitmap(bmpLeft);
+                    }
+                    catch (Exception ex) { errorMed = ex; }
+                });
+
+                threadShade.Start();
+                threadMed.Start();
+                threadShade.Join();
+                threadMed.Join();
+
+                bmpRight.Dispose();
+                bmpLeft.Dispose();
+
+                if (errorShade != null) throw errorShade;
+                if (errorMed != null) throw errorMed;
+
+                _lastShadeResult = shadeResultTemp;
+                OcrReport ocrReport = ocrReportTemp;
+
+                swOcr.Stop();
+                lblStatus.Text = string.Format("OCR completado en {0:0.0} segundos.", swOcr.Elapsed.TotalSeconds);
 
                 if (ocrReport == null || ocrReport.Measures == null || ocrReport.Measures.Count == 0)
                 {
@@ -114,23 +295,35 @@ namespace Color
 
                 // 3) Mostrar formulario de CONFIRMACIÓN con OcrReport completo (muestra CMC)
                 List<ColorimetricRow> rowsConfirmados;
-                using (var dlgConfirm = new FormConfirmacionOCR(ocrReport, _lastShadeResult))
+
+                // Se usa variable (no using) para poder pasarla como referencia a FormResultados
+                var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrReport, _lastShadeResult);
+                try
                 {
-                    dlgConfirm.MainFormOwner = this; // minimiza Form1 al aparecer
+                    dlgConfirm.MainFormOwner = this;
+                    this.TopMost = false;
                     Cursor = Cursors.Default;
-                    var dlgResult = dlgConfirm.ShowDialog(this);
+                    this.Hide(); // Ocultar Form1 sin cancelar el diálogo modal
+                    var dlgResult = dlgConfirm.ShowDialog();
 
                     // Restaurar Form1 siempre al cerrar el dialog
-                    this.WindowState = FormWindowState.Normal;
+                    this.Show();
+                    this.WindowState = FormWindowState.Maximized;
                     this.BringToFront();
 
                     if (dlgResult != DialogResult.OK)
                     {
                         lblStatus.Text = "Operación cancelada.";
+                        dlgConfirm.Dispose();
                         return;
                     }
 
                     rowsConfirmados = dlgConfirm.RowsConfirmed;
+                }
+                catch
+                {
+                    dlgConfirm.Dispose();
+                    throw;
                 }
 
                 Cursor = Cursors.WaitCursor;
@@ -149,15 +342,59 @@ namespace Color
                     + System.Environment.NewLine + System.Environment.NewLine
                     + "Mediciones procesadas correctamente.";
 
-                // 6) Mostrar resultados (con correcciones de receta adicionales)
-                using (var frmRes = new FormResultados(textoFinal, correcciones,
-                    correccionesReceta as List<Color.IlluminantCorrectionResult>))
+                // 6) Ciclo Resultados ↔ OCR: el usuario puede regresar y volver
+                //    a confirmar tantas veces como quiera, siempre llegará a Resultados
+                bool seguirEnCiclo = true;
+                var rowsParaResultados = rowsConfirmados;
+                var correccionesParaResultados = correcciones;
+                var recetaParaResultados = correccionesReceta;
+                var textoParaResultados = textoFinal;
+
+                while (seguirEnCiclo)
                 {
-                    this.WindowState = FormWindowState.Minimized;
-                    frmRes.ShowDialog(this);
-                    this.WindowState = FormWindowState.Normal;
-                    this.BringToFront();
+                    using (var frmRes = new FormResultados(textoParaResultados, correccionesParaResultados,
+                        recetaParaResultados as List<Color.IlluminantCorrectionResult>))
+                    {
+                        // Crear OCR fresco para el botón Regresar
+                        var dlgOcrRegresar = new Colorimetria.FormConfirmacionOCR(ocrReport, _lastShadeResult);
+                        dlgOcrRegresar.MainFormOwner = this;
+                        frmRes.FormOcrOrigen = dlgOcrRegresar;
+
+                        this.Hide();
+                        frmRes.WindowState = FormWindowState.Maximized;
+                        Application.DoEvents();
+                        frmRes.ShowDialog();
+                        this.Show();
+                        this.WindowState = FormWindowState.Maximized;
+                        this.BringToFront();
+
+                        // Si el usuario presionó "Regresar al OCR" y confirmó de nuevo
+                        if (!dlgOcrRegresar.IsDisposed &&
+                            dlgOcrRegresar.RowsConfirmed != null &&
+                            dlgOcrRegresar.RowsConfirmed.Count > 0)
+                        {
+                            // Recalcular con los nuevos datos confirmados
+                            rowsParaResultados = dlgOcrRegresar.RowsConfirmed;
+                            correccionesParaResultados = ColorimetricCalculator.Calculate(rowsParaResultados);
+                            var ing2 = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
+                            var del2 = RecipeCorrector.DeltasFromReport(ocrReport);
+                            recetaParaResultados = RecipeCorrector.Calculate(ing2, del2);
+                            textoParaResultados = BuildResumenReceta(_lastShadeResult)
+                                + System.Environment.NewLine + System.Environment.NewLine
+                                + "Mediciones procesadas correctamente.";
+                            // Continuar el ciclo → abrir FormResultados de nuevo
+                        }
+                        else
+                        {
+                            seguirEnCiclo = false; // usuario cerró con X o Cancelar
+                        }
+
+                        if (!dlgOcrRegresar.IsDisposed)
+                            dlgOcrRegresar.Dispose();
+                    }
                 }
+
+                dlgConfirm.Dispose();
 
                 lblStatus.Text = "Escaneo completado.";
             }
@@ -422,6 +659,16 @@ namespace Color
 
                 lblLeftLoaded.Text = fileLabel;
                 lblLeftLoaded.Visible = true;
+
+                // Mostrar botón Cambiar izquierda
+                if (btnCambiarLeft != null)
+                {
+                    btnCambiarLeft.Location = new System.Drawing.Point(
+                        btnCargarLeft.Left,
+                        btnCargarLeft.Top + 34);
+                    btnCambiarLeft.Visible = true;
+                    btnCambiarLeft.BringToFront();
+                }
             }
             else
             {
@@ -441,6 +688,16 @@ namespace Color
 
                 lblRightLoaded.Text = fileLabel;
                 lblRightLoaded.Visible = true;
+
+                // Mostrar botón Cambiar derecha
+                if (btnCambiarRight != null)
+                {
+                    btnCambiarRight.Location = new System.Drawing.Point(
+                        btnCargarRight.Left,
+                        btnCargarRight.Top + 34);
+                    btnCambiarRight.Visible = true;
+                    btnCambiarRight.BringToFront();
+                }
             }
 
             CheckIfBothImagesLoaded();

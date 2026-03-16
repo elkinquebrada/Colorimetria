@@ -1,14 +1,14 @@
 ﻿// Formconfirmacionocr.cs
-using Colorimetria;
+using Color;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
-using DrawingColor = System.Drawing.Color;
+using SysColor = System.Drawing.Color;
 
-namespace Color
+namespace Colorimetria
 {
     /// <summary>
     /// Verifica datos extraídos por OCR: Mediciones + CMC(2:1) + Tolerances/PrintDate.
@@ -26,30 +26,23 @@ namespace Color
         // ===== Entradas =====
         private List<ColorimetricRow> _rows;
         private OcrReport _report;
-
-        // ===== Shade (receta + batch) =====
         private ShadeExtractionResult _shadeResult;
 
         // ===== UI =====
         private DataGridView dgvData;
+        private DataGridView dgvReceta;
+        private DataGridView dgvLab;
         private DataGridView dgvCmc;
-        private DataGridView dgvRecipe;
-        private DataGridView dgvBatch;
         private TextBox txtRaw;
         private TabControl tabControl;
         private Button btnConfirmar;
         private Button btnCancelar;
+        private Button btnRegresar;
         private Label lblTitulo;
         private Label lblSubtitulo;
         private Label lblCount;
         private Label lblTol;
 
-        // Splitters
-        private SplitContainer splitTop;     // Mediciones | CMC
-        private SplitContainer splitBottom;  // Receta | Batch
-        private SplitContainer splitMain;    // splitTop | splitBottom
-        private double splitTopRatio = 0.50;
-        private double splitMainRatio = 0.55;
 
         // =========================================================
         // CONSTRUCTORES
@@ -89,17 +82,28 @@ namespace Color
             this.Load += FormConfirmacionOCR_Load;
         }
 
-        public FormConfirmacionOCR(OcrReport report,
-            ShadeExtractionResult shade = null)
+        public FormConfirmacionOCR(OcrReport report, ShadeExtractionResult shadeResult)
         {
             _report = report ?? new OcrReport();
             _rows = _report.Measures ?? new List<ColorimetricRow>();
-            _shadeResult = shade;
+            _shadeResult = shadeResult;
+
+            InitializeComponents();
+            LoadData();
+            HookSizingEvents();
+            this.Load += FormConfirmacionOCR_Load;
+        }
+
+        public FormConfirmacionOCR(OcrReport report)
+        {
+            _report = report ?? new OcrReport();
+            _rows = _report.Measures ?? new List<ColorimetricRow>();
 
             InitializeComponents();
             LoadData();
             HookSizingEvents();
 
+            // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
         }
 
@@ -124,21 +128,11 @@ namespace Color
         {
             try
             {
-                // Asegurar que este diálogo esté visible y al frente
-                this.Show();
                 this.Activate();
                 this.BringToFront();
-
-                // Minimizar el formulario principal después de mostrar este
-                if (MainFormOwner != null)
-                {
-                    MainFormOwner.WindowState = FormWindowState.Minimized;
-                }
+                this.Focus();
             }
-            catch
-            {
-                // Ignorar: no debe bloquear la verificación por problemas de foco
-            }
+            catch { }
         }
 
         // =========================================================
@@ -154,16 +148,14 @@ namespace Color
             this.MinimizeBox = true;
             this.ControlBox = true;
             this.ShowIcon = true;
-            this.BackColor = DrawingColor.FromArgb(30, 30, 30);
-            this.AutoScaleMode = AutoScaleMode.Dpi; // respeta 125%, 150%, etc.
+            this.BackColor = SysColor.White;
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.SuspendLayout();
 
-            // Tamaño dinámico: 90% del área de trabajo
-            var wa = Screen.PrimaryScreen.WorkingArea;
-            int targetWidth = (int)(wa.Width * 0.90);
-            int targetHeight = (int)(wa.Height * 0.90);
+            // Arrancar directamente maximizado
             this.MinimumSize = new Size(980, 640);
-            this.Size = new Size(targetWidth, targetHeight);
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.WindowState = FormWindowState.Maximized;
             this.ResizeRedraw = true;
 
             // ---- Títulos ----
@@ -171,15 +163,18 @@ namespace Color
             {
                 Text = "DATOS EXTRAÍDOS POR OCR",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                ForeColor = DrawingColor.White,
-                AutoSize = true,
-                Location = new Point(20, 15)
+                ForeColor = SysColor.White,
+                AutoSize = false,
+                BackColor = SysColor.FromArgb(30, 90, 180),
+                Location = new Point(0, 0),
+                Size = new Size(this.ClientSize.Width, 38),
+                Padding = new Padding(20, 6, 0, 0)
             };
             lblSubtitulo = new Label
             {
                 Text = "Revisa los valores antes de continuar con los cálculos de corrección colorimétrica.",
                 Font = new Font("Segoe UI", 9),
-                ForeColor = DrawingColor.LightGray,
+                ForeColor = SysColor.FromArgb(80, 80, 80),
                 AutoSize = true,
                 Location = new Point(20, 45)
             };
@@ -192,108 +187,106 @@ namespace Color
             };
             var tabCombined = new TabPage("📎 Combinado")
             {
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
+                BackColor = SysColor.White
             };
 
-            // ── Layout: splitMain vertical (arriba: mediciones+CMC / abajo: receta+batch)
-            splitTop = new SplitContainer
+            // Layout pestaña Combinado: 4 grillas apiladas
+            var tlp = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
+                ColumnCount = 1,
+                RowCount = 4,
+                BackColor = SysColor.White,
+                Padding = new Padding(0)
             };
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));  // Mediciones
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));  // CMC
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 28f));  // Receta
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 16f));  // LAB
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+
+            // Fila 0: Mediciones
             dgvData = BuildMeasuresGrid();
             dgvData.Dock = DockStyle.Fill;
-            splitTop.Panel1.Controls.Add(dgvData);
+            tlp.Controls.Add(dgvData, 0, 0);
 
+            // Fila 1: CMC(2:1)
             dgvCmc = BuildCmcGrid();
             dgvCmc.Dock = DockStyle.Fill;
-            splitTop.Panel2.Controls.Add(dgvCmc);
+            tlp.Controls.Add(dgvCmc, 0, 1);
 
-            splitBottom = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
-            };
-            dgvRecipe = BuildRecipeGrid();
-            dgvRecipe.Dock = DockStyle.Fill;
-            splitBottom.Panel1.Controls.Add(dgvRecipe);
+            // Fila 2: Receta (Código / Nombre / %)
+            dgvReceta = BuildRecetaGrid();
+            dgvReceta.Dock = DockStyle.Fill;
+            tlp.Controls.Add(dgvReceta, 0, 2);
 
-            dgvBatch = BuildBatchGrid();
-            dgvBatch.Dock = DockStyle.Fill;
-            splitBottom.Panel2.Controls.Add(dgvBatch);
+            // Fila 3: LAB (L / A / B / dL / dC / dH / dE / P/F)
+            dgvLab = BuildLabGrid();
+            dgvLab.Dock = DockStyle.Fill;
+            tlp.Controls.Add(dgvLab, 0, 3);
 
-            splitMain = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
-            };
-            splitMain.Panel1.Controls.Add(splitTop);
-            splitMain.Panel2.Controls.Add(splitBottom);
-
-            txtRaw = new TextBox
-            {
-                Multiline = true,
-                ScrollBars = ScrollBars.Both,
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 10.5f),
-                BackColor = DrawingColor.FromArgb(20, 20, 20),
-                ForeColor = DrawingColor.LightGreen,
-                ReadOnly = true,
-                WordWrap = false
-            };
-
-            // TabControl con 2 pestañas: Combinado y Texto
-            var tabText = new TabPage("📄 Texto OCR")
-            {
-                BackColor = DrawingColor.FromArgb(45, 45, 45)
-            };
-            tabText.Controls.Add(txtRaw);
-
-            tabCombined.Controls.Add(splitMain);
+            tabCombined.Controls.Add(tlp);
             tabControl.TabPages.Add(tabCombined);
-            tabControl.TabPages.Add(tabText);
+
+            // txtRaw se mantiene solo para exportación, no se muestra en UI
+            txtRaw = new TextBox { Multiline = true, Visible = false };
 
             // ---- Botones y etiquetas inferiores ----
             btnCancelar = new Button
             {
-                Text = "❌ Cancelar",
+                Text = "✕ Cancelar",
                 Size = new Size(160, 40),
-                BackColor = DrawingColor.FromArgb(180, 50, 50),
-                ForeColor = DrawingColor.White,
+                BackColor = SysColor.FromArgb(200, 30, 30),
+                ForeColor = SysColor.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 DialogResult = DialogResult.Cancel
             };
             btnCancelar.FlatAppearance.BorderSize = 0;
+            btnCancelar.FlatAppearance.MouseOverBackColor = SysColor.FromArgb(170, 10, 10);
+            btnCancelar.FlatAppearance.MouseDownBackColor = SysColor.FromArgb(140, 0, 0);
             btnCancelar.Click += delegate { this.DialogResult = DialogResult.Cancel; this.Close(); };
 
             btnConfirmar = new Button
             {
                 Text = "✅ Confirmar",
                 Size = new Size(160, 40),
-                BackColor = DrawingColor.FromArgb(46, 125, 50),
-                ForeColor = DrawingColor.White,
+                BackColor = SysColor.FromArgb(34, 139, 34),
+                ForeColor = SysColor.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 DialogResult = DialogResult.OK
             };
             btnConfirmar.FlatAppearance.BorderSize = 0;
+            btnConfirmar.FlatAppearance.MouseOverBackColor = SysColor.FromArgb(0, 120, 0);
+            btnConfirmar.FlatAppearance.MouseDownBackColor = SysColor.FromArgb(0, 100, 0);
             btnConfirmar.Click += BtnConfirmar_Click;
+
+            btnRegresar = new Button
+            {
+                Text = "↩ Regresar",
+                Size = new Size(150, 40),
+                BackColor = SysColor.FromArgb(200, 110, 0),
+                ForeColor = SysColor.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+            btnRegresar.FlatAppearance.BorderSize = 0;
+            btnRegresar.FlatAppearance.MouseOverBackColor = SysColor.FromArgb(170, 90, 0);
+            btnRegresar.FlatAppearance.MouseDownBackColor = SysColor.FromArgb(140, 70, 0);
+            btnRegresar.Click += BtnRegresar_Click;
 
             lblCount = new Label
             {
                 Text = "Filas detectadas (mediciones): 0",
-                ForeColor = DrawingColor.LightGray,
+                ForeColor = SysColor.FromArgb(60, 60, 60),
                 Font = new Font("Segoe UI", 9),
                 AutoSize = true
             };
             lblTol = new Label
             {
                 Text = "",
-                ForeColor = DrawingColor.DarkGray,
+                ForeColor = SysColor.FromArgb(80, 80, 80),
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
                 AutoSize = true
             };
@@ -309,35 +302,44 @@ namespace Color
             this.Controls.Add(lblCount);
             this.Controls.Add(btnConfirmar);
             this.Controls.Add(btnCancelar);
+            this.Controls.Add(btnRegresar);
 
             this.AcceptButton = btnConfirmar;
             this.CancelButton = btnCancelar;
+            this.ResumeLayout(false);
         }
 
         // Reposiciona botones y etiquetas al cambiar tamaño
         private void PositionBottomControls()
         {
             int margin = 20;
-            int bottomY = this.ClientSize.Height - 60; // altura aproximada
+            int bottomY = this.ClientSize.Height - 60;
             int right = this.ClientSize.Width - margin;
 
-            // Botones a la derecha
+            // Botones a la derecha: Cancelar | Confirmar
             if (btnCancelar != null) btnCancelar.Location = new Point(right - btnCancelar.Width, bottomY);
             if (btnConfirmar != null && btnCancelar != null)
                 btnConfirmar.Location = new Point(btnCancelar.Left - 10 - btnConfirmar.Width, bottomY);
 
-            // Labels a la izquierda
-            if (lblCount != null) lblCount.Location = new Point(20, bottomY);
-            if (lblTol != null) lblTol.Location = new Point(20, bottomY - 24);
+            // Botón Regresar a la izquierda
+            if (btnRegresar != null) btnRegresar.Location = new Point(margin, bottomY);
 
-            // Redimensionar TabControl para ocupar el centro
-            int topOfTabs = 75; // debajo del subtítulo
+            // Labels entre Regresar y botones derecha
+            if (lblCount != null) lblCount.Location = new Point(margin + 160, bottomY + 10);
+            if (lblTol != null) lblTol.Location = new Point(margin + 160, bottomY - 14);
+
+            // Redimensionar TabControl
+            int topOfTabs = 75;
             int tabsHeight = (btnConfirmar != null ? (btnConfirmar.Top - 10) : (this.ClientSize.Height - 80)) - topOfTabs;
             if (tabControl != null)
             {
                 tabControl.Location = new Point(20, topOfTabs);
                 tabControl.Size = new Size(this.ClientSize.Width - 40, tabsHeight);
             }
+
+            // lblTitulo cubre todo el ancho
+            if (lblTitulo != null)
+                lblTitulo.Size = new Size(this.ClientSize.Width, 38);
         }
 
         private void HookSizingEvents()
@@ -353,31 +355,7 @@ namespace Color
 
         private void ApplySplitRatio()
         {
-            try
-            {
-                // splitMain: 55% arriba (mediciones+CMC) / 45% abajo (receta+batch)
-                if (splitMain != null)
-                {
-                    int h = splitMain.ClientSize.Height;
-                    int d = (int)(h * splitMainRatio);
-                    splitMain.SplitterDistance = Math.Max(120, Math.Min(h - 120, d));
-                }
-                // splitTop: 50% mediciones / 50% CMC
-                if (splitTop != null)
-                {
-                    int h = splitTop.ClientSize.Height;
-                    int d = (int)(h * splitTopRatio);
-                    splitTop.SplitterDistance = Math.Max(80, Math.Min(h - 80, d));
-                }
-                // splitBottom: 60% receta / 40% batch
-                if (splitBottom != null)
-                {
-                    int h = splitBottom.ClientSize.Height;
-                    int d = (int)(h * 0.60);
-                    splitBottom.SplitterDistance = Math.Max(50, Math.Min(h - 50, d));
-                }
-            }
-            catch { }
+            // Layout es TableLayoutPanel, no requiere ajuste de splitter
         }
 
         private DataGridView BuildMeasuresGrid()
@@ -389,8 +367,8 @@ namespace Color
                 AllowUserToDeleteRows = false,
                 ReadOnly = false,
                 RowHeadersVisible = false,
-                BackgroundColor = DrawingColor.FromArgb(45, 45, 45),
-                GridColor = DrawingColor.FromArgb(80, 80, 80),
+                BackgroundColor = SysColor.White,
+                GridColor = SysColor.FromArgb(180, 180, 180),
                 BorderStyle = BorderStyle.None,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells, // mide por contenido
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
@@ -400,16 +378,16 @@ namespace Color
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersHeight = 34
             };
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = DrawingColor.FromArgb(0, 120, 215);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = DrawingColor.White;
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(0, 120, 215);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = SysColor.White;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = DrawingColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.DefaultCellStyle.SelectionBackColor = DrawingColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.BackColor = SysColor.FromArgb(55, 55, 55);
+            dgv.DefaultCellStyle.ForeColor = SysColor.White;
+            dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = DrawingColor.FromArgb(45, 45, 45);
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.White;
 
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante", DataPropertyName = "Illuminant" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Type", HeaderText = "Tipo", DataPropertyName = "Type" });
@@ -438,8 +416,8 @@ namespace Color
                 AllowUserToDeleteRows = false,
                 ReadOnly = true,
                 RowHeadersVisible = false,
-                BackgroundColor = DrawingColor.FromArgb(45, 45, 45),
-                GridColor = DrawingColor.FromArgb(80, 80, 80),
+                BackgroundColor = SysColor.White,
+                GridColor = SysColor.FromArgb(180, 180, 180),
                 BorderStyle = BorderStyle.None,
 
                 // Partimos midiendo por contenido; tras cargar filas, cambiaremos a Fill
@@ -452,16 +430,16 @@ namespace Color
                 ColumnHeadersHeight = 34
             };
 
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = DrawingColor.FromArgb(0, 120, 215);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = DrawingColor.White;
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(0, 120, 215);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = SysColor.White;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = DrawingColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.DefaultCellStyle.SelectionBackColor = DrawingColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.BackColor = SysColor.FromArgb(55, 55, 55);
+            dgv.DefaultCellStyle.ForeColor = SysColor.White;
+            dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = DrawingColor.FromArgb(45, 45, 45);
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.White;
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
@@ -493,85 +471,6 @@ namespace Color
             return dgv;
         }
 
-        private DataGridView BuildRecipeGrid()
-        {
-            var dgv = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                BackgroundColor = DrawingColor.FromArgb(45, 45, 45),
-                GridColor = DrawingColor.FromArgb(80, 80, 80),
-                BorderStyle = BorderStyle.None,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                RowTemplate = { Height = 24 },
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                Font = new Font("Consolas", 10f),
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 30
-            };
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = DrawingColor.FromArgb(0, 120, 215);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.DefaultCellStyle.BackColor = DrawingColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.DefaultCellStyle.SelectionBackColor = DrawingColor.FromArgb(0, 90, 160);
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = DrawingColor.FromArgb(45, 45, 45);
-
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Code", HeaderText = "Código" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Nombre" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Pct", HeaderText = "%" });
-
-            dgv.Columns["Code"].FillWeight = 120f; dgv.Columns["Code"].MinimumWidth = 90;
-            dgv.Columns["Name"].FillWeight = 500f; dgv.Columns["Name"].MinimumWidth = 200;
-            dgv.Columns["Pct"].FillWeight = 100f; dgv.Columns["Pct"].MinimumWidth = 80;
-            dgv.Columns["Pct"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-
-            return dgv;
-        }
-
-        private DataGridView BuildBatchGrid()
-        {
-            var dgv = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                BackgroundColor = DrawingColor.FromArgb(45, 45, 45),
-                GridColor = DrawingColor.FromArgb(80, 80, 80),
-                BorderStyle = BorderStyle.None,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                RowTemplate = { Height = 26 },
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                Font = new Font("Consolas", 10.5f),
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 30
-            };
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = DrawingColor.FromArgb(0, 120, 215);
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.DefaultCellStyle.BackColor = DrawingColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = DrawingColor.White;
-            dgv.DefaultCellStyle.SelectionBackColor = DrawingColor.FromArgb(0, 90, 160);
-            dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-
-            foreach (string col in new[] { "L", "A", "B", "dL", "dC", "dH", "dE", "P/F" })
-                dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = col, HeaderText = col });
-
-            foreach (DataGridViewColumn c in dgv.Columns)
-            {
-                c.FillWeight = 100f;
-                c.MinimumWidth = 55;
-            }
-            return dgv;
-        }
-
         // =========================================================
         // CARGA DE DATOS
         // =========================================================
@@ -585,72 +484,13 @@ namespace Color
                 SetTolerances(_report);
             }
 
-            LoadRecipeSection();
-            LoadBatchSection();
+            if (_shadeResult != null)
+            {
+                LoadRecetaSection(_shadeResult);
+                LoadLabSection(_shadeResult);
+            }
 
             txtRaw.Text = BuildTextView();
-        }
-
-        private void LoadRecipeSection()
-        {
-            if (dgvRecipe == null) return;
-            dgvRecipe.Rows.Clear();
-            if (_shadeResult == null || _shadeResult.Recipe == null) return;
-
-            foreach (var item in _shadeResult.Recipe)
-            {
-                int idx = dgvRecipe.Rows.Add(item.Code, item.Name, item.Percentage);
-                // Color por fila alternada ya configurado en AlternatingRowsDefaultCellStyle
-                // Colorear % en verde/naranja según valor
-                try
-                {
-                    string pct = (item.Percentage ?? "").Replace("%", "").Trim();
-                    double pctVal;
-                    if (double.TryParse(pct, System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out pctVal))
-                    {
-                        dgvRecipe.Rows[idx].Cells["Pct"].Style.ForeColor =
-                            pctVal > 1.0 ? DrawingColor.FromArgb(255, 200, 80)
-                                         : DrawingColor.FromArgb(100, 200, 120);
-                    }
-                }
-                catch { }
-            }
-        }
-
-        private void LoadBatchSection()
-        {
-            if (dgvBatch == null) return;
-            dgvBatch.Rows.Clear();
-
-            // Preferir BatchMeasure; fallback a LabValues
-            string l = "", a = "", b = "", dl = "", dc = "", dh = "", de = "", pf = "";
-
-            if (_shadeResult != null && _shadeResult.Batch != null)
-            {
-                var bm = _shadeResult.Batch;
-                l = bm.L ?? ""; a = bm.A ?? ""; b = bm.B ?? "";
-                dl = bm.dL ?? ""; dc = bm.dC ?? ""; dh = bm.dH ?? ""; de = bm.dE ?? ""; pf = bm.PF ?? "";
-            }
-            else if (_shadeResult != null && _shadeResult.Lab != null)
-            {
-                var lv = _shadeResult.Lab;
-                l = lv.L ?? ""; a = lv.A ?? ""; b = lv.B ?? "";
-                dl = lv.dL ?? ""; dc = lv.da ?? ""; dh = lv.dB ?? ""; de = lv.cde ?? ""; pf = lv.PF ?? "";
-            }
-
-            if (l == "" && a == "" && b == "") return;
-
-            int idx = dgvBatch.Rows.Add(l, a, b, dl, dc, dh, de, pf);
-            // Color P/F
-            DrawingColor pfColor = pf.Trim().ToUpper() == "P"
-                ? DrawingColor.FromArgb(46, 125, 50)
-                : pf.Trim().ToUpper() == "F"
-                    ? DrawingColor.FromArgb(180, 50, 50)
-                    : DrawingColor.FromArgb(55, 55, 55);
-            dgvBatch.Rows[idx].Cells["P/F"].Style.BackColor = pfColor;
-            dgvBatch.Rows[idx].Cells["P/F"].Style.ForeColor = DrawingColor.White;
-            dgvBatch.Rows[idx].Cells["P/F"].Style.Font = new Font("Segoe UI", 10, FontStyle.Bold);
         }
 
         private void LoadMeasuresSection()
@@ -662,13 +502,14 @@ namespace Color
                 ColorimetricRow r = _rows[i];
                 int idx = dgvData.Rows.Add(r.Illuminant, r.Type, r.L, r.A, r.B, r.Chroma, r.Hue);
 
-                DrawingColor rowColor = DrawingColor.FromArgb(55, 55, 55);
-                if (r.Illuminant == "D65") rowColor = DrawingColor.FromArgb(40, 60, 100);
-                else if (r.Illuminant == "TL84") rowColor = DrawingColor.FromArgb(40, 80, 60);
-                else if (r.Illuminant == "A") rowColor = DrawingColor.FromArgb(80, 80, 40);
-                else if (r.Illuminant == "CWF") rowColor = DrawingColor.FromArgb(80, 55, 40);
+                SysColor rowColor = SysColor.White;
+                if (r.Illuminant == "D65") rowColor = SysColor.FromArgb(210, 225, 255);
+                else if (r.Illuminant == "TL84") rowColor = SysColor.FromArgb(210, 240, 220);
+                else if (r.Illuminant == "A") rowColor = SysColor.FromArgb(255, 245, 210);
+                else if (r.Illuminant == "CWF") rowColor = SysColor.FromArgb(255, 230, 210);
 
                 dgvData.Rows[idx].DefaultCellStyle.BackColor = rowColor;
+                dgvData.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
             }
 
             lblCount.Text = "Filas detectadas (mediciones): " + _rows.Count;
@@ -709,12 +550,13 @@ namespace Color
                     r.LightnessFlag,
                     r.ChromaHueFlag);
 
-                DrawingColor rowColor = DrawingColor.FromArgb(55, 55, 55);
-                if (r.Illuminant == "D65") rowColor = DrawingColor.FromArgb(40, 60, 100);
-                else if (r.Illuminant == "TL84") rowColor = DrawingColor.FromArgb(40, 80, 60);
-                else if (r.Illuminant == "A") rowColor = DrawingColor.FromArgb(80, 80, 40);
+                SysColor rowColor = SysColor.White;
+                if (r.Illuminant == "D65") rowColor = SysColor.FromArgb(210, 225, 255);
+                else if (r.Illuminant == "TL84") rowColor = SysColor.FromArgb(210, 240, 220);
+                else if (r.Illuminant == "A") rowColor = SysColor.FromArgb(255, 245, 210);
 
                 dgvCmc.Rows[dgvCmc.Rows.Count - 1].DefaultCellStyle.BackColor = rowColor;
+                dgvCmc.Rows[dgvCmc.Rows.Count - 1].DefaultCellStyle.ForeColor = SysColor.Black;
             }
 
             // 1) Mide por contenido visible
@@ -848,6 +690,26 @@ namespace Color
             this.Close();
         }
 
+        // =========================================================
+        // REGRESAR A PANTALLA PRINCIPAL (Form1)
+        // =========================================================
+        private void BtnRegresar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (MainFormOwner != null && !MainFormOwner.IsDisposed)
+                {
+                    MainFormOwner.WindowState = FormWindowState.Normal;
+                    MainFormOwner.BringToFront();
+                    MainFormOwner.Activate();
+                }
+            }
+            catch { }
+
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
+        }
+
         // Asegurar resultados coherentes al cerrar con "X"
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
@@ -855,6 +717,123 @@ namespace Color
                 this.DialogResult = DialogResult.Cancel;
 
             base.OnFormClosing(e);
+        }
+
+        // =========================================================
+        // GRILLA DE RECETA
+        // =========================================================
+        private DataGridView BuildRecetaGrid()
+        {
+            var dgv = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                RowHeadersVisible = false,
+                BackgroundColor = SysColor.White,
+                GridColor = SysColor.FromArgb(180, 180, 180),
+                BorderStyle = BorderStyle.None,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+                RowTemplate = { Height = 26 },
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                Font = new Font("Consolas", 10f),
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersHeight = 34
+            };
+
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(30, 90, 180);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = SysColor.White;
+            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            dgv.DefaultCellStyle.BackColor = SysColor.White;
+            dgv.DefaultCellStyle.ForeColor = SysColor.Black;
+            dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
+            dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(230, 240, 255);
+
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Codigo", HeaderText = "Código", FillWeight = 90f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Nombre", HeaderText = "Nombre", FillWeight = 300f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Porcentaje", HeaderText = "%", FillWeight = 80f });
+
+            dgv.Columns["Porcentaje"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            return dgv;
+        }
+
+        private void LoadRecetaSection(ShadeExtractionResult shade)
+        {
+            if (dgvReceta == null) return;
+            dgvReceta.Rows.Clear();
+
+            if (shade == null || !shade.Success || shade.Recipe == null || shade.Recipe.Count == 0)
+            {
+                dgvReceta.Rows.Add("", "Sin datos de receta", "");
+                return;
+            }
+
+            foreach (var item in shade.Recipe)
+            {
+                int idx = dgvReceta.Rows.Add(item.Code, item.Name, item.Percentage);
+                dgvReceta.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
+            }
+        }
+
+        // =========================================================
+        // GRILLA LAB (Batch Measure)
+        // =========================================================
+        private DataGridView BuildLabGrid()
+        {
+            var dgv = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                RowHeadersVisible = false,
+                BackgroundColor = SysColor.White,
+                GridColor = SysColor.FromArgb(180, 180, 180),
+                BorderStyle = BorderStyle.None,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+                RowTemplate = { Height = 26 },
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                Font = new Font("Consolas", 10f),
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersHeight = 34
+            };
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(30, 90, 180);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = SysColor.White;
+            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dgv.DefaultCellStyle.BackColor = SysColor.White;
+            dgv.DefaultCellStyle.ForeColor = SysColor.Black;
+            dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
+            dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "L", HeaderText = "L", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "A", HeaderText = "A", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "B", HeaderText = "B", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "dL", HeaderText = "dL", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "dC", HeaderText = "dC", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "dH", HeaderText = "dH", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "dE", HeaderText = "dE", FillWeight = 80f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "PF", HeaderText = "P/F", FillWeight = 60f });
+            return dgv;
+        }
+
+        private void LoadLabSection(ShadeExtractionResult shade)
+        {
+            if (dgvLab == null || shade == null) return;
+            dgvLab.Rows.Clear();
+            var b = shade.Batch;
+            if (b == null) return;
+            int idx = dgvLab.Rows.Add(b.L, b.A, b.B, b.dL, b.dC, b.dH, b.dE, b.PF);
+            dgvLab.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
         }
 
         private double ParseCellDouble(object val)

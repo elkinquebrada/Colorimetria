@@ -1,4 +1,4 @@
-﻿// Dataextraxtor.cs — versión C# 7.3 para OCR de colorimetríca
+// Dataextraxtor.cs — versión C# 7.3 para OCR de colorimetríca
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -861,6 +861,36 @@ namespace Color
             double vA = FixLabRange(RestoreMeasureDecimal(tokens[base_ + 1]), -100, 100);
             double vB = FixLabRange(RestoreMeasureDecimal(tokens[base_ + 2]), -100, 100);
             double vC = FixLabRange(RestoreMeasureDecimal(tokens[base_ + 3]), 0, 200);
+
+            if (log != null)
+                log.Add(string.Format("[TOKENS] {0}/{1} L={2} a={3} b={4} C={5} h={6}",
+                    illuminant, type,
+                    tokens[base_], tokens[base_ + 1], tokens[base_ + 2],
+                    tokens[base_ + 3], tokens[base_ + 4]));
+
+            // FIX UNIVERSAL...
+            // FIX UNIVERSAL: deteccion de escala x10
+            // Cuando OCR lee a*, b* y Chroma todos x10 (ej: 6.10->0.61, 17.89->1.78, 18.90->1.89)
+            // la coherencia interna sqrt(a2+b2)~C es correcta pero los valores son 10x el real.
+            // Senal: Chroma/L > 0.6 es anomalo en colorimetria textil (tipico Chroma < L*0.5)
+            if (vL > 0 && vC / vL > 0.6 && vC > 5.0)
+            {
+                double aDiv = vA / 10.0;
+                double bDiv = vB / 10.0;
+                double cDiv = vC / 10.0;
+                double chromaCheckDiv = Math.Sqrt(aDiv * aDiv + bDiv * bDiv);
+                double errDiv = Math.Abs(chromaCheckDiv - cDiv);
+                // Aplicar /10 si coherencia se mantiene (err<0.5) Y ratio C/L baja a rango normal
+                if (errDiv < 0.5 && cDiv / vL < 0.5)
+                {
+                    if (log != null)
+                        log.Add(string.Format(
+                            "[FIX/10] {0}/{1} a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
+                            illuminant, type, vA, aDiv, vB, bDiv, vC, cDiv));
+                    vA = aDiv; vB = bDiv; vC = cDiv;
+                }
+            }
+
             // Corregir b* via coherencia con Chroma (OCR confunde 3↔8, 6↔8, dígito faltante)
             vB = FixBviaChroma(vB, tokens[base_ + 2], vA, vC);
             // FIX: Corregir a* también via coherencia con Chroma (mismo tipo de error)
