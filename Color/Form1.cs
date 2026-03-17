@@ -166,7 +166,11 @@ namespace Color
             EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "Mediciones");
             EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Receta");
 
-            btnTolerancias.Click += (s, e) => MessageBox.Show("Abrir Config. de tolerancias", "Info");
+            btnTolerancias.Click += (s, e) =>
+            {
+                using (var frmTol = new Color.Tolerancias.FormConfigTolerancias())
+                    frmTol.ShowDialog(this);
+            };
             btnBaseDatos.Click += (s, e) => MessageBox.Show("Abrir Base de datos", "Info");
 
             btnSalir.Click += (s, e) =>

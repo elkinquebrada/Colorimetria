@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using DrawingColor = System.Drawing.Color;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-
-
-// Aliases para evitar ambigüedad de tipos si hay clases con el mismo nombre en otros namespaces
 using EngineCalc = Color.ColorimetricCalculator;
 using EngineRow = Color.ColorimetricRow;
 using EngineRes = Color.ColorCorrectionResult;
@@ -21,30 +17,23 @@ namespace Color
         private readonly OcrReport _report;
         private readonly string _resumenLegacy;
         private readonly List<EngineRes> _resultsLegacy;
+        private List<Color.IlluminantCorrectionResult> _recipeResults;
 
         // ======= Controles de la vista =======
         private TextBox txtReport;
         private TextBox txtRecomendacion;
-        private TextBox txtReceta;
-        private SplitContainer splitMedicionesCmc; // IZQ: Receta/Reporte | DER: CMC/Recomendación
+        private SplitContainer splitMedicionesCmc; // IZQ: Reporte/OCR | DER: CMC/Recomendación
         private Button btnExportar;
         private Button btnCerrar;
         private Button btnRegresar;
 
-        // ======= Referencia al formulario OCR de origen =======
-        /// <summary>
-        /// Asigna el FormConfirmacionOCR que originó este formulario.
-        /// Al presionar "↩ Revisar OCR" se cierra FormResultados y se muestra de nuevo el OCR.
-        /// </summary>
-        public Form FormOcrOrigen { get; set; }
-
-        // ======= Datos receta (IlluminantCorrectionResult) =======
-        private List<IlluminantCorrectionResult> _recipeResults;
-
         // ======= Tolerancias (L*, Hue y ΔE) =======
-        private const double DL_MAX = 0.69;
-        private const double DH_MAX = 0.69;
-        private const double DE_MAX = 1.20;
+        // Tolerancias — se leen desde Settings para que el usuario las configure
+        // Tolerancias LCH configurables por el usuario
+        private double DL_MAX => Properties.Settings.Default.ToleranciaDL;
+        private double DC_MAX => Properties.Settings.Default.ToleranciaDC;
+        private double DH_MAX => Properties.Settings.Default.ToleranciaDH;
+        private double DE_MAX => Properties.Settings.Default.ToleranciaDE;
 
         // ======= Proporción del divisor (55% izquierda) =======
         private double _splitLeftRatio = 0.55;
@@ -56,46 +45,68 @@ namespace Color
             InitializeComponents();
 
             // Poblar vistas
-            txtReceta.Text = BuildResumenFromReport(_report);
             txtReport.Text = BuildResumenFromReport(_report);
             txtRecomendacion.Text = BuildRecomendacionFromReport(_report);
         }
 
-        public FormResultados(string resumen, List<EngineRes> results,
-            List<IlluminantCorrectionResult> recipeResults = null)
+        public FormResultados(string resumen, List<EngineRes> results)
         {
             _resumenLegacy = resumen ?? "";
             _resultsLegacy = results ?? new List<EngineRes>();
-            _recipeResults = recipeResults;
             InitializeComponents();
 
-            // Panel izquierdo: cálculos de receta (si hay) o resumen OCR
-            txtReceta.Text = (_recipeResults != null && _recipeResults.Count > 0)
-                ? RecipeCorrector.BuildSummaryText(_recipeResults)
-                : _resumenLegacy;
+            // Poblar vistas
             txtReport.Text = _resumenLegacy;
-            txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy);
+            txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
         }
+
+        /// <summary>Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.</summary>
+        public FormResultados(string resumen, List<EngineRes> corrections, List<Color.IlluminantCorrectionResult> recipeCorrections)
+        {
+            _resumenLegacy = resumen ?? "";
+            _resultsLegacy = corrections ?? new List<EngineRes>();
+            _recipeResults = recipeCorrections;
+            InitializeComponents();
+
+            // Panel izquierdo: receta + corrección de receta por iluminante
+            var sbLeft = new System.Text.StringBuilder();
+            sbLeft.Append(_resumenLegacy);
+            if (_recipeResults != null && _recipeResults.Count > 0)
+            {
+                sbLeft.AppendLine();
+                sbLeft.AppendLine();
+                sbLeft.Append(RecipeCorrector.BuildSummaryText(_recipeResults));
+            }
+            txtReport.Text = sbLeft.ToString();
+
+            txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
+        }
+
+        /// <summary>Referencia al formulario OCR de origen — para el boton Regresar.</summary>
+        public Form FormOcrOrigen { get; set; }
 
         // ======= Inicialización de la UI (layout elástico) =======
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.SuspendLayout();
             this.Text = "Resultados — Corrección Colorimétrica";
-            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.FormBorderStyle = FormBorderStyle.Sizable; // permite min/max y resize
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.ControlBox = true;
             this.ShowIcon = true;
 
-            this.BackColor = DrawingColor.White;
-            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.BackColor = System.Drawing.Color.White;
+            this.ForeColor = System.Drawing.Color.Black;
+            this.AutoScaleMode = AutoScaleMode.Dpi; // respeta 125%, 150%, etc.
 
-            // Arrancar directamente maximizado — sin pasar por tamaño intermedio
+            // Tamaño inicial cómodo (90% del área de trabajo)
+            var wa = Screen.PrimaryScreen.WorkingArea;
+            int targetWidth = (int)(wa.Width * 0.90);
+            int targetHeight = (int)(wa.Height * 0.90);
             this.MinimumSize = new Size(980, 640);
+            this.Size = new Size(targetWidth, targetHeight);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.WindowState = FormWindowState.Maximized;
             this.ResizeRedraw = true;
 
             // ---- Título ----
@@ -103,12 +114,12 @@ namespace Color
             {
                 Text = "RESULTADOS DE CORRECCIÓN COLORIMÉTRICA",
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                ForeColor = DrawingColor.White,
+                ForeColor = System.Drawing.Color.White,
+                BackColor = System.Drawing.Color.FromArgb(0, 102, 204),
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                Padding = new Padding(20, 0, 0, 0),
-                BackColor = DrawingColor.FromArgb(30, 90, 180)
+                Padding = new Padding(15, 0, 0, 0)
             };
 
             // ---- Controles inferiores ----
@@ -116,42 +127,36 @@ namespace Color
             {
                 Text = "💾 Exportar .txt",
                 Size = new Size(150, 38),
-                BackColor = DrawingColor.FromArgb(34, 139, 34),
-                ForeColor = DrawingColor.White,
+                BackColor = System.Drawing.Color.FromArgb(34, 139, 34),
+                ForeColor = System.Drawing.Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
             btnExportar.FlatAppearance.BorderSize = 0;
-            btnExportar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(0, 120, 0);
-            btnExportar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(0, 100, 0);
             btnExportar.Click += BtnExportar_Click;
 
             btnCerrar = new Button
             {
                 Text = "Cerrar",
                 Size = new Size(120, 38),
-                BackColor = DrawingColor.FromArgb(200, 30, 30),
-                ForeColor = DrawingColor.White,
+                BackColor = System.Drawing.Color.FromArgb(200, 30, 30),
+                ForeColor = System.Drawing.Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
             btnCerrar.FlatAppearance.BorderSize = 0;
-            btnCerrar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(170, 10, 10);
-            btnCerrar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(140, 0, 0);
             btnCerrar.Click += (s, e) => this.Close();
 
             btnRegresar = new Button
             {
-                Text = "↩ Revisar OCR",
+                Text = "← Revisar OCR",
                 Size = new Size(150, 38),
-                BackColor = DrawingColor.FromArgb(200, 110, 0),
-                ForeColor = DrawingColor.White,
+                BackColor = System.Drawing.Color.FromArgb(180, 100, 0),
+                ForeColor = System.Drawing.Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
             btnRegresar.FlatAppearance.BorderSize = 0;
-            btnRegresar.FlatAppearance.MouseOverBackColor = DrawingColor.FromArgb(170, 90, 0);
-            btnRegresar.FlatAppearance.MouseDownBackColor = DrawingColor.FromArgb(140, 70, 0);
             btnRegresar.Click += BtnRegresar_Click;
 
             // ---- Split central (Dock=Fill) ----
@@ -159,27 +164,27 @@ namespace Color
             {
                 Dock = DockStyle.Fill,                // clave para crecer con la ventana
                 Orientation = Orientation.Vertical,   // izquierda/derecha
-                BackColor = DrawingColor.White
+                BackColor = System.Drawing.Color.White
             };
 
-            // Panel IZQUIERDO: solo Cálculos de Receta
-            var lblReceta = new Label
+            // Panel IZQUIERDO: Reporte/OCR (encabezado + textbox)
+            var panelLeftHeader = new Label
             {
-                Text = "🧪 Cálculos de Corrección de Receta",
+                Text = "📝 Reporte (Mediciones / OCR)",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                ForeColor = DrawingColor.White,
+                ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
                 Dock = DockStyle.Top,
-                Height = 30,
                 Padding = new Padding(4, 6, 4, 6),
-                BackColor = DrawingColor.FromArgb(30, 90, 180)
+                BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
-            txtReceta = BuildTextBox();
-            txtReceta.Dock = DockStyle.Fill;
-            txtReport = BuildTextBox(); // mantener campo para exportación
-            var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.White };
-            panelLeft.Controls.Add(txtReceta);
-            panelLeft.Controls.Add(lblReceta);
+
+            txtReport = BuildTextBox(null); // Consolas + verde sobre negro
+            txtReport.Dock = DockStyle.Fill;
+
+            var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
+            panelLeft.Controls.Add(txtReport);
+            panelLeft.Controls.Add(panelLeftHeader);
 
             splitMedicionesCmc.Panel1.Controls.Add(panelLeft);
 
@@ -188,18 +193,17 @@ namespace Color
             {
                 Text = "✅ CMC (2:1) / Recomendación",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                ForeColor = DrawingColor.White,
+                ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
                 Dock = DockStyle.Top,
-                Height = 30,
                 Padding = new Padding(4, 6, 4, 6),
-                BackColor = DrawingColor.FromArgb(30, 90, 180)
+                BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtRecomendacion = BuildTextBox(); // ámbar
+            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black); // ámbar
             txtRecomendacion.Dock = DockStyle.Fill;
 
-            var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.White };
+            var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
             panelRight.Controls.Add(txtRecomendacion);
             panelRight.Controls.Add(panelRightHeader);
 
@@ -211,53 +215,55 @@ namespace Color
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 3,
-                BackColor = this.BackColor
+                BackColor = System.Drawing.Color.White
             };
             panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));  // Título
             panelRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Centro (Split)
             panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Botones
 
             // Fila 0: Título
-            var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = DrawingColor.FromArgb(30, 90, 180) };
+            var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.FromArgb(0, 102, 204) };
             panelHeader.Controls.Add(lblTitulo);
             panelRoot.Controls.Add(panelHeader, 0, 0);
 
             // Fila 1: Split
             panelRoot.Controls.Add(splitMedicionesCmc, 0, 1);
 
-            // Fila 2: Botones — Regresar a la izquierda | Exportar + Cerrar a la derecha
+            // Fila 2: Revisar (izquierda) | Exportar + Cerrar (derecha)
             var panelButtons = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 1,
-                BackColor = this.BackColor,
-                Padding = new Padding(10, 10, 20, 10)
+                BackColor = System.Drawing.Color.White,
+                Padding = new Padding(10, 8, 10, 8)
             };
-            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // izquierda (Regresar)
-            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // derecha (Exportar+Cerrar)
+            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-            // Izquierda: Regresar
-            var panelLeft2 = new FlowLayoutPanel
+            // Izquierda: Revisar OCR
+            var panelBtnLeft = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.LeftToRight,
-                BackColor = this.BackColor
+                BackColor = System.Drawing.Color.White,
+                Padding = new Padding(0, 0, 0, 0)
             };
-            panelLeft2.Controls.Add(btnRegresar);
+            panelBtnLeft.Controls.Add(btnRegresar);
 
             // Derecha: Exportar + Cerrar
-            var panelRight2 = new FlowLayoutPanel
+            var panelBtnRight = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.RightToLeft,
-                BackColor = this.BackColor
+                BackColor = System.Drawing.Color.White,
+                Padding = new Padding(0, 0, 0, 0)
             };
-            panelRight2.Controls.Add(btnCerrar);
-            panelRight2.Controls.Add(btnExportar);
+            panelBtnRight.Controls.Add(btnCerrar);
+            panelBtnRight.Controls.Add(btnExportar);
 
-            panelButtons.Controls.Add(panelLeft2, 0, 0);
-            panelButtons.Controls.Add(panelRight2, 1, 0);
+            panelButtons.Controls.Add(panelBtnLeft, 0, 0);
+            panelButtons.Controls.Add(panelBtnRight, 1, 0);
             panelRoot.Controls.Add(panelButtons, 0, 2);
 
             // Agregar root al formulario
@@ -274,20 +280,6 @@ namespace Color
             // Mantener proporción del divisor en Load/Resize
             this.Load += (s, e) => ApplySplitRatio();
             this.Resize += (s, e) => ApplySplitRatio();
-
-            // Al cargar, traer al frente
-            this.Load += (s, e) =>
-            {
-                try
-                {
-                    this.BringToFront();
-                    this.Activate();
-                    this.Focus();
-                }
-                catch { }
-            };
-
-            this.ResumeLayout(false);
         }
 
         // ======= Aplica proporción del Split (55% izquierda / 45% derecha) =======
@@ -299,56 +291,38 @@ namespace Color
                 {
                     int w = splitMedicionesCmc.ClientSize.Width;
                     int distance = (int)(w * _splitLeftRatio);
+                    // evitar colapsos: reservar 200 px por lado
                     distance = Math.Max(200, Math.Min(w - 200, distance));
                     splitMedicionesCmc.SplitterDistance = distance;
                 }
-
             }
-            catch { }
+            catch
+            {
+                // ignorar si aún no está listo para medir
+            }
         }
 
-        // ======= Factory de TextBox monoespaciado =======
-        private static TextBox BuildTextBox()
+        // ======= Factory de TextBox monoespaciado (oscuro) =======
+        private static TextBox BuildTextBox(System.Drawing.Color? foreColor)
         {
             return new TextBox
             {
                 Multiline = true,
                 ScrollBars = ScrollBars.Both,
                 Dock = DockStyle.Fill,
-                Font = new System.Drawing.Font("Consolas", 10.0f),
-                BackColor = DrawingColor.White,
-                ForeColor = DrawingColor.Black,
+                Font = new Font("Consolas", 10.0f),
+                BackColor = System.Drawing.Color.White,
+                ForeColor = System.Drawing.Color.Black,
                 ReadOnly = true,
                 WordWrap = false,
                 Text = string.Empty
             };
         }
 
-        // ======= Botón Regresar → vuelve al FormConfirmacionOCR =======
-        private void BtnRegresar_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (FormOcrOrigen != null && !FormOcrOrigen.IsDisposed)
-                {
-                    this.Hide();
-                    FormOcrOrigen.ShowDialog(this);
-                    // Al cerrar el OCR (Confirmar o Cancelar), cerrar FormResultados
-                    // Form1 detectará si RowsConfirmed tiene datos para reabrir Resultados
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                    return;
-                }
-            }
-            catch { }
-
-            this.Close();
-        }
-
         // =========================================================
         // RECOMENDACIÓN — desde lista de resultados (Croma eliminado del texto impreso)
         // =========================================================
-        private static string BuildRecomendacionFromResults(List<EngineRes> results)
+        private static string BuildRecomendacionFromResults(List<EngineRes> results, double DL_MAX = 0.69, double DC_MAX = 0.69, double DH_MAX = 0.69, double DE_MAX = 1.20)
         {
             if (results == null || results.Count == 0)
                 return "No hay resultados para generar recomendación.";
@@ -365,8 +339,8 @@ namespace Color
             sb.AppendLine("ESTADO L/ΔE (tolerancias):");
             sb.AppendLine(string.Format(
                 CultureInfo.InvariantCulture,
-                " DL≤{0:0.00} DH≤{1:0.00} DE≤{2:0.00}",
-                DL_MAX, DH_MAX, DE_MAX));
+                " DL≤{0:0.00} DC≤{1:0.00} DH≤{2:0.00} DE≤{3:0.00}",
+                DL_MAX, DC_MAX, DH_MAX, DE_MAX));
             sb.AppendLine();
 
             bool cumpleTodo = true;
@@ -381,6 +355,7 @@ namespace Color
                 // Lógica de pass: DL, DH y DE (sin DC)
                 bool pass =
                     Math.Abs(r.DeltaL) <= DL_MAX &&
+                    Math.Abs(r.DeltaChroma) <= DC_MAX &&
                     Math.Abs(r.DeltaHue) <= DH_MAX &&
                     r.DeltaE <= DE_MAX;
 
@@ -615,7 +590,11 @@ namespace Color
             List<EngineRes> calcResults = EngineCalc.Calculate(rowsForEngine);
 
             // 4) Reutilizar el generador de texto unificado
-            return BuildRecomendacionFromResults(calcResults);
+            return BuildRecomendacionFromResults(calcResults,
+                Properties.Settings.Default.ToleranciaDL,
+                Properties.Settings.Default.ToleranciaDC,
+                Properties.Settings.Default.ToleranciaDH,
+                Properties.Settings.Default.ToleranciaDE);
         }
 
         // =========================================================
@@ -659,6 +638,15 @@ namespace Color
         // =========================================================
         // EXPORTAR TEXTO
         // =========================================================
+        private void BtnRegresar_Click(object sender, EventArgs e)
+        {
+            if (FormOcrOrigen == null) return;
+            this.Hide();
+            FormOcrOrigen.ShowDialog();
+            // Si el usuario confirma de nuevo, cerrar esta ventana
+            this.Close();
+        }
+
         private void BtnExportar_Click(object sender, EventArgs e)
         {
             using (var sfd = new SaveFileDialog())
@@ -669,13 +657,8 @@ namespace Color
                 if (sfd.ShowDialog() == DialogResult.OK)
                 {
                     string contenido =
-                        "=== CÁLCULOS DE RECETA ===" + Environment.NewLine
-                        + (txtReceta != null ? txtReceta.Text : string.Empty)
+                        (txtReport != null ? txtReport.Text : string.Empty)
                         + Environment.NewLine + Environment.NewLine
-                        + "=== REPORTE OCR ===" + Environment.NewLine
-                        + (txtReport != null ? txtReport.Text : string.Empty)
-                        + Environment.NewLine + Environment.NewLine
-                        + "=== CMC / RECOMENDACIÓN ===" + Environment.NewLine
                         + (txtRecomendacion != null ? txtRecomendacion.Text : string.Empty);
 
                     System.IO.File.WriteAllText(sfd.FileName, contenido, Encoding.UTF8);
