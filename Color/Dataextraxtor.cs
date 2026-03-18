@@ -147,6 +147,16 @@ namespace Color
         private const int REOCR_SCALE = 6;    // escala extra para celdas individuales
         private const int REOCR_PADDING = 4;  // padding en px (imagen original) al recortar
 
+        // Preprocesado adaptativo: ajusta escala y contraste según calidad de imagen
+        // Umbral de nitidez (varianza Laplaciana): < 40 = borrosa, 40-120 = normal, > 120 = nítida
+        private const bool ENABLE_ADAPTIVE_PREPROCESS = true;
+        private const float SHARPNESS_LOW_THRESHOLD = 40f;
+        private const float SHARPNESS_HIGH_THRESHOLD = 120f;
+        private const int SCALE_FACTOR_LOW = 4;   // imagen borrosa o baja res → escala mayor
+        private const int SCALE_FACTOR_HIGH = 2;   // imagen nítida → escala menor (más rápido)
+        private const float CONTRAST_LOW = 2.2f; // imagen gris/poco contraste
+        private const float CONTRAST_HIGH = 1.5f; // imagen ya bien contrastada
+
         private TesseractEngine GetEngine()
         {
             if (_sharedEngine == null)
@@ -639,9 +649,103 @@ namespace Color
         }
 
         // ── Preprocesamiento ───────────────────────────────────
+
+        /// Mide la nitidez de la imagen usando la varianza del operador Laplaciano (3x3).
+        /// Valor bajo = imagen borrosa o de baja resolución.
+        /// Solo muestrea el centro de la imagen para no penalizar bordes blancos.
+        /// Compatible con C# 7.3 / .NET 4.8 — sin unsafe, via Marshal.Copy.
+        private static float MeasureSharpness(Bitmap src)
+        {
+            int w = src.Width, h = src.Height;
+            // Kernel Laplaciano 3x3
+            int[] kernel = { 0, -1, 0, -1, 4, -1, 0, -1, 0 };
+
+            // Leer pixels via LockBits (evita GetPixel que es lento)
+            var bmpData = src.LockBits(
+                new Rectangle(0, 0, w, h),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            int stride = bmpData.Stride;
+            var pixels = new byte[stride * h];
+            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, pixels, 0, pixels.Length);
+            src.UnlockBits(bmpData);
+
+            // Zona de muestreo: 25%-75% de la imagen para evitar márgenes blancos
+            int x0 = w / 4, x1 = w * 3 / 4;
+            int y0 = h / 4, y1 = h * 3 / 4;
+
+            double sum = 0, sumSq = 0;
+            long count = 0;
+
+            for (int y = Math.Max(1, y0); y < Math.Min(h - 1, y1); y++)
+            {
+                for (int x = Math.Max(1, x0); x < Math.Min(w - 1, x1); x++)
+                {
+                    int lap = 0;
+                    int ki = 0;
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int idx = (y + dy) * stride + (x + dx) * 4;
+                            int b2 = pixels[idx];
+                            int g2 = pixels[idx + 1];
+                            int r2 = pixels[idx + 2];
+                            int lum = (int)(0.299 * r2 + 0.587 * g2 + 0.114 * b2);
+                            lap += kernel[ki] * lum;
+                            ki++;
+                        }
+                    }
+                    sum += lap;
+                    sumSq += (double)lap * lap;
+                    count++;
+                }
+            }
+
+            if (count == 0) return 50f; // valor neutro si no hay píxeles
+            double mean = sum / count;
+            double variance = (sumSq / count) - (mean * mean);
+            return (float)Math.Max(0, variance);
+        }
+
+        /// Preprocesa la imagen ajustando escala y contraste según la nitidez medida.
+        /// Si ENABLE_ADAPTIVE_PREPROCESS = false, comportamiento idéntico al original (×3, 1.8f).
         private Bitmap Preprocess(Bitmap src)
         {
-            int nW = src.Width * SCALE_FACTOR, nH = src.Height * SCALE_FACTOR;
+            int scaleFactor;
+            float contrast;
+
+            if (ENABLE_ADAPTIVE_PREPROCESS)
+            {
+                float sharpness = MeasureSharpness(src);
+
+                if (sharpness < SHARPNESS_LOW_THRESHOLD)
+                {
+                    // Imagen borrosa o baja resolución → escala agresiva + contraste alto
+                    scaleFactor = SCALE_FACTOR_LOW;
+                    contrast = CONTRAST_LOW;
+                }
+                else if (sharpness > SHARPNESS_HIGH_THRESHOLD)
+                {
+                    // Imagen ya nítida → escala moderada + contraste suave
+                    scaleFactor = SCALE_FACTOR_HIGH;
+                    contrast = CONTRAST_HIGH;
+                }
+                else
+                {
+                    // Rango normal → valores originales (sin cambio de comportamiento)
+                    scaleFactor = SCALE_FACTOR;
+                    contrast = 1.8f;
+                }
+            }
+            else
+            {
+                // Comportamiento original preservado exactamente
+                scaleFactor = SCALE_FACTOR;
+                contrast = 1.8f;
+            }
+
+            int nW = src.Width * scaleFactor, nH = src.Height * scaleFactor;
             var scaled = new Bitmap(nW, nH, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(scaled))
             {
@@ -650,7 +754,7 @@ namespace Color
                 g.SmoothingMode = SmoothingMode.HighQuality;
                 g.DrawImage(src, 0, 0, nW, nH);
             }
-            var gray = ToGrayscaleContrast(scaled, 1.8f, -0.1f);
+            var gray = ToGrayscaleContrast(scaled, contrast, -0.1f);
             scaled.Dispose();
             return gray;
         }
@@ -817,6 +921,24 @@ namespace Color
 
             report.Measures = DedupAndSort(report.Measures);
             report.CmcDifferences = DedupCmc(report.CmcDifferences);
+
+            // CAMBIO 3 — Resumen de extracción al final del log para diagnóstico rápido
+            int totalMeasures = report.Measures.Count;
+            int needsReview = 0;
+            foreach (var r in report.Measures) { if (r.NeedsReview) needsReview++; }
+            int warnCount = 0;
+            foreach (var entry in report.ParseLog) { if (entry.StartsWith("[WARN]")) warnCount++; }
+
+            report.ParseLog.Add(string.Format(
+                "[RESUMEN] Filas extraídas: {0} | Requieren revisión: {1} | Advertencias log: {2}",
+                totalMeasures, needsReview, warnCount));
+
+            if (needsReview > 0)
+                report.ParseLog.Add(string.Format(
+                    "[RESUMEN] Iluminantes con NeedsReview=true: {0}",
+                    string.Join(", ", report.Measures
+                        .FindAll(delegate (ColorimetricRow r) { return r.NeedsReview; })
+                        .ConvertAll(delegate (ColorimetricRow r) { return r.Illuminant + "/" + r.Type; }))));
         }
         private static bool IsSectionEnd(string normLine)
         {
@@ -888,6 +1010,84 @@ namespace Color
                             "[FIX/10] {0}/{1} a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
                             illuminant, type, vA, aDiv, vB, bDiv, vC, cDiv));
                     vA = aDiv; vB = bDiv; vC = cDiv;
+                }
+            }
+
+            // ── FIX: Truncamiento simultáneo de a*, b* y Chroma ────────────────
+            // Escenario: el OCR pierde el primer dígito de a*, b* y C* al mismo tiempo.
+            // Ej: a=11.59→1.16, b=-21.77→-2.18, C=24.66→2.47
+            // La coherencia sqrt(a²+b²)≈C se mantiene con los valores truncados,
+            // por lo que FixBviaChroma/FixAviaChroma NO se activan.
+            // Detección: usamos el Hue del OCR como árbitro externo.
+            //   - Si Hue es válido, calculamos el Chroma mínimo que le daría sentido
+            //     con la magnitud de L* (señal: C* << L*×0.05 es anómalo en textiles)
+            //   - Señal adicional: todos los tokens a*, b*, C* tienen solo 1 dígito
+            //     antes del decimal mientras que el token L* tiene 2 dígitos.
+            {
+                double vH_pre = ParseHueDouble(tokens[base_ + 4]);
+                bool hueValid = vH_pre >= 1.0 && vH_pre <= 360.0;
+
+                // Contar dígitos enteros (antes del punto) en cada token numérico relevante
+                int digL = CountIntDigits(tokens[base_]);
+                int digA = CountIntDigits(tokens[base_ + 1]);
+                int digB = CountIntDigits(tokens[base_ + 2]);
+                int digC = CountIntDigits(tokens[base_ + 3]);
+
+                // Señal de truncamiento: L* tiene más dígitos que a*, b* y C*
+                // Y Chroma es sospechosamente pequeño para el L* que tenemos
+                bool suspiciouslySmallChroma = vL > 10.0 && vC < vL * 0.15 && vC < 5.0;
+                bool tokensMissingDigit = digL >= 2 && digA <= 1 && digB <= 1 && digC <= 1;
+
+                if (hueValid && (suspiciouslySmallChroma || tokensMissingDigit))
+                {
+                    // Calcular Chroma esperado desde Hue y la magnitud del L*
+                    // Probar insertar el dígito faltante en a*, b* y C* simultáneamente
+                    double hRad = vH_pre * Math.PI / 180.0;
+                    double cosH = Math.Cos(hRad);
+                    double sinH = Math.Sin(hRad);
+
+                    double bestTripleErr = double.MaxValue;
+                    double bestA = vA, bestB = vB, bestC = vC;
+
+                    // Probar insertar cada dígito '1'-'9' como primer dígito de los tokens
+                    for (char ins = '1'; ins <= '9'; ins++)
+                    {
+                        double tryA = TryInsertLeadingDigit(tokens[base_ + 1], ins);
+                        double tryB = TryInsertLeadingDigit(tokens[base_ + 2], ins);
+                        double tryC = TryInsertLeadingDigit(tokens[base_ + 3], ins);
+
+                        if (double.IsNaN(tryA) || double.IsNaN(tryB) || double.IsNaN(tryC)) continue;
+                        if (Math.Abs(tryA) > 100 || Math.Abs(tryB) > 100 || tryC > 200) continue;
+
+                        // Coherencia interna con los nuevos valores
+                        double chromaCalc = Math.Sqrt(tryA * tryA + tryB * tryB);
+                        double chromaErr = Math.Abs(chromaCalc - tryC);
+                        if (chromaErr > 1.5) continue; // solo candidatos coherentes
+
+                        // Coherencia con Hue: el ángulo atan2(b,a) debe coincidir con vH_pre
+                        double hueCalc = Math.Atan2(tryB, tryA) * 180.0 / Math.PI;
+                        if (hueCalc < 0) hueCalc += 360.0;
+                        double hueErr = Math.Abs(hueCalc - vH_pre);
+                        if (hueErr > 180) hueErr = 360 - hueErr;
+                        if (hueErr > 15.0) continue; // Hue no coincide → descartar
+
+                        double totalErr = chromaErr + hueErr * 0.1;
+                        if (totalErr < bestTripleErr)
+                        {
+                            bestTripleErr = totalErr;
+                            bestA = tryA; bestB = tryB; bestC = tryC;
+                        }
+                    }
+
+                    if (bestTripleErr < double.MaxValue && (bestC > vC * 1.5))
+                    {
+                        if (log != null)
+                            log.Add(string.Format(
+                                "[FIX/DIGIT] {0}/{1} truncamiento simultaneo detectado: " +
+                                "a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
+                                illuminant, type, vA, bestA, vB, bestB, vC, bestC));
+                        vA = bestA; vB = bestB; vC = bestC;
+                    }
                 }
             }
 
@@ -1542,6 +1742,38 @@ namespace Color
                 return Math.Round(hueCalc);
 
             return hue;
+        }
+
+        // ── Helpers para FIX/DIGIT (truncamiento simultáneo) ──────────────────
+
+        /// Cuenta los dígitos enteros (antes del punto decimal) en un token numérico.
+        /// Ej: "1.16"→1, "-21.77"→2, "298"→3, ""→0
+        private static int CountIntDigits(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return 0;
+            string s = token.Trim().TrimStart('-');
+            int dot = s.IndexOf('.');
+            string intPart = dot >= 0 ? s.Substring(0, dot) : s;
+            return intPart.TrimStart('0').Length == 0 ? 1 : intPart.Length;
+        }
+
+        /// Intenta insertar 'ins' como primer dígito de la parte entera del token.
+        /// Ej: token="-2.18", ins='1' → -12.18; token="1.16", ins='1' → 11.16
+        /// Devuelve double.NaN si el resultado no es parseable o supera ±100.
+        private static double TryInsertLeadingDigit(string token, char ins)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return double.NaN;
+            string s = token.Trim().Replace(',', '.');
+            bool neg = s.StartsWith("-");
+            string abs = neg ? s.Substring(1) : s;
+
+            // Construir nuevo token con dígito insertado al inicio de la parte entera
+            string candidate = (neg ? "-" : "") + ins + abs;
+            double v;
+            if (!double.TryParse(candidate, NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out v)) return double.NaN;
+            if (Math.Abs(v) > 100) return double.NaN;
+            return v;
         }
 
         private static double SafeParse(string s)
