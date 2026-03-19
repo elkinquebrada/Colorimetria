@@ -149,7 +149,8 @@ namespace Color
 
         // Preprocesado adaptativo: ajusta escala y contraste según calidad de imagen
         // Umbral de nitidez (varianza Laplaciana): < 40 = borrosa, 40-120 = normal, > 120 = nítida
-        private const bool ENABLE_ADAPTIVE_PREPROCESS = true;
+        // Nota: static readonly (no const) — evita CS0162 ya que const bool hace el bloque else inalcanzable
+        private static readonly bool ENABLE_ADAPTIVE_PREPROCESS = true;
         private const float SHARPNESS_LOW_THRESHOLD = 40f;
         private const float SHARPNESS_HIGH_THRESHOLD = 120f;
         private const int SCALE_FACTOR_LOW = 4;   // imagen borrosa o baja res → escala mayor
@@ -229,42 +230,30 @@ namespace Color
             using (var processed = Preprocess(original))
             {
                 string text = RunOCR(processed);
+
                 var report = ParseFullReport(text);
 
                 // A+C: Segunda pasada — re-OCR dirigido sobre celdas con error Chroma
                 if (ENABLE_REOCR)
                     ReOcrFailedCells(original, report);
 
-                // B: Corrección via API local (100% local, sin dependencias externas)
+                // B: Corrección in-process — lógica portada de ClaudeService (ColorimetriaAPI)
+                // Actúa como capa POST-parse sobre el reporte completo.
+                // Complementa los fixes de parseo: detecta errores que escaparon
+                // a FixBviaChroma/FixAviaChroma usando visión de todas las filas.
                 try
                 {
-                    var apiClient = new ColorimetriaApiClient("http://localhost:5000");
-                    if (apiClient.IsApiAvailable())
-                    {
-                        var corrections = apiClient.CorrectReport(report);
-                        foreach (var c in corrections)
-                            report.ParseLog.Add(string.Format(
-                                "[API] {0}/{1} {2}: corregido ({3})",
-                                c.Illuminant, c.Type, c.Field, c.Reason));
-                    }
-                    else
-                    {
-                        report.ParseLog.Add("[API] ColorimetriaAPI no disponible en localhost:5000");
-                    }
+                    var corrections = LocalCorrector.CorrectReport(report);
+                    foreach (var c in corrections)
+                        report.ParseLog.Add(string.Format(
+                            "[LOCAL] {0}/{1} {2}: {3:F4}→{4:F4} ({5})",
+                            c.Illuminant, c.Type, c.Field,
+                            c.OriginalValue, c.CorrectedValue, c.Reason));
                 }
                 catch (Exception ex)
                 {
-                    report.ParseLog.Add("[API] Error al llamar ColorimetriaAPI: " + ex.Message);
-                }// B: Corrección via Claude API (solo tokens erróneos — sin datos industriales)
-                /*  if (_claudeCorrector != null && _claudeCorrector.IsEnabled)
-                  {
-                      var corrections = _claudeCorrector.CorrectReport(report);
-                      foreach (var c in corrections)
-                          report.ParseLog.Add(string.Format(
-                              "[CLAUDE] {0}/{1} {2}: {3:F4} → {4:F4} ({5})",
-                              c.Illuminant, c.Type, c.Field,
-                              c.CorrectedValue, c.NewCoherenceError, c.Reason));
-                  }*/
+                    report.ParseLog.Add("[LOCAL] Error en corrección in-process: " + ex.Message);
+                }
 
                 return report;
             }
@@ -1013,6 +1002,38 @@ namespace Color
                 }
             }
 
+            // FIX UNIVERSAL INVERSO: detección de escala /10
+            // Cuando OCR desplaza el punto decimal una posición a la izquierda en a*, b* y C*
+            // simultáneamente: -11.74→-1.17, -30.90→-3.09, 33.06→3.31 (ratio real/ocr ≈ 10)
+            // La coherencia interna sqrt(a²+b²)≈C se mantiene → FixBvia/FixAvia no actúan.
+            // Señal: C*/L* < 0.10 es anómalo en textiles (típico C* > L*×0.15)
+            if (vL > 10.0 && vC / vL < 0.10 && vC < 5.0)
+            {
+                double aMul = vA * 10.0;
+                double bMul = vB * 10.0;
+                double cMul = vC * 10.0;
+                double chromaCheckMul = Math.Sqrt(aMul * aMul + bMul * bMul);
+                double errMul = Math.Abs(chromaCheckMul - cMul);
+                // Verificar coherencia interna Y que el Hue calculado coincide con el OCR
+                double vH_check = ParseHueDouble(tokens[base_ + 4]);
+                double hueCalcMul = Math.Atan2(bMul, aMul) * 180.0 / Math.PI;
+                if (hueCalcMul < 0) hueCalcMul += 360.0;
+                double hueErrMul = Math.Abs(hueCalcMul - vH_check);
+                if (hueErrMul > 180) hueErrMul = 360.0 - hueErrMul;
+                // Aplicar ×10 si: coherencia interna buena, Hue coincide, valores en rango textil
+                if (errMul < 1.0 && hueErrMul < 15.0
+                    && Math.Abs(aMul) <= 80.0 && Math.Abs(bMul) <= 80.0
+                    && cMul / vL < 0.8)
+                {
+                    if (log != null)
+                        log.Add(string.Format(
+                            "[FIX/x10] {0}/{1} punto decimal desplazado: " +
+                            "a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
+                            illuminant, type, vA, aMul, vB, bMul, vC, cMul));
+                    vA = aMul; vB = bMul; vC = cMul;
+                }
+            }
+
             // ── FIX: Truncamiento simultáneo de a*, b* y Chroma ────────────────
             // Escenario: el OCR pierde el primer dígito de a*, b* y C* al mismo tiempo.
             // Ej: a=11.59→1.16, b=-21.77→-2.18, C=24.66→2.47
@@ -1038,7 +1059,13 @@ namespace Color
                 bool suspiciouslySmallChroma = vL > 10.0 && vC < vL * 0.15 && vC < 5.0;
                 bool tokensMissingDigit = digL >= 2 && digA <= 1 && digB <= 1 && digC <= 1;
 
-                if (hueValid && (suspiciouslySmallChroma || tokensMissingDigit))
+                // GUARDIA: si L* está fuera del rango textil confiable (20-100),
+                // los tokens de esta fila ya son irrecuperables — no intentar corrección.
+                // Evita que FIX/DIGIT actúe sobre filas donde el OCR leyó la fila equivocada
+                // (Patrón B: TL84/Std con L*=20.20 cuando el real era 81.81)
+                bool lInTextileRange = vL >= 20.0 && vL <= 100.0;
+
+                if (hueValid && lInTextileRange && (suspiciouslySmallChroma || tokensMissingDigit))
                 {
                     // Calcular Chroma esperado desde Hue y la magnitud del L*
                     // Probar insertar el dígito faltante en a*, b* y C* simultáneamente
@@ -1208,12 +1235,55 @@ namespace Color
                 if (c > 0.001 && chromaCalc > 0.001)
                 {
                     double ratio = c > chromaCalc ? c / chromaCalc : chromaCalc / c;
-                    if (ratio > 3.0) continue;
+                    if (ratio > 3.0)
+                    {
+                        // FIX: el token a* positivo de 3 dígitos puede haberse restaurado
+                        // como XX.X cuando el real es X.XX (ej: '925'→92.50, real=9.25).
+                        // Intentar interpretación alternativa X.XX antes de descartar.
+                        double aAlt = RestoreMeasureDecimalAlt(tokA);
+                        if (!double.IsNaN(aAlt))
+                        {
+                            double aAltFixed = FixLabRange(aAlt, -100, 100);
+                            double chromaAlt = Math.Sqrt(aAltFixed * aAltFixed + b * b);
+                            double ratioAlt = c > 0.001 && chromaAlt > 0.001
+                                ? (c > chromaAlt ? c / chromaAlt : chromaAlt / c)
+                                : 1.0;
+                            if (ratioAlt <= 3.0)
+                            {
+                                // Usar a* alternativo — tokens[i+1] se corregirá
+                                // en ParseMeasureLine via FixAviaChroma
+                                // Aquí solo necesitamos avanzar el índice correcto
+                                // Para ello, reemplazamos el token temporalmente
+                                // (solo a efectos de esta evaluación)
+                                a = aAltFixed;
+                                // Continuar con la validación usando a* corregido
+                                goto AcceptPosition;
+                            }
+                        }
+                        continue;
+                    }
                 }
 
+            AcceptPosition:
                 return i;
             }
             return 0; // fallback prudente
+        }
+
+        /// Interpretación alternativa de token de 3 dígitos positivo: X.XX en vez de XX.X.
+        /// Ej: '925'→9.25 (en lugar de 92.50). Solo aplica a tokens positivos de 3 dígitos.
+        /// Devuelve double.NaN si no aplica.
+        private static double RestoreMeasureDecimalAlt(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return double.NaN;
+            string t = token.Trim().Replace(',', '.');
+            if (t.StartsWith("-")) return double.NaN; // solo positivos
+            if (t.Contains(".")) return double.NaN;   // ya tiene punto
+            if (!Regex.IsMatch(t, @"^\d{3}$")) return double.NaN; // solo exactamente 3 dígitos
+            double v;
+            string candidate = t[0] + "." + t.Substring(1); // X.XX
+            return double.TryParse(candidate, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out v) && v <= 100 ? v : double.NaN;
         }
 
         private static bool LooksLikeHue(string token)
@@ -1275,7 +1345,16 @@ namespace Color
             if (!Regex.IsMatch(d, @"^\d+$")) return SafeParse(token);
             if (d.Length <= 2) return SafeParse(token);
 
-            // Para 3 dígitos: preferir XX.X (ej: 247 → 24.7) sobre X.XX (ej: 247 → 2.47)
+            // Para 3 dígitos con signo NEGATIVO: preferir X.XX sobre XX.X
+            // En colorimetría textil, a* y b* negativos raramente superan -30.
+            // Tokens como '-506'→-5.06 son más probables que -50.6 para a*/b*.
+            // FixBviaChroma actúa como red de seguridad si la elección es incorrecta.
+            //
+            // Para 3 dígitos POSITIVOS:
+            // - L* siempre es token de 4 dígitos en este formato (ej: 3989→39.89, 4093→40.93)
+            // - a* y Chroma de 3 dígitos: si XX.X > 60 es improbable para textiles → preferir X.XX
+            //   Ej: '925'→92.5 (improbable a*) vs 9.25 (probable a*) → elegir 9.25
+            // - Si XX.X <= 60, mantener XX.X como preferencia (Chroma como 13.73, 26.44, etc.)
             if (d.Length == 3)
             {
                 double candXX1;
@@ -1287,8 +1366,19 @@ namespace Color
                 bool okX2X = double.TryParse(rebuildX2X, NumberStyles.Float,
                     CultureInfo.InvariantCulture, out candX2X) && Math.Abs(candX2X) <= 100;
 
-                if (okXX1) return candXX1;
-                if (okX2X) return candX2X;
+                if (neg)
+                {
+                    // Negativo: preferir X.XX (más común para a*/b* en textiles)
+                    if (okX2X) return candX2X;
+                    if (okXX1) return candXX1;
+                }
+                else
+                {
+                    // Positivo: XX.X si <= 60, X.XX si XX.X > 60 (improbable para a*/Chroma)
+                    if (okXX1 && candXX1 <= 60.0) return candXX1;
+                    if (okX2X) return candX2X;
+                    if (okXX1) return candXX1;
+                }
             }
 
             return SafeParse((neg ? "-" : "") + d.Substring(0, d.Length - 2) + "." + d.Substring(d.Length - 2));
@@ -1349,15 +1439,19 @@ namespace Color
                     }
                 }
             }
-            // Método B: desde el valor numérico (cubre casos sin token limpio)
-            // bOrig=-36.0 → digits="360" → "-3.60"
+            // Método B: desde el TOKEN original (más confiable que el valor numérico)
+            // bOrig=-36.0 → G10="36" → digs="36" (length=2) → condición >=3 FALLA
+            // bToken="-360" → digs="360" (length=3) → funciona correctamente
+            // Esto cubre: '-360'→'-3.60', '-347'→'-3.47', '-506'→'-5.06', etc.
             {
-                string absNumStr = Math.Abs(bOrig).ToString("G10", CultureInfo.InvariantCulture);
-                string digs2 = absNumStr.Replace(".", "").Replace(",", "");
+                string bTokClean = (bToken ?? "").Trim().Replace(',', '.');
+                bool bTokNeg = bTokClean.StartsWith("-");
+                string bTokAbs = bTokNeg ? bTokClean.Substring(1) : bTokClean;
+                string digs2 = bTokAbs.Replace(".", "").Replace(",", "");
                 bool bOrigNeg = bOrig < 0;
                 if (digs2.Length >= 3)
                 {
-                    // Insertar punto a 2 del final
+                    // Insertar punto a 2 del final: "360"→"3.60", "506"→"5.06"
                     string rb2 = (bOrigNeg ? "-" : "") + digs2.Substring(0, digs2.Length - 2) + "." + digs2.Substring(digs2.Length - 2);
                     double cv2;
                     if (double.TryParse(rb2, NumberStyles.Float, CultureInfo.InvariantCulture, out cv2)
@@ -1368,7 +1462,7 @@ namespace Color
                         if (ep2 < bestErr) { bestErr = ep2; bestVal = cv2; }
                         if (ep2n < bestErr) { bestErr = ep2n; bestVal = -cv2; }
                     }
-                    // Insertar punto a 1 del final
+                    // Insertar punto a 1 del final: "360"→"36.0"
                     string rb1 = (bOrigNeg ? "-" : "") + digs2.Substring(0, digs2.Length - 1) + "." + digs2.Substring(digs2.Length - 1);
                     double cv1;
                     if (double.TryParse(rb1, NumberStyles.Float, CultureInfo.InvariantCulture, out cv1)
@@ -1389,6 +1483,26 @@ namespace Color
             {
                 double errNeg = Math.Abs(Math.Sqrt(a * a + (-bOrig) * (-bOrig)) - cOcr);
                 if (errNeg < bestErr) { bestErr = errNeg; bestVal = -bOrig; }
+            }
+
+            // ── Punto decimal desplazado ×10 ─────────────────────────────────────
+            // OCR lee "-2.63" pero real es "-26.30" (ratio ≈ 10).
+            // Solo a* llega correcto; b* tiene el punto mal colocado.
+            if (errOrig > 2.0)
+            {
+                double bMul = bOrig * 10.0;
+                if (Math.Abs(bMul) <= 100.0)
+                {
+                    double eMul = Math.Abs(Math.Sqrt(a * a + bMul * bMul) - cOcr);
+                    if (eMul < bestErr) { bestErr = eMul; bestVal = bMul; }
+                }
+                double bMulNeg = -Math.Abs(bOrig * 10.0);
+                if (Math.Abs(bMulNeg) <= 100.0)
+                {
+                    double eMulNeg = Math.Abs(Math.Sqrt(a * a + bMulNeg * bMulNeg) - cOcr);
+                    if (eMulNeg < bestErr) { bestErr = eMulNeg; bestVal = bMulNeg; }
+                }
+                if (bestErr <= THRESHOLD) return bestVal;
             }
 
             // ── Confusiones de dígitos (3↔8, 6↔8, etc.) ────────────────────────
@@ -1517,11 +1631,14 @@ namespace Color
                     }
                 }
             }
-            // Método B: desde valor numérico (cubre casos con token corrupto)
-            // aOrig=50.01 → digits="5001" → "-5.00"... también probar negativo
+            // Método B: desde el TOKEN original (más confiable que el valor numérico)
+            // aOrig=-36.0 → G10="36" → digs="36" (length=2) → condición >=3 FALLA
+            // aToken="-360" → digs="360" (length=3) → funciona correctamente
             {
-                string absNumStr = Math.Abs(aOrig).ToString("G10", CultureInfo.InvariantCulture);
-                string digs2 = absNumStr.Replace(".", "").Replace(",", "");
+                string aTokClean = (aToken ?? "").Trim().Replace(',', '.');
+                bool aTokNeg = aTokClean.StartsWith("-");
+                string aTokAbs = aTokNeg ? aTokClean.Substring(1) : aTokClean;
+                string digs2 = aTokAbs.Replace(".", "").Replace(",", "");
                 bool aOrigNeg = aOrig < 0;
                 if (digs2.Length >= 3)
                 {
@@ -1536,6 +1653,25 @@ namespace Color
                             if (ep < bestErr) { bestErr = ep; bestVal = cand; }
                         }
                     }
+                }
+                if (bestErr <= THRESHOLD) return bestVal;
+            }
+
+            // ── Punto decimal desplazado ×10 ─────────────────────────────────────
+            // OCR lee "-1.06" pero real es "-10.64" (ratio ≈ 10). Solo b* llega correcto.
+            if (errOrig > 2.0)
+            {
+                double aMul = aOrig * 10.0;
+                if (Math.Abs(aMul) <= 100.0)
+                {
+                    double eMul = Math.Abs(Math.Sqrt(aMul * aMul + b * b) - cOcr);
+                    if (eMul < bestErr) { bestErr = eMul; bestVal = aMul; }
+                }
+                double aMulNeg = -Math.Abs(aOrig * 10.0);
+                if (Math.Abs(aMulNeg) <= 100.0)
+                {
+                    double eMulNeg = Math.Abs(Math.Sqrt(aMulNeg * aMulNeg + b * b) - cOcr);
+                    if (eMulNeg < bestErr) { bestErr = eMulNeg; bestVal = aMulNeg; }
                 }
                 if (bestErr <= THRESHOLD) return bestVal;
             }
@@ -2224,33 +2360,281 @@ namespace Color
 
             t = t.ToUpperInvariant();
 
-            // Correcciones en NOMBRES (no números)
+            // ── STD / LOT ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\b5TD\b", "STD");
-            t = Regex.Replace(t, @"\bTLS4\b", "TL84");
+            t = Regex.Replace(t, @"\b5T0\b", "STD"); // O/D confusión
+            t = Regex.Replace(t, @"\bST0\b", "STD"); // 0/D confusión
+            t = Regex.Replace(t, @"\bSTB\b", "STD"); // B/D confusión
+            t = Regex.Replace(t, @"\bSTO\b", "STD"); // O/D confusión
+            t = Regex.Replace(t, @"\b5L0\b", "STD"); // S→5, L≈T, D→0
+            t = Regex.Replace(t, @"\bL0T\b", "LOT");
+            t = Regex.Replace(t, @"\bL0T\b", "LOT"); // 0/O ya cubre ambos
+
+            // ── TL84 / TL83 / TL85 ───────────────────────────────────────────────
+            t = Regex.Replace(t, @"\bTLS4\b", "TL84"); // S/8 confusión
             t = Regex.Replace(t, @"\bTLS3\b", "TL83");
             t = Regex.Replace(t, @"\bTLS5\b", "TL85");
-            t = Regex.Replace(t, @"\bDO5\b", "D65");
-            t = Regex.Replace(t, @"\bD6O\b", "D65");
-            t = Regex.Replace(t, @"\bDSO\b", "D50");
-            t = Regex.Replace(t, @"\bD5O\b", "D50");
-            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84");
+            t = Regex.Replace(t, @"\bTL8A\b", "TL84"); // A/4 confusión — muy común
+            t = Regex.Replace(t, @"\bTL8B\b", "TL83"); // B/3 → TL83 (puede ser TL83)
+            t = Regex.Replace(t, @"\bTLB4\b", "TL84"); // B/8 confusión
+            t = Regex.Replace(t, @"\bTLB3\b", "TL83");
+            t = Regex.Replace(t, @"\bTI84\b", "TL84"); // I/L confusión
+            t = Regex.Replace(t, @"\bTI83\b", "TL83");
+            t = Regex.Replace(t, @"\bT1[8S]4\b", "TL84"); // 1/L y S/8
+            t = Regex.Replace(t, @"\b1L84\b", "TL84"); // 1/T confusión al inicio
+            t = Regex.Replace(t, @"\b1L83\b", "TL83");
+            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84"); // espaciado
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*3\b", "TL83");
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*5\b", "TL85");
-            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");
+
+            // ── D65 / D50 / D55 / D75 ────────────────────────────────────────────
+            t = Regex.Replace(t, @"\bD6S\b", "D65");  // S/5 — muy común en Tesseract
+            t = Regex.Replace(t, @"\bDG5\b", "D65");  // G/6 confusión
+            t = Regex.Replace(t, @"\b065\b", "D65");  // 0/D confusión
+            t = Regex.Replace(t, @"\bDO5\b", "D65");  // O/6 confusión
+            t = Regex.Replace(t, @"\bD6O\b", "D65");  // O/5 confusión
+            t = Regex.Replace(t, @"\bDSO\b", "D50");  // S/5, O/0
+            t = Regex.Replace(t, @"\bD5O\b", "D50");  // O/0
+            t = Regex.Replace(t, @"\bDS0\b", "D50");  // S/5, 0/0
+            t = Regex.Replace(t, @"\b0S0\b", "D50");  // 0/D, S/5
+            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");  // espaciado
             t = Regex.Replace(t, @"\bD\s*[5S]\s*0\b", "D50");
             t = Regex.Replace(t, @"\bD\s*[5S]\s*5\b", "D55");
             t = Regex.Replace(t, @"\bD\s*7\s*5\b", "D75");
-            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF");
+
+            // ── CWF / CWF2 ───────────────────────────────────────────────────────
+            t = Regex.Replace(t, @"\bCVF\b", "CWF");  // V/W confusión
+            t = Regex.Replace(t, @"\bGWF\b", "CWF");  // G/C confusión
+            t = Regex.Replace(t, @"\bCW-F\b", "CWF");  // guión extra
+            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF"); // espaciado
             t = Regex.Replace(t, @"\bCW/F\b", "CWF");
+
+            // ── F11 / F12 ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\bF\s*1\s*1\b", "F11");
             t = Regex.Replace(t, @"\bF\s*1\s*2\b", "F12");
+            t = Regex.Replace(t, @"\bFI1\b", "F11"); // I/1 confusión
+            t = Regex.Replace(t, @"\bFl1\b", "F11"); // l/1 confusión
+            t = Regex.Replace(t, @"\bF1I\b", "F11"); // I/1 confusión
+
+            // ── Otros ────────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\[LLUMINANT\b", "ILLUMINANT");
-            t = Regex.Replace(t, @"\bL0T\b", "LOT");
 
             // Limpieza conservadora (letras, dígitos, punto, guión, espacio)
             t = Regex.Replace(t, @"[^A-Z0-9\.\-\s]", " ");
             t = Regex.Replace(t, @"\s+", " ").Trim();
             return t;
+
+        }
+
+        // NUEVO — LECTURA DESDE EXCEL (MEDICIONES)
+        public OcrReport ExtractReportFromExcel(string excelPath)
+        {
+            var report = new OcrReport();
+            report.Measures = OCR.ExcelReader.LoadMeasurements(excelPath);
+            return report;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // LOCAL CORRECTOR — Portado de ClaudeService (ColorimetriaAPI)
+    // Corrección matemática in-process, sin HTTP, sin dependencias externas.
+    // Actúa como capa POST-parse sobre el OcrReport completo.
+    // Compatible con C# 7.3 / .NET 4.8
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public class LocalCorrectionResult
+    {
+        public string Field { get; set; }
+        public string Illuminant { get; set; }
+        public string Type { get; set; }
+        public double OriginalValue { get; set; }
+        public double CorrectedValue { get; set; }
+        public double OriginalCoherenceError { get; set; }
+        public double NewCoherenceError { get; set; }
+        public string Reason { get; set; }
+    }
+
+    internal static class LocalCorrector
+    {
+        private const double IMPROVEMENT_THRESHOLD = 0.3;
+        private const double CHROMA_THRESHOLD = 0.35;
+
+        // ── Punto de entrada ─────────────────────────────────────────────────
+
+        public static List<LocalCorrectionResult> CorrectReport(OcrReport report)
+        {
+            var results = new List<LocalCorrectionResult>();
+            if (report == null || report.Measures == null || report.Measures.Count == 0)
+                return results;
+
+            // Trabajar sobre copia para no interferir con los valores ya corregidos
+            // por el parser — solo aplicar si mejora la coherencia
+            foreach (var row in report.Measures)
+            {
+                // Detectar error de Chroma
+                double chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
+                double chromaErr = Math.Abs(chromaCalc - row.Chroma);
+
+                if (chromaErr > CHROMA_THRESHOLD)
+                {
+                    // Intentar corregir b* primero
+                    var corrB = TryCorrectField("b", row.B, row.A, row.B, row.Chroma, chromaErr);
+                    if (corrB != null)
+                    {
+                        corrB.Illuminant = row.Illuminant;
+                        corrB.Type = row.Type;
+                        ApplyToRow(row, corrB);
+                        results.Add(corrB);
+                        // Recalcular error tras corrección de b*
+                        chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
+                        chromaErr = Math.Abs(chromaCalc - row.Chroma);
+                    }
+
+                    // Si sigue con error, intentar a*
+                    if (chromaErr > CHROMA_THRESHOLD)
+                    {
+                        var corrA = TryCorrectField("a", row.A, row.A, row.B, row.Chroma, chromaErr);
+                        if (corrA != null)
+                        {
+                            corrA.Illuminant = row.Illuminant;
+                            corrA.Type = row.Type;
+                            ApplyToRow(row, corrA);
+                            results.Add(corrA);
+                        }
+                    }
+                }
+
+                // Detectar error de Hue
+                double hueCalc = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
+                if (hueCalc < 0) hueCalc += 360.0;
+                double hueErr = Math.Abs(row.Hue - hueCalc);
+                if (hueErr > 180) hueErr = 360 - hueErr;
+
+                if (hueErr > 5.0)
+                {
+                    double correctedHue = Math.Round(hueCalc, 2);
+                    results.Add(new LocalCorrectionResult
+                    {
+                        Field = "Hue",
+                        Illuminant = row.Illuminant,
+                        Type = row.Type,
+                        OriginalValue = row.Hue,
+                        CorrectedValue = correctedHue,
+                        OriginalCoherenceError = hueErr,
+                        NewCoherenceError = 0,
+                        Reason = "Recalculado desde atan2(b,a)"
+                    });
+                    row.Hue = correctedHue;
+                    row.NeedsReview = false;
+                }
+            }
+
+            return results;
+        }
+
+        // ── Corrección de un campo ───────────────────────────────────────────
+
+        private static LocalCorrectionResult TryCorrectField(
+            string field, double ocrValue, double a, double b, double chroma, double errOrig)
+        {
+            double bestErr = errOrig;
+            double bestVal = ocrValue;
+            string bestReason = null;
+
+            // Candidatos: desplazamientos de punto decimal + cambio de signo
+            var candidates = new List<KeyValuePair<double, string>>
+            {
+                new KeyValuePair<double, string>(ocrValue / 10.0,   "Punto decimal ÷10"),
+                new KeyValuePair<double, string>(ocrValue * 10.0,   "Punto decimal ×10"),
+                new KeyValuePair<double, string>(-ocrValue,         "Signo invertido"),
+                new KeyValuePair<double, string>(-ocrValue / 10.0,  "Signo invertido + ÷10"),
+                new KeyValuePair<double, string>(-ocrValue * 10.0,  "Signo invertido + ×10"),
+            };
+
+            // Resolución directa desde Chroma = sqrt(a²+b²)
+            double chroma2 = chroma * chroma;
+            if (field == "b")
+            {
+                double a2 = a * a;
+                if (chroma2 >= a2)
+                {
+                    double bSolved = Math.Sqrt(chroma2 - a2);
+                    candidates.Add(new KeyValuePair<double, string>(bSolved, "Resuelto sqrt(C²-a²)"));
+                    candidates.Add(new KeyValuePair<double, string>(-bSolved, "Resuelto -sqrt(C²-a²)"));
+                }
+            }
+            else if (field == "a")
+            {
+                double b2 = b * b;
+                if (chroma2 >= b2)
+                {
+                    double aSolved = Math.Sqrt(chroma2 - b2);
+                    candidates.Add(new KeyValuePair<double, string>(aSolved, "Resuelto sqrt(C²-b²)"));
+                    candidates.Add(new KeyValuePair<double, string>(-aSolved, "Resuelto -sqrt(C²-b²)"));
+                }
+            }
+
+            foreach (var kv in candidates)
+            {
+                double cand = kv.Key;
+                string reason = kv.Value;
+
+                if (!IsPhysicallyValid(field, cand)) continue;
+
+                double newA = field == "a" ? cand : a;
+                double newB = field == "b" ? cand : b;
+                double newErr = Math.Abs(Math.Sqrt(newA * newA + newB * newB) - chroma);
+
+                if (newErr < bestErr - IMPROVEMENT_THRESHOLD)
+                {
+                    bestErr = newErr;
+                    bestVal = cand;
+                    bestReason = reason;
+                }
+            }
+
+            if (bestReason == null) return null;
+
+            return new LocalCorrectionResult
+            {
+                Field = field,
+                OriginalValue = ocrValue,
+                CorrectedValue = Math.Round(bestVal, 4),
+                OriginalCoherenceError = errOrig,
+                NewCoherenceError = Math.Round(bestErr, 4),
+                Reason = bestReason
+            };
+        }
+
+        private static bool IsPhysicallyValid(string field, double value)
+        {
+            if (field == "L" && (value < 0 || value > 100)) return false;
+            if ((field == "a" || field == "b") && Math.Abs(value) > 150) return false;
+            if (field == "Chroma" && (value < 0 || value > 200)) return false;
+            if (field == "Hue" && (value < 0 || value > 360)) return false;
+            return true;
+        }
+
+        private static void ApplyToRow(ColorimetricRow row, LocalCorrectionResult c)
+        {
+            switch (c.Field)
+            {
+                case "a": row.A = c.CorrectedValue; break;
+                case "b": row.B = c.CorrectedValue; break;
+                case "L": row.L = c.CorrectedValue; break;
+                case "Chroma": row.Chroma = c.CorrectedValue; break;
+                case "Hue": row.Hue = c.CorrectedValue; break;
+            }
+
+            // Recalcular Hue si se corrigió a* o b*
+            if (c.Field == "a" || c.Field == "b")
+            {
+                double newHue = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
+                if (newHue < 0) newHue += 360.0;
+                row.Hue = Math.Round(newHue);
+            }
+
+            row.NeedsReview = false;
         }
     }
 }

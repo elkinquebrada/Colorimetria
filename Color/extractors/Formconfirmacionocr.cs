@@ -753,6 +753,7 @@ namespace Colorimetria
             dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+
             dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(230, 240, 255);
 
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Codigo", HeaderText = "Código", FillWeight = 90f });
@@ -766,10 +767,15 @@ namespace Colorimetria
 
         private void LoadRecetaSection(ShadeExtractionResult shade)
         {
-            if (dgvReceta == null) return;
+            if (dgvReceta == null)
+                return;
+
             dgvReceta.Rows.Clear();
 
-            if (shade == null || !shade.Success || shade.Recipe == null || shade.Recipe.Count == 0)
+            // ✔ CORREGIDO: ya no evaluamos shade.Success
+            if (shade == null ||
+                shade.Recipe == null ||
+                shade.Recipe.Count == 0)
             {
                 dgvReceta.Rows.Add("", "Sin datos de receta", "");
                 return;
