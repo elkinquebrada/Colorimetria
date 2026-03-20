@@ -11,6 +11,8 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Tesseract;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 
 namespace Color
 {
@@ -227,36 +229,302 @@ namespace Color
 
         public OcrReport ExtractReportFromBitmap(Bitmap original)
         {
-            using (var processed = Preprocess(original))
+            // ── INTENTO 1: OpenCV — detección de tabla + OCR por celda ──────────
+            // Más preciso que OCR global porque cada celda contiene un solo número.
+            // Elimina la ambigüedad de RestoreMeasureDecimal para tokens sin punto decimal.
+            OcrReport report = null;
+            bool openCvSuccess = false;
+
+            try
             {
-                string text = RunOCR(processed);
+                report = ExtractReportFromBitmapOpenCV(original);
+                if (report != null && report.Measures != null && report.Measures.Count >= 4)
+                {
+                    openCvSuccess = true;
+                    report.ParseLog.Add(string.Format(
+                        "[OPENCV] Extracción exitosa: {0} mediciones", report.Measures.Count));
+                }
+                else
+                {
+                    report = null;
+                    report = new OcrReport();
+                    report.ParseLog.Add("[OPENCV] Detección de tabla insuficiente → fallback a OCR global");
+                }
+            }
+            catch (Exception ex)
+            {
+                report = new OcrReport();
+                report.ParseLog.Add("[OPENCV] Error → fallback a OCR global: " + ex.Message);
+            }
 
-                var report = ParseFullReport(text);
+            // ── INTENTO 2: OCR global (fallback) ────────────────────────────────
+            if (!openCvSuccess)
+            {
+                using (var processed = Preprocess(original))
+                {
+                    string text = RunOCR(processed);
+                    var fallbackReport = ParseFullReport(text);
+                    fallbackReport.ParseLog.InsertRange(0, report.ParseLog);
+                    report = fallbackReport;
+                }
 
-                // A+C: Segunda pasada — re-OCR dirigido sobre celdas con error Chroma
                 if (ENABLE_REOCR)
                     ReOcrFailedCells(original, report);
+            }
 
-                // B: Corrección in-process — lógica portada de ClaudeService (ColorimetriaAPI)
-                // Actúa como capa POST-parse sobre el reporte completo.
-                // Complementa los fixes de parseo: detecta errores que escaparon
-                // a FixBviaChroma/FixAviaChroma usando visión de todas las filas.
-                try
-                {
-                    var corrections = LocalCorrector.CorrectReport(report);
-                    foreach (var c in corrections)
-                        report.ParseLog.Add(string.Format(
-                            "[LOCAL] {0}/{1} {2}: {3:F4}→{4:F4} ({5})",
-                            c.Illuminant, c.Type, c.Field,
-                            c.OriginalValue, c.CorrectedValue, c.Reason));
-                }
-                catch (Exception ex)
-                {
-                    report.ParseLog.Add("[LOCAL] Error en corrección in-process: " + ex.Message);
-                }
+            // ── POST-PROCESADO: LocalCorrector (aplica en ambos caminos) ────────
+            try
+            {
+                var corrections = LocalCorrector.CorrectReport(report);
+                foreach (var c in corrections)
+                    report.ParseLog.Add(string.Format(
+                        "[LOCAL] {0}/{1} {2}: {3:F4}→{4:F4} ({5})",
+                        c.Illuminant, c.Type, c.Field,
+                        c.OriginalValue, c.CorrectedValue, c.Reason));
+            }
+            catch (Exception ex)
+            {
+                report.ParseLog.Add("[LOCAL] Error en corrección in-process: " + ex.Message);
+            }
 
+            return report;
+        }
+
+        // ── OpenCV: extracción por detección de tabla ─────────────────────────
+
+        /// <summary>
+        /// Detecta la tabla CMC con OpenCV, hace OCR celda por celda y construye el OcrReport.
+        /// Más preciso que OCR global: cada celda tiene un solo número → sin ambigüedad decimal.
+        /// </summary>
+        private OcrReport ExtractReportFromBitmapOpenCV(Bitmap original)
+        {
+            var report = new OcrReport();
+
+            // 1. Detectar tabla con OpenCV
+            var detection = OpenCvTableDetector.Detect(original);
+            if (!detection.Success)
+            {
+                report.ParseLog.Add("[OPENCV] " + (detection.FailReason ?? "Tabla no detectada"));
                 return report;
             }
+
+            report.ParseLog.Add(string.Format(
+                "[OPENCV] Tabla detectada: {0} filas × {1} cols, {2} celdas",
+                detection.RowCount, detection.ColCount, detection.Cells.Count));
+
+            // 2. OCR por celda individual
+            var cellTexts = new Dictionary<int, Dictionary<int, string>>();
+
+            foreach (var cell in detection.Cells)
+            {
+                string cellText = OcrCellRegion(original, cell.Bounds, PageSegMode.SingleWord);
+                cellText = CleanCellText(cellText, cell.Col);
+
+                if (!cellTexts.ContainsKey(cell.Row))
+                    cellTexts[cell.Row] = new Dictionary<int, string>();
+                cellTexts[cell.Row][cell.Col] = cellText;
+
+                if (!string.IsNullOrWhiteSpace(cellText))
+                    report.ParseLog.Add(string.Format(
+                        "[OPENCV] Celda ({0},{1})[{2}]: '{3}'",
+                        cell.Row, cell.Col, cell.FieldName, cellText));
+            }
+
+            // 3. Encontrar fila de inicio de datos (primera fila con iluminante conocido)
+            int dataStartRow = FindDataStartRow(cellTexts, detection.RowCount);
+            if (dataStartRow < 0)
+            {
+                report.ParseLog.Add("[OPENCV] No se encontró fila de datos con iluminante conocido");
+                return report;
+            }
+
+            report.ParseLog.Add(string.Format("[OPENCV] Datos desde fila {0}", dataStartRow));
+
+            // 4. Construir OcrReport desde las celdas
+            var builtReport = TableParser.BuildReport(cellTexts, dataStartRow, report.ParseLog);
+
+            // 5. Leer tolerancias si están presentes (OCR global en banda inferior)
+            var tols = ParseTolerancesFromImage(original, detection.TableBounds);
+            if (tols != null)
+            {
+                builtReport.TolDL = tols.Item1;
+                builtReport.TolDC = tols.Item2;
+                builtReport.TolDH = tols.Item3;
+                builtReport.TolDE = tols.Item4;
+            }
+
+            // Transferir log
+            builtReport.ParseLog.InsertRange(0, report.ParseLog);
+
+            // 6. Aplicar validación por Deltas CMC — detectar ×10 automáticamente
+            ApplyDeltaCmcValidation(builtReport);
+
+            // 7. Dedup y orden
+            builtReport.Measures = DedupAndSort(builtReport.Measures);
+            builtReport.CmcDifferences = DedupCmc(builtReport.CmcDifferences);
+
+            return builtReport;
+        }
+
+        /// <summary>
+        /// Limpia el texto OCR de una celda según el tipo de columna.
+        /// Col numérica: quitar letras excepto signo y punto.
+        /// Col texto (iluminante, tipo): normalizar con NormalizeOCRLine.
+        /// </summary>
+        private static string CleanCellText(string text, int col)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            text = text.Trim();
+
+            if (col <= 1)
+            {
+                // Columnas de texto: iluminante y tipo
+                return NormalizeOCRLine(text);
+            }
+
+            // Columnas numéricas: limpiar OCR manteniendo signo y punto
+            text = text
+                .Replace(',', '.')
+                .Replace('O', '0')
+                .Replace('o', '0')
+                .Replace('l', '1')
+                .Replace('I', '1')
+                .Replace('|', '1')
+                .Replace('S', '5')
+                .Replace('s', '5');
+
+            // Quitar espacios internos
+            text = Regex.Replace(text, @"\s+", "");
+
+            // Si tiene múltiples puntos, quitar los extras
+            int firstDot = text.IndexOf('.');
+            if (firstDot >= 0)
+            {
+                string before = text.Substring(0, firstDot + 1);
+                string after = text.Substring(firstDot + 1).Replace(".", "");
+                text = before + after;
+            }
+
+            return text;
+        }
+
+        /// <summary>
+        /// Detecta en qué fila empiezan los datos buscando la primera celda con iluminante conocido.
+        /// </summary>
+        private static int FindDataStartRow(
+            Dictionary<int, Dictionary<int, string>> cellTexts, int totalRows)
+        {
+            for (int r = 0; r < totalRows; r++)
+            {
+                if (!cellTexts.ContainsKey(r)) continue;
+                Dictionary<int, string> row = cellTexts[r];
+
+                string cell0;
+                if (!row.TryGetValue(0, out cell0)) continue;
+
+                string normalized = NormalizeOCRLine(cell0 ?? "");
+                if (ColorimetricDataExtractor.KnownIlluminants.Contains(normalized))
+                    return r;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// OCR sobre la banda inferior de la imagen (debajo de la tabla) para leer tolerancias.
+        /// </summary>
+        private Tuple<double, double, double, double> ParseTolerancesFromImage(
+            Bitmap original, Rectangle tableBounds)
+        {
+            try
+            {
+                int belowY = tableBounds.Bottom + 5;
+                if (belowY >= original.Height) return null;
+
+                var band = new Rectangle(0, belowY, original.Width,
+                    Math.Min(60, original.Height - belowY));
+                band = Rectangle.Intersect(band,
+                    new Rectangle(0, 0, original.Width, original.Height));
+                if (band.IsEmpty) return null;
+
+                string bandText = OcrCellRegion(original, band, PageSegMode.SingleBlock);
+                return ParseTolerances(bandText ?? "");
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Usa los Deltas CMC reportados en la imagen para detectar error ×10 automáticamente.
+        /// Si |C_Lot - C_Std| calculado ≈ 10 × ΔC reportado → divide a*, b*, C* por 10.
+        /// </summary>
+        private static void ApplyDeltaCmcValidation(OcrReport report)
+        {
+            if (report.CmcDifferences == null || report.CmcDifferences.Count == 0) return;
+            if (report.Measures == null || report.Measures.Count < 2) return;
+
+            foreach (var cmc in report.CmcDifferences)
+            {
+                double dCReported = Math.Abs(cmc.DeltaChroma);
+                if (dCReported < 0.001) continue; // ΔC=0 no es útil como referencia
+
+                // Buscar Std y Lot del mismo iluminante
+                ColorimetricRow stdRow = null, lotRow = null;
+                foreach (var r in report.Measures)
+                {
+                    if (!string.Equals(r.Illuminant, cmc.Illuminant,
+                        StringComparison.OrdinalIgnoreCase)) continue;
+                    if (r.Type == "Std") stdRow = r;
+                    else if (r.Type == "Lot") lotRow = r;
+                }
+
+                if (stdRow == null || lotRow == null) continue;
+
+                double dCCalculated = Math.Abs(lotRow.Chroma - stdRow.Chroma);
+                if (dCCalculated < 0.001) continue;
+
+                double ratio = dCCalculated / dCReported;
+
+                // Si el ratio es ~10 → los valores están ×10
+                if (ratio > 5.0 && ratio < 20.0)
+                {
+                    double dCDiv10 = dCCalculated / 10.0;
+                    double errDiv = Math.Abs(dCDiv10 - dCReported);
+                    double errOrig = Math.Abs(dCCalculated - dCReported);
+
+                    if (errDiv < errOrig * 0.3) // ÷10 mejora al menos 70%
+                    {
+                        report.ParseLog.Add(string.Format(
+                            "[CMC-VAL] {0}: ΔC calculado={1:F3} reportado={2:F3} ratio={3:F1} → ×10 detectado, dividiendo por 10",
+                            cmc.Illuminant, dCCalculated, dCReported, ratio));
+
+                        // Dividir a*, b*, C* por 10 en Std y Lot
+                        DivideByTen(stdRow, report.ParseLog);
+                        DivideByTen(lotRow, report.ParseLog);
+                    }
+                }
+            }
+        }
+
+        private static void DivideByTen(ColorimetricRow row, List<string> log)
+        {
+            double newA = row.A / 10.0;
+            double newB = row.B / 10.0;
+            double newC = row.Chroma / 10.0;
+
+            if (log != null)
+                log.Add(string.Format(
+                    "[CMC-VAL] {0}/{1} ÷10: a:{2:F2}→{3:F2} b:{4:F2}→{5:F2} C:{6:F2}→{7:F2}",
+                    row.Illuminant, row.Type, row.A, newA, row.B, newB, row.Chroma, newC));
+
+            row.A = newA;
+            row.B = newB;
+            row.Chroma = newC;
+
+            // Recalcular Hue
+            double newHue = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
+            if (newHue < 0) newHue += 360.0;
+            row.Hue = Math.Round(newHue);
+
+            row.NeedsReview = false;
         }
 
         // ══════════════════════════════════════════════════════════════
