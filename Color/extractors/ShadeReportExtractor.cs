@@ -1,4 +1,4 @@
-using OCR;            // ← IMPORTANTE PARA EXCELREADER
+using OCR;           
 using System;
 using System.Collections.Generic;
 using System.Drawing;

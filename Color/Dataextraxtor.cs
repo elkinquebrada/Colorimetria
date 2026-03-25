@@ -391,10 +391,28 @@ namespace Color
                 .Replace('I', '1')
                 .Replace('|', '1')
                 .Replace('S', '5')
-                .Replace('s', '5');
+                .Replace('s', '5')
+                // MEJORA 1: sustituciones OCR adicionales
+                .Replace('Z', '2')
+                .Replace('z', '2')
+                .Replace('`', ' ')   // carácter basura frecuente
+                .Replace('\'', ' '); // apóstrofe basura
+
+            // MEJORA 1: eliminar cualquier carácter que no sea dígito, punto, signo o espacio
+            text = Regex.Replace(text, @"[^0-9\.\-\s]", "");
 
             // Quitar espacios internos
             text = Regex.Replace(text, @"\s+", "");
+
+            // MEJORA 1: normalizar signo negativo — si hay un '-' no al inicio, moverlo al inicio
+            // Ej: "1-234" → "-1234" no es correcto, pero "1-" (OCR pegó el signo al final) → quitar
+            // Caso real: "- 12.34" ya queda "-12.34" tras quitar espacios
+            // Si el '-' está en medio, mantener solo el primero al inicio
+            {
+                int midMinus = text.IndexOf('-', 1);
+                if (midMinus > 0)
+                    text = text.Substring(0, midMinus) + text.Substring(midMinus + 1);
+            }
 
             // Si tiene múltiples puntos, quitar los extras
             int firstDot = text.IndexOf('.');
@@ -811,10 +829,18 @@ namespace Color
                 {
                     var eng = GetEngine();
                     eng.SetVariable("tessedit_char_whitelist", "0123456789.-");
-                    using (var img = Pix.LoadFromFile(tmp))
-                    using (var page = eng.Process(img, psm))
+                    try
                     {
-                        return page.GetText() ?? string.Empty;
+                        using (var img = Pix.LoadFromFile(tmp))
+                        using (var page = eng.Process(img, psm))
+                        {
+                            return page.GetText() ?? string.Empty;
+                        }
+                    }
+                    finally
+                    {
+                        // MEJORA 7: resetear whitelist para no contaminar llamadas OCR globales
+                        eng.SetVariable("tessedit_char_whitelist", "");
                     }
                 }
             }
@@ -1443,11 +1469,22 @@ namespace Color
                 double chromaErr = Math.Abs(chromaCalc - vC);
                 // Tolerancia: mayor entre 5% de Chroma y 1.5 unidades
                 double chromaTol = Math.Max(vC * 0.05, 1.5);
-                if (chromaErr > chromaTol)
+
+                // MEJORA 4: cuando la coherencia interna es excelente (err < 0.3),
+                // sustituir Chroma y Hue por los valores calculados desde a*/b* —
+                // más precisos que el OCR, que puede tener el punto decimal levemente mal.
+                if (chromaErr < 0.3)
+                {
+                    vC = Math.Round(chromaCalc, 2);
+                    double hCalc = Math.Atan2(vB, vA) * 180.0 / Math.PI;
+                    if (hCalc < 0) hCalc += 360.0;
+                    vH = Math.Round(hCalc, 2);
+                }
+                else if (chromaErr > chromaTol)
                 {
                     if (log != null)
                         log.Add(string.Format(
-                            "[WARN] {0}/{1} Chroma={2:F2} pero sqrt(a²+b²)={3:F2} (err={4:F2}) -> digito OCR incorrecto en a*, b* o Chroma",
+                            "[WARN] {0}/{1} Chroma={2:F2} pero sqrt(a^2+b^2)={3:F2} (err={4:F2}) -> digito OCR incorrecto en a*, b* o Chroma",
                             illuminant, type, vC, chromaCalc, chromaErr));
                     ok = false;
                 }
@@ -1774,12 +1811,15 @@ namespace Color
             }
 
             // ── Confusiones de dígitos (3↔8, 6↔8, etc.) ────────────────────────
+            // MEJORA 2: tabla ampliada con nuevas confusiones OCR comunes
             var confusions = new Dictionary<char, char[]>
             {
-                {'3', new[]{'8'}}, {'8', new[]{'3'}},
-                {'6', new[]{'8'}}, {'0', new[]{'9'}},
-                {'9', new[]{'0', '8'}},
-                {'1', new[]{'7'}}, {'7', new[]{'1'}}
+                {'3', new[]{'8'}},         {'8', new[]{'3', '6', '0'}},
+                {'6', new[]{'8', '5'}},    {'0', new[]{'9'}},
+                {'9', new[]{'0', '8', '4'}},
+                {'1', new[]{'7'}},         {'7', new[]{'1', '2'}},
+                {'2', new[]{'7'}},         {'4', new[]{'9'}},
+                {'5', new[]{'6', '8'}},
             };
 
             bool neg = bestVal < 0;
@@ -1945,12 +1985,15 @@ namespace Color
             }
 
             // ── Confusiones de dígitos ───────────────────────────────────────────
+            // MEJORA 2: tabla ampliada con nuevas confusiones OCR comunes
             var confusions = new Dictionary<char, char[]>
             {
-                {'3', new[]{'8'}}, {'8', new[]{'3'}},
-                {'6', new[]{'8'}}, {'0', new[]{'9'}},
-                {'9', new[]{'0', '8'}},
-                {'1', new[]{'7'}}, {'7', new[]{'1'}}
+                {'3', new[]{'8'}},         {'8', new[]{'3', '6', '0'}},
+                {'6', new[]{'8', '5'}},    {'0', new[]{'9'}},
+                {'9', new[]{'0', '8', '4'}},
+                {'1', new[]{'7'}},         {'7', new[]{'1', '2'}},
+                {'2', new[]{'7'}},         {'4', new[]{'9'}},
+                {'5', new[]{'6', '8'}},
             };
 
             bool neg = aRestored < 0;
@@ -2684,6 +2727,12 @@ namespace Color
             t = Regex.Replace(t, @"\bFl1\b", "F11"); // l/1 confusión
             t = Regex.Replace(t, @"\bF1I\b", "F11"); // I/1 confusión
 
+            // ── MEJORA 6: iluminantes adicionales no cubiertos antes ──────────────
+            t = Regex.Replace(t, @"\bUY\b", "UV");        // Y/V confusión
+            t = Regex.Replace(t, @"\bCWF1\b", "CWF");     // 1 extra al final
+            t = Regex.Replace(t, @"\bD6S5\b", "D65");     // S/5 + dígito extra
+            t = Regex.Replace(t, @"\bD\s+65\b", "D65");   // espacio entre D y 65
+
             // ── Otros ────────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\[LLUMINANT\b", "ILLUMINANT");
 
@@ -2894,12 +2943,14 @@ namespace Color
                 case "Hue": row.Hue = c.CorrectedValue; break;
             }
 
-            // Recalcular Hue si se corrigió a* o b*
+            // Recalcular Hue Y Chroma si se corrigió a* o b*
             if (c.Field == "a" || c.Field == "b")
             {
                 double newHue = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
                 if (newHue < 0) newHue += 360.0;
                 row.Hue = Math.Round(newHue);
+                // MEJORA 5: persistir Chroma recalculado desde a*/b* corregidos
+                row.Chroma = Math.Round(Math.Sqrt(row.A * row.A + row.B * row.B), 2);
             }
 
             row.NeedsReview = false;

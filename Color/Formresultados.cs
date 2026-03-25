@@ -175,6 +175,7 @@ namespace Color
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
                 Dock = DockStyle.Top,
+                Height = 32,
                 Padding = new Padding(4, 6, 4, 6),
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
@@ -196,6 +197,7 @@ namespace Color
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
                 Dock = DockStyle.Top,
+                Height = 32,
                 Padding = new Padding(4, 6, 4, 6),
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };

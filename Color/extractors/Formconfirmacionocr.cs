@@ -10,10 +10,8 @@ using SysColor = System.Drawing.Color;
 
 namespace Colorimetria
 {
-    /// <summary>
     /// Verifica datos extraídos por OCR: Mediciones + CMC(2:1) + Tolerances/PrintDate.
     /// Vista combinada: una sola pestaña con Split arriba (Mediciones ↑ / CMC ↓) y Texto abajo.
-    /// </summary>
     public partial class FormConfirmacionOCR : Form
     {
         // ===== Salidas =====
@@ -42,7 +40,6 @@ namespace Colorimetria
         private Label lblSubtitulo;
         private Label lblCount;
         private Label lblTol;
-
 
         // =========================================================
         // CONSTRUCTORES
@@ -583,10 +580,7 @@ namespace Colorimetria
             if (rep == null) { lblTol.Text = ""; return; }
             bool anyTol = (rep.TolDL != 0) || (rep.TolDC != 0) || (rep.TolDH != 0) || (rep.TolDE != 0);
 
-            lblTol.Text = anyTol
-                ? string.Format("Tolerancias — DL: {0:0.00} DC: {1:0.00} DH: {2:0.00} DE: {3:0.00}",
-                    rep.TolDL, rep.TolDC, rep.TolDH, rep.TolDE)
-                : "";
+            lblTol.Text = " ";
         }
 
         // =========================================================
