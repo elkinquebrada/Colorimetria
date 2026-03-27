@@ -1,4 +1,3 @@
-// Dataextraxtor.cs — versión C# 7.3 para OCR de colorimetríca
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -21,12 +20,11 @@ namespace Color
     public class ColorimetricRow
     {
         public string Illuminant { get; set; }
-        public string Type { get; set; }   // "Std" | "Lot"
+        public string Type { get; set; }
         public double L { get; set; }
         public double A { get; set; }
         public double B { get; set; }
         public double Chroma { get; set; }
-        /// Hue en grados (0–360). Puede venir con 0, 1 o 2 decimales.</summary>
         public double Hue { get; set; }
 
         public int HueInt
@@ -34,7 +32,6 @@ namespace Color
             get { return (int)Math.Round(Hue, MidpointRounding.AwayFromZero); }
         }
 
-        /// true → algo fuera de rango o corregido; conviene revisar visualmente.</summary>
         public bool NeedsReview { get; set; }
 
         public override string ToString()
@@ -46,17 +43,16 @@ namespace Color
     public class CmcDifferenceRow
     {
         public string Illuminant { get; set; }
-        public double DeltaLightness { get; set; }   // ΔL*
-        public double DeltaChroma { get; set; }      // ΔC*
-        public double DeltaHue { get; set; }         // ΔH*
-        public double? DeltaCMC { get; set; }        // Col Diff CMC(2:1) (si viene)
+        public double DeltaLightness { get; set; }
+        public double DeltaChroma { get; set; }
+        public double DeltaHue { get; set; }
+        public double? DeltaCMC { get; set; }
 
         // Texto crudo (del OCR) solo para diagnóstico
         public string LightnessFlagOcr { get; set; }
         public string ChromaFlagOcr { get; set; }
         public string HueFlagOcr { get; set; }
 
-        // Derivados desde los deltas (no confiamos en el texto OCR para esto)
         private const double Threshold = 0.05;
 
         public string ChromaFlag
@@ -126,7 +122,7 @@ namespace Color
     internal class CellRegion
     {
         public Rectangle Bounds { get; set; }
-        public string ColumnHint { get; set; } // "a","b","C","h"
+        public string ColumnHint { get; set; }
     }
 
     // EXTRACTOR PRINCIPAL
@@ -136,7 +132,7 @@ namespace Color
         private const int SCALE_FACTOR = 3;
         private const bool ENFORCE_ONE_PER_ILLUMINANT_TYPE = true;
 
-        // Instancia reutilizable de Tesseract (evita recrearla en cada llamada → mucho más rápido)
+        // Instancia reutilizable de Tesseract 
         private TesseractEngine _sharedEngine;
         private readonly object _engineLock = new object();
 
@@ -145,20 +141,18 @@ namespace Color
 
         // A+C: Re-OCR dirigido cuando sqrt(a²+b²) no coincide con Chroma
         private const bool ENABLE_REOCR = true;
-        private const double REOCR_CHROMA_THRESHOLD = 0.35; // error máximo aceptable
-        private const int REOCR_SCALE = 6;    // escala extra para celdas individuales
-        private const int REOCR_PADDING = 4;  // padding en px (imagen original) al recortar
+        private const double REOCR_CHROMA_THRESHOLD = 0.35;
+        private const int REOCR_SCALE = 6;
+        private const int REOCR_PADDING = 4;
 
         // Preprocesado adaptativo: ajusta escala y contraste según calidad de imagen
-        // Umbral de nitidez (varianza Laplaciana): < 40 = borrosa, 40-120 = normal, > 120 = nítida
-        // Nota: static readonly (no const) — evita CS0162 ya que const bool hace el bloque else inalcanzable
         private static readonly bool ENABLE_ADAPTIVE_PREPROCESS = true;
         private const float SHARPNESS_LOW_THRESHOLD = 40f;
         private const float SHARPNESS_HIGH_THRESHOLD = 120f;
-        private const int SCALE_FACTOR_LOW = 4;   // imagen borrosa o baja res → escala mayor
-        private const int SCALE_FACTOR_HIGH = 2;   // imagen nítida → escala menor (más rápido)
-        private const float CONTRAST_LOW = 2.2f; // imagen gris/poco contraste
-        private const float CONTRAST_HIGH = 1.5f; // imagen ya bien contrastada
+        private const int SCALE_FACTOR_LOW = 4;
+        private const int SCALE_FACTOR_HIGH = 2;
+        private const float CONTRAST_LOW = 2.2f;
+        private const float CONTRAST_HIGH = 1.5f;
 
         private TesseractEngine GetEngine()
         {
@@ -209,68 +203,8 @@ namespace Color
         }
         public List<ColorimetricRow> ExtractFromBitmap(Bitmap original)
         {
-            using (var processed = Preprocess(original))
-            {
-                var report = new OcrReport();
-
-                // --- AQUÍ LÓGICA DE EXTRACCIÓN DIRECTA ---
-                // Convertimos el Bitmap a Mat de OpenCV para usar las coordenadas
-                using (Mat gray = OpenCvSharp.Extensions.BitmapConverter.ToMat(original))
-                {
-                   // --- 1. ILUMINANTE D65 ---
-// Fila Std
-var rowD65Std = new ColorimetricRow { Illuminant = "D65", Type = "Std" };
-rowD65Std.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.528, 0.055, 0.025));
-rowD65Std.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.528, 0.055, 0.025));
-rowD65Std.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.528, 0.055, 0.025));
-rowD65Std.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.528, 0.055, 0.025));
-report.Measures.Add(rowD65Std);
-
-// Fila Lot
-var rowD65Lot = new ColorimetricRow { Illuminant = "D65", Type = "Lot" };
-rowD65Lot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.558, 0.055, 0.025));
-rowD65Lot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.558, 0.055, 0.025));
-rowD65Lot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.558, 0.055, 0.025));
-rowD65Lot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.558, 0.055, 0.025));
-report.Measures.Add(rowD65Lot);
-
-// --- 2. ILUMINANTE TL84 ---
-// Fila Std
-var rowTL84Std = new ColorimetricRow { Illuminant = "TL84", Type = "Std" };
-rowTL84Std.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.612, 0.055, 0.025));
-rowTL84Std.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.612, 0.055, 0.025));
-rowTL84Std.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.612, 0.055, 0.025));
-rowTL84Std.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.612, 0.055, 0.025));
-report.Measures.Add(rowTL84Std);
-
-// Fila Lot
-var rowTL84Lot = new ColorimetricRow { Illuminant = "TL84", Type = "Lot" };
-rowTL84Lot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.642, 0.055, 0.025));
-rowTL84Lot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.642, 0.055, 0.025));
-rowTL84Lot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.642, 0.055, 0.025)); // Para el -2.61
-rowTL84Lot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.642, 0.055, 0.025));
-report.Measures.Add(rowTL84Lot);
-
-// --- 3. ILUMINANTE A ---
-// Fila Std
-var rowAStd = new ColorimetricRow { Illuminant = "A", Type = "Std" };
-rowAStd.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.696, 0.055, 0.025));
-rowAStd.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.696, 0.055, 0.025));
-rowAStd.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.696, 0.055, 0.025));
-rowAStd.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.696, 0.055, 0.025));
-report.Measures.Add(rowAStd);
-
-// Fila Lot
-var rowALot = new ColorimetricRow { Illuminant = "A", Type = "Lot" };
-rowALot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.726, 0.055, 0.025));
-rowALot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.726, 0.055, 0.025));
-rowALot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.726, 0.055, 0.025));
-rowALot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.726, 0.055, 0.025));
-report.Measures.Add(rowALot);
-                }
-
-                return report.Measures;
-            }
+            // Delegar al pipeline completo (OpenCV + OCR por celda)
+            return ExtractReportFromBitmap(original).Measures;
         }
         // ... dentro de la clase ColorimetricDataExtractor ...
 
@@ -327,8 +261,6 @@ report.Measures.Add(rowALot);
         public OcrReport ExtractReportFromBitmap(Bitmap original)
         {
             // ── INTENTO 1: OpenCV — detección de tabla + OCR por celda ──────────
-            // Más preciso que OCR global porque cada celda contiene un solo número.
-            // Elimina la ambigüedad de RestoreMeasureDecimal para tokens sin punto decimal.
             OcrReport report = null;
             bool openCvSuccess = false;
 
@@ -343,33 +275,50 @@ report.Measures.Add(rowALot);
                 }
                 else
                 {
-                    report = null;
+                    var prevLog = report != null ? new List<string>(report.ParseLog) : new List<string>();
                     report = new OcrReport();
-                    report.ParseLog.Add("[OPENCV] Detección de tabla insuficiente → fallback a OCR global");
+                    report.ParseLog.AddRange(prevLog);
+                    report.ParseLog.Add("[OPENCV] Detección insuficiente → fallback OCR global");
                 }
             }
             catch (Exception ex)
             {
                 report = new OcrReport();
-                report.ParseLog.Add("[OPENCV] Error → fallback a OCR global: " + ex.Message);
+                report.ParseLog.Add("[OPENCV] Error → fallback OCR global: " + ex.Message);
             }
 
-            // ── INTENTO 2: OCR global (fallback) ────────────────────────────────
+            // ── INTENTO 2: OCR global (fallback cuando OpenCV falla) ─────────────
             if (!openCvSuccess)
             {
-                using (var processed = Preprocess(original))
+                try
                 {
-                    string text = RunOCR(processed);
-                    var fallbackReport = ParseFullReport(text);
-                    fallbackReport.ParseLog.InsertRange(0, report.ParseLog);
-                    report = fallbackReport;
+                    var prevLog = new List<string>(report.ParseLog);
+                    using (var processed = Preprocess(original))
+                    {
+                        string text = RunOCR(processed);
+                        var fallbackReport = new OcrReport();
+                        ParseCombinedTable(text, fallbackReport);
+                        var tFb = ParseTolerances(text);
+                        fallbackReport.TolDL = tFb.Item1;
+                        fallbackReport.TolDC = tFb.Item2;
+                        fallbackReport.TolDH = tFb.Item3;
+                        fallbackReport.TolDE = tFb.Item4;
+                        fallbackReport.PrintDate = ParsePrintDate(text);
+                        fallbackReport.ParseLog.InsertRange(0, prevLog);
+                        fallbackReport.ParseLog.Add("[FALLBACK] OCR global ejecutado.");
+                        report = fallbackReport;
+                    }
+                    if (ENABLE_REOCR)
+                        ReOcrFailedCells(original, report);
                 }
-
-                if (ENABLE_REOCR)
-                    ReOcrFailedCells(original, report);
+                catch (Exception exFb)
+                {
+                    if (report == null) report = new OcrReport();
+                    report.ParseLog.Add("[FALLBACK] Error: " + exFb.Message);
+                }
             }
 
-            // ── POST-PROCESADO: LocalCorrector (aplica en ambos caminos) ────────
+            // ── POST-PROCESADO: LocalCorrector ───────────────────────────────────
             try
             {
                 var corrections = LocalCorrector.CorrectReport(report);
@@ -381,7 +330,7 @@ report.Measures.Add(rowALot);
             }
             catch (Exception ex)
             {
-                report.ParseLog.Add("[LOCAL] Error en corrección in-process: " + ex.Message);
+                report.ParseLog.Add("[LOCAL] Error: " + ex.Message);
             }
 
             return report;
@@ -389,16 +338,12 @@ report.Measures.Add(rowALot);
 
         // ── OpenCV: extracción por detección de tabla ─────────────────────────
 
-        /// <summary>
-        /// Detecta la tabla CMC con OpenCV, hace OCR celda por celda y construye el OcrReport.
-        /// Más preciso que OCR global: cada celda tiene un solo número → sin ambigüedad decimal.
-        /// </summary>
         private OcrReport ExtractReportFromBitmapOpenCV(Bitmap original)
         {
             var report = new OcrReport();
 
             // 1. Detectar tabla con OpenCV
-            var detection = OpenCvTableDetector.Detect(original);
+            var detection = ColrTableDetector.Detect(original);
             if (!detection.Success)
             {
                 report.ParseLog.Add("[OPENCV] " + (detection.FailReason ?? "Tabla no detectada"));
@@ -409,26 +354,44 @@ report.Measures.Add(rowALot);
                 "[OPENCV] Tabla detectada: {0} filas × {1} cols, {2} celdas",
                 detection.RowCount, detection.ColCount, detection.Cells.Count));
 
-            // 2. OCR por celda individual
+            // 2. OCR por celda — usar ScaledImage si está disponible (mayor resolución)
             var cellTexts = new Dictionary<int, Dictionary<int, string>>();
+            Bitmap ocrSource = (detection.ScaledImage != null) ? detection.ScaledImage : original;
 
-            foreach (var cell in detection.Cells)
+            try
             {
-                string cellText = OcrCellRegion(original, cell.Bounds, PageSegMode.SingleWord);
-                cellText = CleanCellText(cellText, cell.Col);
+                foreach (var cell in detection.Cells)
+                {
+                    bool isText = cell.Col <= 1;
+                    string cellText = OcrCellRegion(ocrSource, cell.Bounds,
+                        isText ? PageSegMode.SingleWord : PageSegMode.SingleWord,
+                        numericOnly: !isText);
+                    cellText = CleanCellText(cellText, cell.Col);
 
-                if (!cellTexts.ContainsKey(cell.Row))
-                    cellTexts[cell.Row] = new Dictionary<int, string>();
-                cellTexts[cell.Row][cell.Col] = cellText;
+                    if (!cellTexts.ContainsKey(cell.Row))
+                        cellTexts[cell.Row] = new Dictionary<int, string>();
+                    cellTexts[cell.Row][cell.Col] = cellText;
 
-                if (!string.IsNullOrWhiteSpace(cellText))
-                    report.ParseLog.Add(string.Format(
-                        "[OPENCV] Celda ({0},{1})[{2}]: '{3}'",
-                        cell.Row, cell.Col, cell.FieldName, cellText));
+                    if (!string.IsNullOrWhiteSpace(cellText))
+                        report.ParseLog.Add(string.Format(
+                            "[OPENCV] Celda ({0},{1})[{2}]: '{3}'",
+                            cell.Row, cell.Col, cell.FieldName, cellText));
+                }
+            }
+            finally
+            {
+                if (detection.ScaledImage != null)
+                {
+                    detection.ScaledImage.Dispose();
+                    detection.ScaledImage = null;
+                }
             }
 
-            // 3. Encontrar fila de inicio de datos (primera fila con iluminante conocido)
-            int dataStartRow = FindDataStartRow(cellTexts, detection.RowCount);
+            // 3. Encontrar fila de inicio de datos
+            int _rowCount = 0;
+            foreach (var _c in detection.Cells)
+                if (_c.Row + 1 > _rowCount) _rowCount = _c.Row + 1;
+            int dataStartRow = FindDataStartRow(cellTexts, _rowCount);
             if (dataStartRow < 0)
             {
                 report.ParseLog.Add("[OPENCV] No se encontró fila de datos con iluminante conocido");
@@ -438,7 +401,7 @@ report.Measures.Add(rowALot);
             report.ParseLog.Add(string.Format("[OPENCV] Datos desde fila {0}", dataStartRow));
 
             // 4. Construir OcrReport desde las celdas
-            var builtReport = TableParser.BuildReport(cellTexts, dataStartRow, report.ParseLog);
+            var builtReport = ColrTableParser.BuildReport(cellTexts, dataStartRow, report.ParseLog);
 
             // 5. Leer tolerancias si están presentes (OCR global en banda inferior)
             var tols = ParseTolerancesFromImage(original, detection.TableBounds);
@@ -463,11 +426,6 @@ report.Measures.Add(rowALot);
             return builtReport;
         }
 
-        /// <summary>
-        /// Limpia el texto OCR de una celda según el tipo de columna.
-        /// Col numérica: quitar letras excepto signo y punto.
-        /// Col texto (iluminante, tipo): normalizar con NormalizeOCRLine.
-        /// </summary>
         private static string CleanCellText(string text, int col)
         {
             if (string.IsNullOrWhiteSpace(text)) return string.Empty;
@@ -492,8 +450,8 @@ report.Measures.Add(rowALot);
                 // MEJORA 1: sustituciones OCR adicionales
                 .Replace('Z', '2')
                 .Replace('z', '2')
-                .Replace('`', ' ')   // carácter basura frecuente
-                .Replace('\'', ' '); // apóstrofe basura
+                .Replace('`', ' ')
+                .Replace('\'', ' ');
 
             // MEJORA 1: eliminar cualquier carácter que no sea dígito, punto, signo o espacio
             text = Regex.Replace(text, @"[^0-9\.\-\s]", "");
@@ -501,10 +459,7 @@ report.Measures.Add(rowALot);
             // Quitar espacios internos
             text = Regex.Replace(text, @"\s+", "");
 
-            // MEJORA 1: normalizar signo negativo — si hay un '-' no al inicio, moverlo al inicio
-            // Ej: "1-234" → "-1234" no es correcto, pero "1-" (OCR pegó el signo al final) → quitar
-            // Caso real: "- 12.34" ya queda "-12.34" tras quitar espacios
-            // Si el '-' está en medio, mantener solo el primero al inicio
+            // normalizar signo negativo — si hay un '-' no al inicio, moverlo al inicio
             {
                 int midMinus = text.IndexOf('-', 1);
                 if (midMinus > 0)
@@ -523,30 +478,32 @@ report.Measures.Add(rowALot);
             return text;
         }
 
-        /// <summary>
         /// Detecta en qué fila empiezan los datos buscando la primera celda con iluminante conocido.
-        /// </summary>
         private static int FindDataStartRow(
             Dictionary<int, Dictionary<int, string>> cellTexts, int totalRows)
         {
             for (int r = 0; r < totalRows; r++)
             {
                 if (!cellTexts.ContainsKey(r)) continue;
-                Dictionary<int, string> row = cellTexts[r];
+                var row = cellTexts[r];
 
-                string cell0;
-                if (!row.TryGetValue(0, out cell0)) continue;
-
-                string normalized = NormalizeOCRLine(cell0 ?? "");
-                if (ColorimetricDataExtractor.KnownIlluminants.Contains(normalized))
-                    return r;
+                // Buscar en col 0 y col 1 (por si hay desplazamiento de columnas en OCR)
+                for (int c = 0; c <= 1; c++)
+                {
+                    string cellVal;
+                    if (!row.TryGetValue(c, out cellVal)) continue;
+                    string norm = NormalizeOCRLine(cellVal ?? "");
+                    foreach (string ill in ColorimetricDataExtractor.KnownIlluminants)
+                    {
+                        if (norm == ill.ToUpperInvariant() || norm.Contains(ill.ToUpperInvariant()))
+                            return r;
+                    }
+                }
             }
             return -1;
         }
 
-        /// <summary>
         /// OCR sobre la banda inferior de la imagen (debajo de la tabla) para leer tolerancias.
-        /// </summary>
         private Tuple<double, double, double, double> ParseTolerancesFromImage(
             Bitmap original, Rectangle tableBounds)
         {
@@ -567,10 +524,7 @@ report.Measures.Add(rowALot);
             catch { return null; }
         }
 
-        /// <summary>
         /// Usa los Deltas CMC reportados en la imagen para detectar error ×10 automáticamente.
-        /// Si |C_Lot - C_Std| calculado ≈ 10 × ΔC reportado → divide a*, b*, C* por 10.
-        /// </summary>
         private static void ApplyDeltaCmcValidation(OcrReport report)
         {
             if (report.CmcDifferences == null || report.CmcDifferences.Count == 0) return;
@@ -579,7 +533,7 @@ report.Measures.Add(rowALot);
             foreach (var cmc in report.CmcDifferences)
             {
                 double dCReported = Math.Abs(cmc.DeltaChroma);
-                if (dCReported < 0.001) continue; // ΔC=0 no es útil como referencia
+                if (dCReported < 0.001) continue;
 
                 // Buscar Std y Lot del mismo iluminante
                 ColorimetricRow stdRow = null, lotRow = null;
@@ -646,8 +600,6 @@ report.Measures.Add(rowALot);
         // ESTRATEGIA A+C — Re-OCR dirigido sobre celdas con error Chroma
         // ══════════════════════════════════════════════════════════════
 
-        /// Punto de entrada: recorre las filas ya parseadas, detecta cuáles
-        /// tienen error Chroma > umbral y lanza re-OCR solo sobre esas celdas.
         private void ReOcrFailedCells(Bitmap original, OcrReport report)
         {
             if (report == null || report.Measures == null || report.Measures.Count == 0) return;
@@ -744,8 +696,6 @@ report.Measures.Add(rowALot);
 
         // ── Localizar fila por bounding boxes ────────────────────────────
 
-        /// Busca el bounding box de la palabra del iluminante en la fila correcta (Std/Lot).
-        /// Devuelve el rectángulo completo de la fila en coordenadas de la imagen original.
         private Rectangle? FindRowRectByBoxes(
             List<Tuple<string, Rectangle>> boxes, string illuminant, string type)
         {
@@ -766,7 +716,7 @@ report.Measures.Add(rowALot);
             {
                 int rowY = illRect.Y;
                 int rowH = illRect.Height;
-                int rowTol = Math.Max(rowH, 12); // tolerancia vertical
+                int rowTol = Math.Max(rowH, 12);
 
                 bool foundType = false;
                 int minX = illRect.X, maxX = illRect.Right;
@@ -809,7 +759,6 @@ report.Measures.Add(rowALot);
             int w = original.Width;
 
             // Dividir la banda en 5 zonas para L,a,b,C,h
-            // Las columnas de datos empiezan aproximadamente al 32% del ancho
             int dataStart = (int)(w * 0.32);
             int dataWidth = w - dataStart;
             int colW = dataWidth / 5;
@@ -880,7 +829,7 @@ report.Measures.Add(rowALot);
         }
 
         /// A: OCR de una región específica de la imagen original con preproceso agresivo.
-        private string OcrCellRegion(Bitmap original, Rectangle region, PageSegMode psm)
+        private string OcrCellRegion(Bitmap original, Rectangle region, PageSegMode psm, bool numericOnly = true)
         {
             // Validar bounds
             region = Rectangle.Intersect(region, new Rectangle(0, 0, original.Width, original.Height));
@@ -899,9 +848,10 @@ report.Measures.Add(rowALot);
             try { crop = original.Clone(padded, original.PixelFormat); }
             catch { return string.Empty; }
 
-            // A: Escalar más agresivamente que el preproceso normal
-            int nW = crop.Width * REOCR_SCALE;
-            int nH = crop.Height * REOCR_SCALE;
+            // Escala dinámica: celdas grandes (≥30px) ×2, pequeñas ×4
+            int cellScale = crop.Height >= 30 ? 2 : 4;
+            int nW = crop.Width * cellScale;
+            int nH = crop.Height * cellScale;
             var scaled = new Bitmap(nW, nH, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(scaled))
             {
@@ -925,7 +875,7 @@ report.Measures.Add(rowALot);
                 lock (_engineLock)
                 {
                     var eng = GetEngine();
-                    eng.SetVariable("tessedit_char_whitelist", "0123456789.-");
+                    if (numericOnly) eng.SetVariable("tessedit_char_whitelist", "0123456789.-");
                     try
                     {
                         using (var img = Pix.LoadFromFile(tmp))
@@ -1030,10 +980,6 @@ report.Measures.Add(rowALot);
 
         // ── Preprocesamiento ───────────────────────────────────
 
-        /// Mide la nitidez de la imagen usando la varianza del operador Laplaciano (3x3).
-        /// Valor bajo = imagen borrosa o de baja resolución.
-        /// Solo muestrea el centro de la imagen para no penalizar bordes blancos.
-        /// Compatible con C# 7.3 / .NET 4.8 — sin unsafe, via Marshal.Copy.
         private static float MeasureSharpness(Bitmap src)
         {
             int w = src.Width, h = src.Height;
@@ -1088,8 +1034,6 @@ report.Measures.Add(rowALot);
             return (float)Math.Max(0, variance);
         }
 
-        /// Preprocesa la imagen ajustando escala y contraste según la nitidez medida.
-        /// Si ENABLE_ADAPTIVE_PREPROCESS = false, comportamiento idéntico al original (×3, 1.8f).
         private Bitmap Preprocess(Bitmap src)
         {
             int scaleFactor;
@@ -1371,10 +1315,6 @@ report.Measures.Add(rowALot);
                     tokens[base_ + 3], tokens[base_ + 4]));
 
             // FIX UNIVERSAL...
-            // FIX UNIVERSAL: deteccion de escala x10
-            // Cuando OCR lee a*, b* y Chroma todos x10 (ej: 6.10->0.61, 17.89->1.78, 18.90->1.89)
-            // la coherencia interna sqrt(a2+b2)~C es correcta pero los valores son 10x el real.
-            // Senal: Chroma/L > 0.6 es anomalo en colorimetria textil (tipico Chroma < L*0.5)
             if (vL > 0 && vC / vL > 0.6 && vC > 5.0)
             {
                 double aDiv = vA / 10.0;
@@ -1382,7 +1322,7 @@ report.Measures.Add(rowALot);
                 double cDiv = vC / 10.0;
                 double chromaCheckDiv = Math.Sqrt(aDiv * aDiv + bDiv * bDiv);
                 double errDiv = Math.Abs(chromaCheckDiv - cDiv);
-                // Aplicar /10 si coherencia se mantiene (err<0.5) Y ratio C/L baja a rango normal
+                // Aplicar /10 si coherencia se mantiene 
                 if (errDiv < 0.5 && cDiv / vL < 0.5)
                 {
                     if (log != null)
@@ -1394,10 +1334,6 @@ report.Measures.Add(rowALot);
             }
 
             // FIX UNIVERSAL INVERSO: detección de escala /10
-            // Cuando OCR desplaza el punto decimal una posición a la izquierda en a*, b* y C*
-            // simultáneamente: -11.74→-1.17, -30.90→-3.09, 33.06→3.31 (ratio real/ocr ≈ 10)
-            // La coherencia interna sqrt(a²+b²)≈C se mantiene → FixBvia/FixAvia no actúan.
-            // Señal: C*/L* < 0.10 es anómalo en textiles (típico C* > L*×0.15)
             if (vL > 10.0 && vC / vL < 0.10 && vC < 5.0)
             {
                 double aMul = vA * 10.0;
@@ -1426,15 +1362,6 @@ report.Measures.Add(rowALot);
             }
 
             // ── FIX: Truncamiento simultáneo de a*, b* y Chroma ────────────────
-            // Escenario: el OCR pierde el primer dígito de a*, b* y C* al mismo tiempo.
-            // Ej: a=11.59→1.16, b=-21.77→-2.18, C=24.66→2.47
-            // La coherencia sqrt(a²+b²)≈C se mantiene con los valores truncados,
-            // por lo que FixBviaChroma/FixAviaChroma NO se activan.
-            // Detección: usamos el Hue del OCR como árbitro externo.
-            //   - Si Hue es válido, calculamos el Chroma mínimo que le daría sentido
-            //     con la magnitud de L* (señal: C* << L*×0.05 es anómalo en textiles)
-            //   - Señal adicional: todos los tokens a*, b*, C* tienen solo 1 dígito
-            //     antes del decimal mientras que el token L* tiene 2 dígitos.
             {
                 double vH_pre = ParseHueDouble(tokens[base_ + 4]);
                 bool hueValid = vH_pre >= 1.0 && vH_pre <= 360.0;
@@ -1446,20 +1373,15 @@ report.Measures.Add(rowALot);
                 int digC = CountIntDigits(tokens[base_ + 3]);
 
                 // Señal de truncamiento: L* tiene más dígitos que a*, b* y C*
-                // Y Chroma es sospechosamente pequeño para el L* que tenemos
                 bool suspiciouslySmallChroma = vL > 10.0 && vC < vL * 0.15 && vC < 5.0;
                 bool tokensMissingDigit = digL >= 2 && digA <= 1 && digB <= 1 && digC <= 1;
 
                 // GUARDIA: si L* está fuera del rango textil confiable (20-100),
-                // los tokens de esta fila ya son irrecuperables — no intentar corrección.
-                // Evita que FIX/DIGIT actúe sobre filas donde el OCR leyó la fila equivocada
-                // (Patrón B: TL84/Std con L*=20.20 cuando el real era 81.81)
                 bool lInTextileRange = vL >= 20.0 && vL <= 100.0;
 
                 if (hueValid && lInTextileRange && (suspiciouslySmallChroma || tokensMissingDigit))
                 {
                     // Calcular Chroma esperado desde Hue y la magnitud del L*
-                    // Probar insertar el dígito faltante en a*, b* y C* simultáneamente
                     double hRad = vH_pre * Math.PI / 180.0;
                     double cosH = Math.Cos(hRad);
                     double sinH = Math.Sin(hRad);
@@ -1480,14 +1402,14 @@ report.Measures.Add(rowALot);
                         // Coherencia interna con los nuevos valores
                         double chromaCalc = Math.Sqrt(tryA * tryA + tryB * tryB);
                         double chromaErr = Math.Abs(chromaCalc - tryC);
-                        if (chromaErr > 1.5) continue; // solo candidatos coherentes
+                        if (chromaErr > 1.5) continue; 
 
                         // Coherencia con Hue: el ángulo atan2(b,a) debe coincidir con vH_pre
                         double hueCalc = Math.Atan2(tryB, tryA) * 180.0 / Math.PI;
                         if (hueCalc < 0) hueCalc += 360.0;
                         double hueErr = Math.Abs(hueCalc - vH_pre);
                         if (hueErr > 180) hueErr = 360 - hueErr;
-                        if (hueErr > 15.0) continue; // Hue no coincide → descartar
+                        if (hueErr > 15.0) continue; 
 
                         double totalErr = chromaErr + hueErr * 0.1;
                         if (totalErr < bestTripleErr)
@@ -1509,17 +1431,16 @@ report.Measures.Add(rowALot);
                 }
             }
 
-            // Corregir b* via coherencia con Chroma (OCR confunde 3↔8, 6↔8, dígito faltante)
+            // Corregir b* via coherencia con Chroma 
             vB = FixBviaChroma(vB, tokens[base_ + 2], vA, vC);
-            // FIX: Corregir a* también via coherencia con Chroma (mismo tipo de error)
+            // FIX: Corregir a* también via coherencia con Chroma 
             vA = FixAviaChroma(vA, tokens[base_ + 1], vB, vC);
             double vH = ParseHueDouble(tokens[base_ + 4]);
 
             // Corregir signos de a* y b* usando el ángulo Hue como referencia
             CorrectSignsByHue(ref vA, ref vB, vH);
 
-            // FIX: Recalcular Hue desde a*/b* corregidos cuando el OCR entregó valor inválido
-            // Cubre: 784→194, 249→195, 257→206, 0→206
+            // FIX: Recalcular Hue desde a*/b* 
             vH = CorrectHueFromAB(vH, vA, vB);
 
             // (opcional) autocorrección por coherencia en C* y h°
@@ -1568,8 +1489,6 @@ report.Measures.Add(rowALot);
                 double chromaTol = Math.Max(vC * 0.05, 1.5);
 
                 // MEJORA 4: cuando la coherencia interna es excelente (err < 0.3),
-                // sustituir Chroma y Hue por los valores calculados desde a*/b* —
-                // más precisos que el OCR, que puede tener el punto decimal levemente mal.
                 if (chromaErr < 0.3)
                 {
                     vC = Math.Round(chromaCalc, 2);
@@ -1640,8 +1559,6 @@ report.Measures.Add(rowALot);
                     if (ratio > 3.0)
                     {
                         // FIX: el token a* positivo de 3 dígitos puede haberse restaurado
-                        // como XX.X cuando el real es X.XX (ej: '925'→92.50, real=9.25).
-                        // Intentar interpretación alternativa X.XX antes de descartar.
                         double aAlt = RestoreMeasureDecimalAlt(tokA);
                         if (!double.IsNaN(aAlt))
                         {
@@ -1653,10 +1570,6 @@ report.Measures.Add(rowALot);
                             if (ratioAlt <= 3.0)
                             {
                                 // Usar a* alternativo — tokens[i+1] se corregirá
-                                // en ParseMeasureLine via FixAviaChroma
-                                // Aquí solo necesitamos avanzar el índice correcto
-                                // Para ello, reemplazamos el token temporalmente
-                                // (solo a efectos de esta evaluación)
                                 a = aAltFixed;
                                 // Continuar con la validación usando a* corregido
                                 goto AcceptPosition;
@@ -1672,9 +1585,6 @@ report.Measures.Add(rowALot);
             return 0; // fallback prudente
         }
 
-        /// Interpretación alternativa de token de 3 dígitos positivo: X.XX en vez de XX.X.
-        /// Ej: '925'→9.25 (en lugar de 92.50). Solo aplica a tokens positivos de 3 dígitos.
-        /// Devuelve double.NaN si no aplica.
         private static double RestoreMeasureDecimalAlt(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return double.NaN;
@@ -1700,7 +1610,7 @@ report.Measures.Add(rowALot);
             int dotIdx = s.IndexOf('.');
             if (dotIdx >= 0)
             {
-                // Con punto: solo aceptar exactamente 1 decimal (ej: "259.0", "241.6") // Rechazar "17.81", "27.15" (2 decimales → medición, no Hue)
+                // Con punto: solo aceptar exactamente 1 decimal (ej: "259.0", "241.6") 
                 string decPart = s.Substring(dotIdx + 1);
                 if (decPart.Length > 1) return false;
             }
@@ -1708,7 +1618,6 @@ report.Measures.Add(rowALot);
         }
 
         // Inserta punto decimal en mediciones si el OCR lo omitió (XX.XX)
-        // También detecta punto mal ubicado: "-36.0"→"-3.60", "-50.6"→"-5.06"
         private static double RestoreMeasureDecimal(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return 0;
@@ -1723,7 +1632,6 @@ report.Measures.Add(rowALot);
                 // Si ya está en rango LAB razonable, confiar directamente
                 if (Math.Abs(vDirect) <= 100) return vDirect;
                 // Fuera de rango: OCR puso el punto en posición incorrecta
-                // Ej: "-36.0" → allDigits="360" → insertar 2 del final → "-3.60"
                 int dotIdx2 = d.IndexOf('.');
                 if (dotIdx2 > 0)
                 {
@@ -1747,16 +1655,9 @@ report.Measures.Add(rowALot);
             if (!Regex.IsMatch(d, @"^\d+$")) return SafeParse(token);
             if (d.Length <= 2) return SafeParse(token);
 
-            // Para 3 dígitos con signo NEGATIVO: preferir X.XX sobre XX.X
-            // En colorimetría textil, a* y b* negativos raramente superan -30.
-            // Tokens como '-506'→-5.06 son más probables que -50.6 para a*/b*.
-            // FixBviaChroma actúa como red de seguridad si la elección es incorrecta.
+            // Para 3 dígitos con signo NEGATIVO:
             //
             // Para 3 dígitos POSITIVOS:
-            // - L* siempre es token de 4 dígitos en este formato (ej: 3989→39.89, 4093→40.93)
-            // - a* y Chroma de 3 dígitos: si XX.X > 60 es improbable para textiles → preferir X.XX
-            //   Ej: '925'→92.5 (improbable a*) vs 9.25 (probable a*) → elegir 9.25
-            // - Si XX.X <= 60, mantener XX.X como preferencia (Chroma como 13.73, 26.44, etc.)
             if (d.Length == 3)
             {
                 double candXX1;
@@ -1787,11 +1688,9 @@ report.Measures.Add(rowALot);
         }
 
         // Corrige signo de a*/b* del Lot usando el Std como referencia
-        // Si Lot.a tiene signo opuesto a Std.a (físicamente imposible), invertir
         private static void FixSignByStd(ColorimetricRow std, ColorimetricRow lot)
         {
             // FIX: Solo corregir si Std tiene magnitud suficiente para ser referencia confiable
-            // (evita cascada cuando Std también llegó con signo incorrecto del OCR)
             const double MIN_RELIABLE = 0.5;
 
             if (Math.Abs(std.A) >= MIN_RELIABLE && std.A * lot.A < 0) lot.A = -lot.A;
@@ -1819,14 +1718,12 @@ report.Measures.Add(rowALot);
             double bestVal = bOrig;
 
             // ── FIX CRÍTICO: punto decimal desplazado ────────────────────────────
-            // OCR lee "-36.0" pero real es "-3.60" | "-50.6"→"-5.06" | "-63.2"→"-6.32"
-            // Método A: desde el token string (más preciso)
             {
                 string bStr2 = (bToken ?? "").Trim().Replace(',', '.');
                 bool bNeg2 = bStr2.StartsWith("-");
                 string abs2 = bNeg2 ? bStr2.Substring(1) : bStr2;
                 int dp2 = abs2.IndexOf('.');
-                if (dp2 > 1) // "36.0", "50.6", "63.2" — 2+ dígitos antes del punto
+                if (dp2 > 1) 
                 {
                     // Mover punto 1 izquierda: "36.0"→"3.60", "50.6"→"5.06"
                     string newAbs2 = abs2.Substring(0, dp2 - 1) + "." + abs2[dp2 - 1] + abs2.Substring(dp2 + 1);
@@ -1842,9 +1739,6 @@ report.Measures.Add(rowALot);
                 }
             }
             // Método B: desde el TOKEN original (más confiable que el valor numérico)
-            // bOrig=-36.0 → G10="36" → digs="36" (length=2) → condición >=3 FALLA
-            // bToken="-360" → digs="360" (length=3) → funciona correctamente
-            // Esto cubre: '-360'→'-3.60', '-347'→'-3.47', '-506'→'-5.06', etc.
             {
                 string bTokClean = (bToken ?? "").Trim().Replace(',', '.');
                 bool bTokNeg = bTokClean.StartsWith("-");
@@ -1888,8 +1782,6 @@ report.Measures.Add(rowALot);
             }
 
             // ── Punto decimal desplazado ×10 ─────────────────────────────────────
-            // OCR lee "-2.63" pero real es "-26.30" (ratio ≈ 10).
-            // Solo a* llega correcto; b* tiene el punto mal colocado.
             if (errOrig > 2.0)
             {
                 double bMul = bOrig * 10.0;
@@ -1908,7 +1800,6 @@ report.Measures.Add(rowALot);
             }
 
             // ── Confusiones de dígitos (3↔8, 6↔8, etc.) ────────────────────────
-            // MEJORA 2: tabla ampliada con nuevas confusiones OCR comunes
             var confusions = new Dictionary<char, char[]>
             {
                 {'3', new[]{'8'}},         {'8', new[]{'3', '6', '0'}},
@@ -2013,8 +1904,6 @@ report.Measures.Add(rowALot);
             double bestVal = aOrig;
 
             // ── FIX CRÍTICO: punto decimal desplazado + signo perdido ────────────
-            // OCR lee "50.01" pero real es "-15.03"
-            // Método A: desde token string
             {
                 string aStr = (aToken ?? "").Trim().Replace(',', '.');
                 bool aStrNeg = aStr.StartsWith("-");
@@ -2037,8 +1926,6 @@ report.Measures.Add(rowALot);
                 }
             }
             // Método B: desde el TOKEN original (más confiable que el valor numérico)
-            // aOrig=-36.0 → G10="36" → digs="36" (length=2) → condición >=3 FALLA
-            // aToken="-360" → digs="360" (length=3) → funciona correctamente
             {
                 string aTokClean = (aToken ?? "").Trim().Replace(',', '.');
                 bool aTokNeg = aTokClean.StartsWith("-");
@@ -2063,7 +1950,6 @@ report.Measures.Add(rowALot);
             }
 
             // ── Punto decimal desplazado ×10 ─────────────────────────────────────
-            // OCR lee "-1.06" pero real es "-10.64" (ratio ≈ 10). Solo b* llega correcto.
             if (errOrig > 2.0)
             {
                 double aMul = aOrig * 10.0;
@@ -2082,7 +1968,6 @@ report.Measures.Add(rowALot);
             }
 
             // ── Confusiones de dígitos ───────────────────────────────────────────
-            // MEJORA 2: tabla ampliada con nuevas confusiones OCR comunes
             var confusions = new Dictionary<char, char[]>
             {
                 {'3', new[]{'8'}},         {'8', new[]{'3', '6', '0'}},
@@ -2144,7 +2029,7 @@ report.Measures.Add(rowALot);
         // Corrige L* usando coherencia entre iluminantes: si difiere >2 del promedio, prueba 6↔8
         private static double FixLviaNeighbors(double lVal, string lToken, List<ColorimetricRow> existing)
         {
-            const double OUTLIER_THRESHOLD = 2.0; // FIX: bajado de 3.0 a 2.0 (cubre 76.94 vs 78.94)
+            const double OUTLIER_THRESHOLD = 2.0; 
             if (existing == null || existing.Count < 2) return lVal;
             double sum = 0; int cnt = 0;
             foreach (var r in existing) { sum += r.L; cnt++; }
@@ -2158,7 +2043,7 @@ report.Measures.Add(rowALot);
                 {'6', new[]{'8','9'}},
                 {'8', new[]{'6','9'}},
                 {'3', new[]{'8'}},
-                {'4', new[]{'8'}},   // FIX: 4 puede confundirse con 8 (76.94 → 78.94)
+                {'4', new[]{'8'}},   
                 {'7', new[]{'8'}},
                 {'9', new[]{'8'}},
                 {'0', new[]{'8'}}
@@ -2183,7 +2068,7 @@ report.Measures.Add(rowALot);
             return bestVal;
         }
 
-        // Corrige valores LAB/Chroma fuera de rango por OCR (8283.00 → 82.83, 1468.00 → 14.68)
+        // Corrige valores LAB/Chroma fuera de rango por OCR 
         private static double FixLabRange(double v, double minV, double maxV)
         {
             if (v >= minV && v <= maxV) return v;
@@ -2200,7 +2085,7 @@ report.Measures.Add(rowALot);
                     return candidate;
             }
 
-            // FIX: 3 digitos sin punto → X.XX (ej: 229 → 2.29, 289 → 2.89)
+            // FIX: 3 digitos sin punto 
             if (s.Length == 3)
             {
                 string rebuilt2 = (neg ? "-" : "") + s[0] + "." + s.Substring(1);
@@ -2236,12 +2121,11 @@ report.Measures.Add(rowALot);
             double v = SafeParse(s);
             if (v < 0) v = 0;
 
-            // FIX: Hue con dígito extra al inicio (ej: 784 → 84 o 194)
-            // Probar quitar primer dígito, segundo dígito y último dígito
+            // FIX: Hue con dígito extra al inicio 
             if (v > 360)
             {
                 string digits = s.TrimStart('-');
-                // Probar quitar primer dígito: 784 → 84
+                // Probar quitar primer dígito: 
                 if (digits.Length >= 3)
                 {
                     string trimFirst = digits.Substring(1);
@@ -2250,7 +2134,7 @@ report.Measures.Add(rowALot);
                         && cand1 >= 0 && cand1 <= 360)
                         return cand1;
                 }
-                // Probar quitar último dígito: 2490 → 249 (si aún >360, seguir)
+                // Probar quitar último dígito: 
                 if (digits.Length >= 4)
                 {
                     string trimLast = digits.Substring(0, digits.Length - 1);
@@ -2264,14 +2148,9 @@ report.Measures.Add(rowALot);
             }
 
             // FIX: Hue = 0 cuando debería ser ~200: el OCR perdió dígitos.
-            // No podemos corregir aquí sin a*/b* — se corregirá en CorrectHueFromAB post-parse.
             return v;
         }
 
-        /// <summary>
-        /// Recalcula Hue desde a* y b* cuando el valor OCR es claramente incorrecto.
-        /// Llamar después de que a* y b* estén ya corregidos.
-        /// </summary>
         private static double CorrectHueFromAB(double hue, double a, double b)
         {
             // Hue calculado desde a*/b* corregidos
@@ -2279,8 +2158,6 @@ report.Measures.Add(rowALot);
             if (hueCalc < 0) hueCalc += 360.0;
 
             // Siempre usar el hue calculado desde a*/b* cuando:
-            // 1) Hue OCR es 0 (OCR perdió el valor)
-            // 2) Error > 5° (OCR leyó dígito incorrecto: 248→194, 256→202)
             double hueErr = HueError(hue, hueCalc);
             if (hue < 1.0 || hueErr > 5.0)
                 return Math.Round(hueCalc);
@@ -2289,9 +2166,6 @@ report.Measures.Add(rowALot);
         }
 
         // ── Helpers para FIX/DIGIT (truncamiento simultáneo) ──────────────────
-
-        /// Cuenta los dígitos enteros (antes del punto decimal) en un token numérico.
-        /// Ej: "1.16"→1, "-21.77"→2, "298"→3, ""→0
         private static int CountIntDigits(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return 0;
@@ -2302,8 +2176,6 @@ report.Measures.Add(rowALot);
         }
 
         /// Intenta insertar 'ins' como primer dígito de la parte entera del token.
-        /// Ej: token="-2.18", ins='1' → -12.18; token="1.16", ins='1' → 11.16
-        /// Devuelve double.NaN si el resultado no es parseable o supera ±100.
         private static double TryInsertLeadingDigit(string token, char ins)
         {
             if (string.IsNullOrWhiteSpace(token)) return double.NaN;
@@ -2376,8 +2248,8 @@ report.Measures.Add(rowALot);
             map['5'] = new[] { '6' };
             map['6'] = new[] { '8', '0' };
             map['7'] = new[] { '1' };
-            map['8'] = new[] { '3', '6', '0', '9' }; // FIX: agregar 8→9
-            map['9'] = new[] { '0', '8' };             // FIX: agregar 9→8
+            map['8'] = new[] { '3', '6', '0', '9' }; 
+            map['9'] = new[] { '0', '8' };            
 
             for (int i = 0; i < s.Length; i++)
             {
@@ -2392,7 +2264,7 @@ report.Measures.Add(rowALot);
                 }
             }
 
-            // Insertar punto si no existe (ej.: 2486 -> 24.86)
+            // Insertar punto si no existe 
             if (s.IndexOf('.') < 0 && Regex.IsMatch(s, @"^-?\d{3,}$"))
             {
                 int at = s.StartsWith("-") ? s.Length - 2 : s.Length - 2;
@@ -2403,7 +2275,7 @@ report.Measures.Add(rowALot);
                 }
             }
 
-            // FIX: Eliminar dígito extra al inicio (ej: 784 → 84 o 194; probar quitar cada dígito)
+            // FIX: Eliminar dígito extra al inicio
             if (s.IndexOf('.') < 0 && s.TrimStart('-').Length > 3)
             {
                 string digits = s.TrimStart('-');
@@ -2531,10 +2403,10 @@ report.Measures.Add(rowALot);
             var result = new List<string>();
 
             string line = (rawLine ?? string.Empty)
-                .Replace('\u2212', '-')   // signo menos unicode → '-'
-                .Replace(',', '.');       // coma decimal → punto
+                .Replace('\u2212', '-')  
+                .Replace(',', '.');      
 
-            // 1) Enmascarar números dentro del nombre del iluminante (D65, TL84, F11, ...)
+            // 1) Enmascarar números dentro del nombre del iluminante 
             line = MaskIlluminantNumbers(line);
 
             // 2) Eliminar etiquetas STD/LOT
@@ -2543,12 +2415,12 @@ report.Measures.Add(rowALot);
             // 3) Única corrección textual segura: "CW/F" → "CWF"
             line = Regex.Replace(line, @"\bCW/F\b", "CWF", RegexOptions.IgnoreCase);
 
-            // 4) Extraer tokens numéricos (enteros y decimales con signo)
+            // 4) Extraer tokens numéricos 
             var matches = Regex.Matches(line, @"-?\d+(?:\.\d+)?");
             var rawTokens = new List<string>(matches.Count);
             foreach (Match m in matches) rawTokens.Add(m.Value);
 
-            // 5) Dividir tokens largos (>6 dígitos) que el OCR pegó
+            // 5) Dividir tokens largos 
             foreach (var tok in rawTokens)
             {
                 bool neg = tok.StartsWith("-");
@@ -2604,7 +2476,7 @@ report.Measures.Add(rowALot);
             line = Regex.Replace(line, @"\bF12\b", "FXX", RegexOptions.IgnoreCase);
             line = Regex.Replace(line, @"\bF2\b", "FX", RegexOptions.IgnoreCase);
             line = Regex.Replace(line, @"\bF7\b", "FX", RegexOptions.IgnoreCase);
-            // A, CWF, UV no tienen dígitos → no enmascarar
+       
             return line;
         }
 
@@ -2758,8 +2630,8 @@ report.Measures.Add(rowALot);
             if (string.IsNullOrEmpty(s)) return string.Empty;
 
             string t = s
-                .Replace('\u2212', '-')  // menos unicode
-                .Replace(',', '.')       // coma → punto
+                .Replace('\u2212', '-')  
+                .Replace(',', '.')       
                 .Replace('\u2018', '\'')
                 .Replace('\u201C', '"')
                 .Replace('\u201D', '"')
@@ -2770,65 +2642,65 @@ report.Measures.Add(rowALot);
 
             // ── STD / LOT ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\b5TD\b", "STD");
-            t = Regex.Replace(t, @"\b5T0\b", "STD"); // O/D confusión
-            t = Regex.Replace(t, @"\bST0\b", "STD"); // 0/D confusión
-            t = Regex.Replace(t, @"\bSTB\b", "STD"); // B/D confusión
-            t = Regex.Replace(t, @"\bSTO\b", "STD"); // O/D confusión
-            t = Regex.Replace(t, @"\b5L0\b", "STD"); // S→5, L≈T, D→0
+            t = Regex.Replace(t, @"\b5T0\b", "STD"); 
+            t = Regex.Replace(t, @"\bST0\b", "STD"); 
+            t = Regex.Replace(t, @"\bSTB\b", "STD"); 
+            t = Regex.Replace(t, @"\bSTO\b", "STD"); 
+            t = Regex.Replace(t, @"\b5L0\b", "STD"); 
             t = Regex.Replace(t, @"\bL0T\b", "LOT");
-            t = Regex.Replace(t, @"\bL0T\b", "LOT"); // 0/O ya cubre ambos
+            t = Regex.Replace(t, @"\bL0T\b", "LOT"); 
 
             // ── TL84 / TL83 / TL85 ───────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bTLS4\b", "TL84"); // S/8 confusión
+            t = Regex.Replace(t, @"\bTLS4\b", "TL84"); 
             t = Regex.Replace(t, @"\bTLS3\b", "TL83");
             t = Regex.Replace(t, @"\bTLS5\b", "TL85");
-            t = Regex.Replace(t, @"\bTL8A\b", "TL84"); // A/4 confusión — muy común
-            t = Regex.Replace(t, @"\bTL8B\b", "TL83"); // B/3 → TL83 (puede ser TL83)
-            t = Regex.Replace(t, @"\bTLB4\b", "TL84"); // B/8 confusión
+            t = Regex.Replace(t, @"\bTL8A\b", "TL84"); 
+            t = Regex.Replace(t, @"\bTL8B\b", "TL83"); 
+            t = Regex.Replace(t, @"\bTLB4\b", "TL84"); 
             t = Regex.Replace(t, @"\bTLB3\b", "TL83");
-            t = Regex.Replace(t, @"\bTI84\b", "TL84"); // I/L confusión
+            t = Regex.Replace(t, @"\bTI84\b", "TL84");
             t = Regex.Replace(t, @"\bTI83\b", "TL83");
-            t = Regex.Replace(t, @"\bT1[8S]4\b", "TL84"); // 1/L y S/8
-            t = Regex.Replace(t, @"\b1L84\b", "TL84"); // 1/T confusión al inicio
+            t = Regex.Replace(t, @"\bT1[8S]4\b", "TL84");
+            t = Regex.Replace(t, @"\b1L84\b", "TL84"); 
             t = Regex.Replace(t, @"\b1L83\b", "TL83");
-            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84"); // espaciado
+            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84"); 
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*3\b", "TL83");
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*5\b", "TL85");
 
             // ── D65 / D50 / D55 / D75 ────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bD6S\b", "D65");  // S/5 — muy común en Tesseract
-            t = Regex.Replace(t, @"\bDG5\b", "D65");  // G/6 confusión
-            t = Regex.Replace(t, @"\b065\b", "D65");  // 0/D confusión
-            t = Regex.Replace(t, @"\bDO5\b", "D65");  // O/6 confusión
-            t = Regex.Replace(t, @"\bD6O\b", "D65");  // O/5 confusión
-            t = Regex.Replace(t, @"\bDSO\b", "D50");  // S/5, O/0
-            t = Regex.Replace(t, @"\bD5O\b", "D50");  // O/0
-            t = Regex.Replace(t, @"\bDS0\b", "D50");  // S/5, 0/0
-            t = Regex.Replace(t, @"\b0S0\b", "D50");  // 0/D, S/5
-            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");  // espaciado
+            t = Regex.Replace(t, @"\bD6S\b", "D65");  
+            t = Regex.Replace(t, @"\bDG5\b", "D65");  
+            t = Regex.Replace(t, @"\b065\b", "D65");  
+            t = Regex.Replace(t, @"\bDO5\b", "D65");  
+            t = Regex.Replace(t, @"\bD6O\b", "D65");  
+            t = Regex.Replace(t, @"\bDSO\b", "D50");  
+            t = Regex.Replace(t, @"\bD5O\b", "D50");  
+            t = Regex.Replace(t, @"\bDS0\b", "D50");  
+            t = Regex.Replace(t, @"\b0S0\b", "D50");  
+            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");  
             t = Regex.Replace(t, @"\bD\s*[5S]\s*0\b", "D50");
             t = Regex.Replace(t, @"\bD\s*[5S]\s*5\b", "D55");
             t = Regex.Replace(t, @"\bD\s*7\s*5\b", "D75");
 
             // ── CWF / CWF2 ───────────────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bCVF\b", "CWF");  // V/W confusión
-            t = Regex.Replace(t, @"\bGWF\b", "CWF");  // G/C confusión
-            t = Regex.Replace(t, @"\bCW-F\b", "CWF");  // guión extra
-            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF"); // espaciado
+            t = Regex.Replace(t, @"\bCVF\b", "CWF");  
+            t = Regex.Replace(t, @"\bGWF\b", "CWF");  
+            t = Regex.Replace(t, @"\bCW-F\b", "CWF");  
+            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF"); 
             t = Regex.Replace(t, @"\bCW/F\b", "CWF");
 
             // ── F11 / F12 ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\bF\s*1\s*1\b", "F11");
             t = Regex.Replace(t, @"\bF\s*1\s*2\b", "F12");
-            t = Regex.Replace(t, @"\bFI1\b", "F11"); // I/1 confusión
-            t = Regex.Replace(t, @"\bFl1\b", "F11"); // l/1 confusión
-            t = Regex.Replace(t, @"\bF1I\b", "F11"); // I/1 confusión
+            t = Regex.Replace(t, @"\bFI1\b", "F11"); 
+            t = Regex.Replace(t, @"\bFl1\b", "F11"); 
+            t = Regex.Replace(t, @"\bF1I\b", "F11"); 
 
             // ── MEJORA 6: iluminantes adicionales no cubiertos antes ──────────────
-            t = Regex.Replace(t, @"\bUY\b", "UV");        // Y/V confusión
-            t = Regex.Replace(t, @"\bCWF1\b", "CWF");     // 1 extra al final
-            t = Regex.Replace(t, @"\bD6S5\b", "D65");     // S/5 + dígito extra
-            t = Regex.Replace(t, @"\bD\s+65\b", "D65");   // espacio entre D y 65
+            t = Regex.Replace(t, @"\bUY\b", "UV");        
+            t = Regex.Replace(t, @"\bCWF1\b", "CWF");    
+            t = Regex.Replace(t, @"\bD6S5\b", "D65");     
+            t = Regex.Replace(t, @"\bD\s+65\b", "D65");   
 
             // ── Otros ────────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\[LLUMINANT\b", "ILLUMINANT");
@@ -2850,10 +2722,450 @@ report.Measures.Add(rowALot);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // CV TABLE DETECTOR — Detección de tabla colorimétrica con OpenCV multi-pass
+    // ══════════════════════════════════════════════════════════════════════════
+
+    internal static class ColrTableDetector
+    {
+        public class CvDetectionResult
+        {
+            public bool Success;
+            public string FailReason;
+            public Rectangle TableBounds;
+            public int RowCount;
+            public int ColCount;
+            public List<CvTableCell> Cells = new List<CvTableCell>();
+            public Bitmap ScaledImage;   
+            public float ScaleFactor;
+        }
+
+        public class CvTableCell
+        {
+            public int Row;
+            public int Col;
+            public Rectangle Bounds;
+            public string Field;
+            public string FieldName { get { return Field; } } 
+        }
+
+        private const int TARGET_WIDTH = 1200;
+
+        private struct DetectConfig
+        {
+            public int BlockSize; public double C;
+            public int KernelW; public int KernelH;
+            public int MinIntersect;
+            public double HoughMinLen; public int HoughGap; public int MergeTol;
+            public string Label;
+        }
+
+        private static readonly DetectConfig[] Configs = new DetectConfig[]
+        {
+            new DetectConfig { BlockSize=15, C=6,  KernelW=40, KernelH=40, MinIntersect=12, HoughMinLen=0.40, HoughGap=20, MergeTol=8,  Label="Sharp"    },
+            new DetectConfig { BlockSize=21, C=8,  KernelW=30, KernelH=30, MinIntersect=8,  HoughMinLen=0.30, HoughGap=25, MergeTol=10, Label="Normal"   },
+            new DetectConfig { BlockSize=31, C=10, KernelW=20, KernelH=20, MinIntersect=4,  HoughMinLen=0.20, HoughGap=35, MergeTol=14, Label="LowRes"   },
+            new DetectConfig { BlockSize=41, C=12, KernelW=12, KernelH=12, MinIntersect=4,  HoughMinLen=0.15, HoughGap=50, MergeTol=18, Label="Degraded" },
+        };
+
+        public static CvDetectionResult Detect(Bitmap original)
+        {
+            float scale = (float)TARGET_WIDTH / original.Width;
+            if (scale > 4f) scale = 4f;
+            int scaledW = (int)(original.Width * scale);
+            int scaledH = (int)(original.Height * scale);
+
+            Bitmap scaled = new Bitmap(scaledW, scaledH, PixelFormat.Format24bppRgb);
+            using (Graphics g = Graphics.FromImage(scaled))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(original, 0, 0, scaledW, scaledH);
+            }
+
+            CvDetectionResult result = null;
+            try { result = DetectInternal(scaled); }
+            catch { scaled.Dispose(); throw; }
+
+            if (result == null) { scaled.Dispose(); return new CvDetectionResult { Success = false, FailReason = "Error interno." }; }
+
+            result.ScaledImage = scaled;
+            result.ScaleFactor = scale;
+
+            // TableBounds en espacio original para ParseTolerancesFromImage
+            if (result.Success)
+            {
+                float inv = 1f / scale;
+                result.TableBounds = ScaleRect(result.TableBounds, inv);
+            }
+            // Bounds de celdas permanecen en espacio escalado (ScaledImage)
+            return result;
+        }
+
+        private static CvDetectionResult DetectInternal(Bitmap bmp)
+        {
+            Mat mat = BitmapConverter.ToMat(bmp);
+            Mat gray = new Mat();
+            try
+            {
+                Cv2.CvtColor(mat, gray, ColorConversionCodes.BGR2GRAY);
+                Cv2.GaussianBlur(gray, gray, new OpenCvSharp.Size(3, 3), 0);
+
+                CvDetectionResult best = null;
+                foreach (var cfg in Configs)
+                {
+                    var attempt = TryDetect(gray, cfg);
+                    if (attempt.Success)
+                    {
+                        if (attempt.Cells.Count >= 14) return attempt;
+                        if (best == null || attempt.Cells.Count > best.Cells.Count) best = attempt;
+                    }
+                    else if (best == null) best = attempt;
+                }
+                if (best != null && best.Cells.Count > 0) { best.Success = true; return best; }
+                return best ?? new CvDetectionResult { Success = false, FailReason = "Ningún pass detectó rejilla." };
+            }
+            finally { mat.Dispose(); gray.Dispose(); }
+        }
+
+        private static CvDetectionResult TryDetect(Mat gray, DetectConfig cfg)
+        {
+            var result = new CvDetectionResult();
+            Mat bin = new Mat(); Mat horiz = null; Mat vert = null; Mat inter = null;
+            try
+            {
+                Cv2.AdaptiveThreshold(gray, bin, 255, AdaptiveThresholdTypes.GaussianC,
+                    ThresholdTypes.BinaryInv, cfg.BlockSize, cfg.C);
+
+                // ROI hint via Canny+contornos
+                OpenCvSharp.Rect? roiHint = GetTableRegion(gray);
+                Mat workBin = (roiHint.HasValue &&
+                               roiHint.Value.Width > bin.Width / 4 &&
+                               roiHint.Value.Height > bin.Height / 6)
+                    ? new Mat(bin, roiHint.Value) : bin;
+
+                horiz = workBin.Clone();
+                Mat kH = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(cfg.KernelW, 1));
+                Cv2.Erode(horiz, horiz, kH); Cv2.Dilate(horiz, horiz, kH);
+
+                vert = workBin.Clone();
+                Mat kV = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(1, cfg.KernelH));
+                Cv2.Erode(vert, vert, kV); Cv2.Dilate(vert, vert, kV);
+
+                inter = new Mat();
+                Cv2.BitwiseAnd(horiz, vert, inter);
+
+                Mat nzm = new Mat();
+                Cv2.FindNonZero(inter, nzm);
+                OpenCvSharp.Point[] pts = null;
+                if (nzm.Rows > 0)
+                {
+                    pts = new OpenCvSharp.Point[nzm.Rows];
+                    for (int i = 0; i < nzm.Rows; i++) pts[i] = nzm.At<OpenCvSharp.Point>(i, 0);
+                }
+                nzm.Dispose();
+
+                if (pts == null || pts.Length < cfg.MinIntersect)
+                {
+                    result.FailReason = string.Format("[{0}] Intersecciones: {1}<{2}",
+                        cfg.Label, pts == null ? 0 : pts.Length, cfg.MinIntersect);
+                    return result;
+                }
+
+                // Offset ROI → coordenadas absolutas
+                int offX = roiHint.HasValue ? roiHint.Value.X : 0;
+                int offY = roiHint.HasValue ? roiHint.Value.Y : 0;
+
+                OpenCvSharp.Rect tr = Cv2.BoundingRect(pts);
+                tr = new OpenCvSharp.Rect(tr.X + offX, tr.Y + offY, tr.Width, tr.Height);
+                result.TableBounds = new Rectangle(tr.X, tr.Y, tr.Width, tr.Height);
+
+                // HoughLinesP — coords relativas a workBin (ROI), luego añadir offset
+                double minH = tr.Width * cfg.HoughMinLen;
+                double minV = tr.Height * cfg.HoughMinLen;
+
+                // Recortar horiz y vert a tableRect relativo a workBin
+                OpenCvSharp.Rect trLocal = new OpenCvSharp.Rect(tr.X - offX, tr.Y - offY, tr.Width, tr.Height);
+                // Clamp a tamaño de workBin
+                int wbW = workBin.Width, wbH = workBin.Height;
+                trLocal = new OpenCvSharp.Rect(
+                    Math.Max(0, trLocal.X), Math.Max(0, trLocal.Y),
+                    Math.Min(trLocal.Width, wbW - Math.Max(0, trLocal.X)),
+                    Math.Min(trLocal.Height, wbH - Math.Max(0, trLocal.Y)));
+
+                if (trLocal.Width < 10 || trLocal.Height < 10)
+                {
+                    result.FailReason = string.Format("[{0}] ROI local inválida", cfg.Label);
+                    return result;
+                }
+
+                LineSegmentPoint[] hLines = Cv2.HoughLinesP(horiz[trLocal], 1, Math.PI / 180, 40, minH, cfg.HoughGap);
+                LineSegmentPoint[] vLines = Cv2.HoughLinesP(vert[trLocal], 1, Math.PI / 180, 40, minV, cfg.HoughGap);
+
+                if (hLines == null || hLines.Length < 2 || vLines == null || vLines.Length < 2)
+                {
+                    result.FailReason = string.Format("[{0}] Líneas H={1} V={2}",
+                        cfg.Label, hLines == null ? 0 : hLines.Length, vLines == null ? 0 : vLines.Length);
+                    return result;
+                }
+
+                Array.Sort(hLines, delegate (LineSegmentPoint a, LineSegmentPoint b2) { return a.P1.Y.CompareTo(b2.P1.Y); });
+                Array.Sort(vLines, delegate (LineSegmentPoint a, LineSegmentPoint b2) { return a.P1.X.CompareTo(b2.P1.X); });
+                hLines = MergeLines(hLines, true, cfg.MergeTol);
+                vLines = MergeLines(vLines, false, cfg.MergeTol);
+
+                // Construir celdas — compensar offset absoluto (trLocal coords → image coords)
+                int absOffX = tr.X; 
+                int absOffY = tr.Y;
+
+                for (int r = 0; r < hLines.Length - 1; r++)
+                    for (int c = 0; c < vLines.Length - 1; c++)
+                    {
+                        var cell = Rectangle.FromLTRB(
+                            vLines[c].P1.X + absOffX,
+                            hLines[r].P1.Y + absOffY,
+                            vLines[c + 1].P1.X + absOffX,
+                            hLines[r + 1].P1.Y + absOffY);
+
+                        if (cell.Width < 10 || cell.Height < 8) continue;
+
+                        result.Cells.Add(new CvTableCell
+                        {
+                            Row = r,
+                            Col = c,
+                            Bounds = cell,
+                            Field = MapColumnToField(c)
+                        });
+                    }
+
+                result.RowCount = hLines.Length - 1;
+                result.ColCount = vLines.Length - 1;
+                result.Success = result.Cells.Count > 0;
+                if (!result.Success)
+                    result.FailReason = string.Format("[{0}] Sin celdas válidas", cfg.Label);
+                return result;
+            }
+            finally
+            {
+                bin.Dispose();
+                if (horiz != null) horiz.Dispose();
+                if (vert != null) vert.Dispose();
+                if (inter != null) inter.Dispose();
+            }
+        }
+
+        private static OpenCvSharp.Rect? GetTableRegion(Mat gray)
+        {
+            Mat edges = new Mat();
+            try
+            {
+                Cv2.Canny(gray, edges, 50, 150);
+                Mat k = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
+                Cv2.Dilate(edges, edges, k);
+
+                OpenCvSharp.Point[][] contours;
+                HierarchyIndex[] hierarchy;
+                Cv2.FindContours(edges, out contours, out hierarchy,
+                    RetrievalModes.External, ContourApproximationModes.ApproxSimple);
+
+                OpenCvSharp.Rect? best = null;
+                foreach (var cnt in contours)
+                {
+                    var r = Cv2.BoundingRect(cnt);
+                    if (r.Width * r.Height > 5000 && r.Width > r.Height)
+                        if (!best.HasValue || r.Width * r.Height > best.Value.Width * best.Value.Height)
+                            best = r;
+                }
+                return best;
+            }
+            finally { edges.Dispose(); }
+        }
+
+        private static LineSegmentPoint[] MergeLines(LineSegmentPoint[] lines, bool horizontal, int tol)
+        {
+            if (lines == null || lines.Length == 0) return lines;
+            var groups = new List<List<LineSegmentPoint>>();
+            var current = new List<LineSegmentPoint> { lines[0] };
+            for (int i = 1; i < lines.Length; i++)
+            {
+                int pos = horizontal ? lines[i].P1.Y : lines[i].P1.X;
+                int prevPos = horizontal ? current[current.Count - 1].P1.Y : current[current.Count - 1].P1.X;
+                if (Math.Abs(pos - prevPos) <= tol) current.Add(lines[i]);
+                else { groups.Add(current); current = new List<LineSegmentPoint> { lines[i] }; }
+            }
+            groups.Add(current);
+            var merged = new LineSegmentPoint[groups.Count];
+            for (int g = 0; g < groups.Count; g++)
+            {
+                var grp = groups[g];
+                LineSegmentPoint best2 = grp[0]; int bestLen = 0;
+                foreach (var ln in grp)
+                {
+                    int dx = ln.P2.X - ln.P1.X, dy = ln.P2.Y - ln.P1.Y, len = dx * dx + dy * dy;
+                    if (len > bestLen) { bestLen = len; best2 = ln; }
+                }
+                int med = horizontal ? grp[grp.Count / 2].P1.Y : grp[grp.Count / 2].P1.X;
+                OpenCvSharp.Point p1 = best2.P1, p2 = best2.P2;
+                if (horizontal) { p1.Y = med; p2.Y = med; } else { p1.X = med; p2.X = med; }
+                merged[g] = new LineSegmentPoint(p1, p2);
+            }
+            return merged;
+        }
+
+        private static string MapColumnToField(int col)
+        {
+            switch (col)
+            {
+                case 0: return "Illuminant";
+                case 1: return "Type";
+                case 2: return "L";
+                case 3: return "a";
+                case 4: return "b";
+                case 5: return "Chroma";
+                case 6: return "Hue";
+                case 7: return "DeltaL";
+                case 8: return "DeltaC";
+                case 9: return "DeltaH";
+                case 10: return "DeltaE";
+                default: return "Other";
+            }
+        }
+
+        private static Rectangle ScaleRect(Rectangle r, float s)
+        {
+            return new Rectangle((int)(r.X * s), (int)(r.Y * s), (int)(r.Width * s), (int)(r.Height * s));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CV TABLE PARSER — Construye OcrReport desde diccionario de textos por celda
+    // ══════════════════════════════════════════════════════════════════════════
+
+    internal static class ColrTableParser
+    {
+        public static OcrReport BuildReport(
+            Dictionary<int, Dictionary<int, string>> cellTexts,
+            int dataStartRow, List<string> log)
+        {
+            var report = new OcrReport();
+            int maxRow = 0;
+            foreach (var kvp in cellTexts) if (kvp.Key > maxRow) maxRow = kvp.Key;
+
+            string lastIlluminant = string.Empty;
+
+            for (int r = dataStartRow; r <= maxRow; r++)
+            {
+                Dictionary<int, string> row;
+                if (!cellTexts.TryGetValue(r, out row)) continue;
+
+                // Col 0: Illuminant
+                string illRaw = GetCell(row, 0);
+                string illuminant = NormalizeIlluminant(illRaw);
+                if (!string.IsNullOrWhiteSpace(illuminant)) lastIlluminant = illuminant;
+                else if (!string.IsNullOrWhiteSpace(lastIlluminant)) illuminant = lastIlluminant;
+                else { if (log != null) log.Add(string.Format("[PARSER] Fila {0}: sin iluminante", r)); continue; }
+
+                // Col 1: Type
+                string typeRaw = GetCell(row, 1);
+                string type = NormalizeType(typeRaw);
+                if (string.IsNullOrWhiteSpace(type))
+                {
+                    string combined = NormUpper(illRaw);
+                    if (combined.Contains("STD")) type = "Std";
+                    else if (combined.Contains("LOT")) type = "Lot";
+                }
+                if (string.IsNullOrWhiteSpace(type))
+                { if (log != null) log.Add(string.Format("[PARSER] Fila {0}: tipo desconocido '{1}'", r, typeRaw)); continue; }
+
+                // Cols 2-6: L a b Chroma Hue
+                double vL = SafeParse(GetCell(row, 2)), vA = SafeParse(GetCell(row, 3));
+                double vB = SafeParse(GetCell(row, 4)), vC = SafeParse(GetCell(row, 5));
+                double vH = SafeParse(GetCell(row, 6));
+
+                bool valid = ColorimetryRanges.IsValidL(vL) && ColorimetryRanges.IsValidAB(vA) &&
+                             ColorimetryRanges.IsValidAB(vB) && ColorimetryRanges.IsValidChroma(vC) &&
+                             ColorimetryRanges.IsValidHue(vH);
+
+                // Recalcular Hue si el OCR lo tiene mal
+                double hCalc = Math.Atan2(vB, vA) * 180.0 / Math.PI;
+                if (hCalc < 0) hCalc += 360.0;
+                double hErr = Math.Abs(vH - hCalc); if (hErr > 180) hErr = 360 - hErr;
+                if (vH < 1.0 || hErr > 10.0) vH = Math.Round(hCalc, 2);
+
+                report.Measures.Add(new ColorimetricRow
+                {
+                    Illuminant = illuminant,
+                    Type = type,
+                    L = vL,
+                    A = vA,
+                    B = vB,
+                    Chroma = vC,
+                    Hue = vH,
+                    NeedsReview = !valid
+                });
+
+                if (log != null) log.Add(string.Format(
+                    "[PARSER] {0}/{1} L={2:F2} a={3:F2} b={4:F2} C={5:F2} h={6:F2}{7}",
+                    illuminant, type, vL, vA, vB, vC, vH, valid ? "" : " [REVISAR]"));
+
+                // Cols 7-10: Deltas CMC
+                string dLr = GetCell(row, 7), dCr = GetCell(row, 8), dHr = GetCell(row, 9), dEr = GetCell(row, 10);
+                bool hasDelta = !string.IsNullOrWhiteSpace(dLr) || !string.IsNullOrWhiteSpace(dCr) || !string.IsNullOrWhiteSpace(dHr);
+                if (hasDelta)
+                {
+                    bool already = false;
+                    foreach (var ex2 in report.CmcDifferences)
+                        if (string.Equals(ex2.Illuminant, illuminant, StringComparison.OrdinalIgnoreCase)) { already = true; break; }
+                    if (!already)
+                    {
+                        double dL = SafeParse(dLr), dC = SafeParse(dCr), dH = SafeParse(dHr);
+                        double dE = string.IsNullOrWhiteSpace(dEr) ? double.NaN : SafeParse(dEr);
+                        report.CmcDifferences.Add(new CmcDifferenceRow
+                        {
+                            Illuminant = illuminant,
+                            DeltaLightness = dL,
+                            DeltaChroma = dC,
+                            DeltaHue = dH,
+                            DeltaCMC = double.IsNaN(dE) ? (double?)null : dE,
+                            NeedsReview = !ColorimetryRanges.IsValidDL(dL) || !ColorimetryRanges.IsValidDC(dC) || !ColorimetryRanges.IsValidDH(dH)
+                        });
+                    }
+                }
+            }
+            return report;
+        }
+
+        private static string GetCell(Dictionary<int, string> row, int col)
+        { if (col < 0) return string.Empty; string v; return row.TryGetValue(col, out v) ? (v ?? string.Empty) : string.Empty; }
+
+        private static string NormUpper(string s)
+        { return string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().ToUpperInvariant(); }
+
+        private static string NormalizeIlluminant(string raw)
+        {
+            string u = NormUpper(raw);
+            foreach (string known in ColorimetricDataExtractor.KnownIlluminants)
+                if (u == known.ToUpperInvariant() || u.Contains(known.ToUpperInvariant())) return known.ToUpperInvariant();
+            return string.Empty;
+        }
+
+        private static string NormalizeType(string raw)
+        {
+            string u = NormUpper(raw);
+            if (u.Contains("STD") || u.Contains("5TD") || u.Contains("ST0")) return "Std";
+            if (u.Contains("LOT") || u.Contains("L0T")) return "Lot";
+            return string.Empty;
+        }
+
+        private static double SafeParse(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return 0.0;
+            s = s.Trim().Replace(',', '.');
+            double v; return double.TryParse(s, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0.0;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // LOCAL CORRECTOR — Portado de ClaudeService (ColorimetriaAPI)
-    // Corrección matemática in-process, sin HTTP, sin dependencias externas.
-    // Actúa como capa POST-parse sobre el OcrReport completo.
-    // Compatible con C# 7.3 / .NET 4.8
     // ══════════════════════════════════════════════════════════════════════════
 
     public class LocalCorrectionResult
@@ -2882,7 +3194,6 @@ report.Measures.Add(rowALot);
                 return results;
 
             // Trabajar sobre copia para no interferir con los valores ya corregidos
-            // por el parser — solo aplicar si mejora la coherencia
             foreach (var row in report.Measures)
             {
                 // Detectar error de Chroma
@@ -3031,7 +3342,7 @@ report.Measures.Add(rowALot);
         private static void ApplyToRow(ColorimetricRow row, LocalCorrectionResult c)
         {
             if (c == null) return;
-           
+
             switch (c.Field.ToLower())
             {
                 case "l": row.L = c.CorrectedValue; break;
