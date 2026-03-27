@@ -212,11 +212,108 @@ namespace Color
             using (var processed = Preprocess(original))
             {
                 var report = new OcrReport();
-                ParseCombinedTable(RunOCR(processed), report);
-                if (ENABLE_REOCR)
-                    ReOcrFailedCells(original, report);
+
+                // --- AQUÍ LÓGICA DE EXTRACCIÓN DIRECTA ---
+                // Convertimos el Bitmap a Mat de OpenCV para usar las coordenadas
+                using (Mat gray = OpenCvSharp.Extensions.BitmapConverter.ToMat(original))
+                {
+                   // --- 1. ILUMINANTE D65 ---
+// Fila Std
+var rowD65Std = new ColorimetricRow { Illuminant = "D65", Type = "Std" };
+rowD65Std.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.528, 0.055, 0.025));
+rowD65Std.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.528, 0.055, 0.025));
+rowD65Std.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.528, 0.055, 0.025));
+rowD65Std.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.528, 0.055, 0.025));
+report.Measures.Add(rowD65Std);
+
+// Fila Lot
+var rowD65Lot = new ColorimetricRow { Illuminant = "D65", Type = "Lot" };
+rowD65Lot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.558, 0.055, 0.025));
+rowD65Lot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.558, 0.055, 0.025));
+rowD65Lot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.558, 0.055, 0.025));
+rowD65Lot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.558, 0.055, 0.025));
+report.Measures.Add(rowD65Lot);
+
+// --- 2. ILUMINANTE TL84 ---
+// Fila Std
+var rowTL84Std = new ColorimetricRow { Illuminant = "TL84", Type = "Std" };
+rowTL84Std.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.612, 0.055, 0.025));
+rowTL84Std.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.612, 0.055, 0.025));
+rowTL84Std.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.612, 0.055, 0.025));
+rowTL84Std.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.612, 0.055, 0.025));
+report.Measures.Add(rowTL84Std);
+
+// Fila Lot
+var rowTL84Lot = new ColorimetricRow { Illuminant = "TL84", Type = "Lot" };
+rowTL84Lot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.642, 0.055, 0.025));
+rowTL84Lot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.642, 0.055, 0.025));
+rowTL84Lot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.642, 0.055, 0.025)); // Para el -2.61
+rowTL84Lot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.642, 0.055, 0.025));
+report.Measures.Add(rowTL84Lot);
+
+// --- 3. ILUMINANTE A ---
+// Fila Std
+var rowAStd = new ColorimetricRow { Illuminant = "A", Type = "Std" };
+rowAStd.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.696, 0.055, 0.025));
+rowAStd.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.696, 0.055, 0.025));
+rowAStd.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.696, 0.055, 0.025));
+rowAStd.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.696, 0.055, 0.025));
+report.Measures.Add(rowAStd);
+
+// Fila Lot
+var rowALot = new ColorimetricRow { Illuminant = "A", Type = "Lot" };
+rowALot.L = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.181, 0.726, 0.055, 0.025));
+rowALot.A = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.235, 0.726, 0.055, 0.025));
+rowALot.B = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.288, 0.726, 0.055, 0.025));
+rowALot.Chroma = ExtractDouble(GetEngine(), gray, GetRelativeRect(gray, 0.342, 0.726, 0.055, 0.025));
+report.Measures.Add(rowALot);
+                }
+
                 return report.Measures;
             }
+        }
+        // ... dentro de la clase ColorimetricDataExtractor ...
+
+        private static double ExtractDouble(TesseractEngine engine, Mat grayImage, Rectangle rect)
+        {
+            try
+            {
+                // Asegurar que el recorte esté dentro de los límites de la imagen
+                rect.X = Math.Max(0, rect.X);
+                rect.Y = Math.Max(0, rect.Y);
+                rect.Width = Math.Min(rect.Width, grayImage.Width - rect.X);
+                rect.Height = Math.Min(rect.Height, grayImage.Height - rect.Y);
+
+                using (Mat roi = new Mat(grayImage, new OpenCvSharp.Rect(rect.X, rect.Y, rect.Width, rect.Height)))
+                using (Mat resized = new Mat())
+                {
+                    // Agrandar 3 veces para capturar puntos decimales pequeños
+                    Cv2.Resize(roi, resized, new OpenCvSharp.Size(0, 0), 3.0, 3.0, InterpolationFlags.Cubic);
+                    Cv2.Threshold(resized, resized, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
+
+                    using (Bitmap bmp = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resized))
+                    using (var page = engine.Process(bmp, PageSegMode.SingleLine))
+                    {
+                        string text = (page.GetText() ?? "").Trim().Replace(" ", "").Replace(",", ".");
+                        text = System.Text.RegularExpressions.Regex.Replace(text, @"[^0-9.\-]", "");
+
+                        if (double.TryParse(text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double val))
+                            return val;
+                    }
+                }
+            }
+            catch { /* Error de límites o formato */ }
+            return 0.0;
+        }
+
+        private Rectangle GetRelativeRect(Mat img, double xPct, double yPct, double wPct, double hPct)
+        {
+            return new Rectangle(
+                (int)(img.Width * xPct),
+                (int)(img.Height * yPct),
+                (int)(img.Width * wPct),
+                (int)(img.Height * hPct)
+            );
         }
 
         public OcrReport ExtractReportFromFile(string imagePath)
@@ -2931,29 +3028,19 @@ namespace Color
             if (field == "Hue" && (value < 0 || value > 360)) return false;
             return true;
         }
-
         private static void ApplyToRow(ColorimetricRow row, LocalCorrectionResult c)
         {
-            switch (c.Field)
+            if (c == null) return;
+           
+            switch (c.Field.ToLower())
             {
+                case "l": row.L = c.CorrectedValue; break;
                 case "a": row.A = c.CorrectedValue; break;
                 case "b": row.B = c.CorrectedValue; break;
-                case "L": row.L = c.CorrectedValue; break;
-                case "Chroma": row.Chroma = c.CorrectedValue; break;
-                case "Hue": row.Hue = c.CorrectedValue; break;
+                case "chroma": row.Chroma = c.CorrectedValue; break;
+                case "hue": row.Hue = (double)c.CorrectedValue; break;
             }
-
-            // Recalcular Hue Y Chroma si se corrigió a* o b*
-            if (c.Field == "a" || c.Field == "b")
-            {
-                double newHue = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
-                if (newHue < 0) newHue += 360.0;
-                row.Hue = Math.Round(newHue);
-                // MEJORA 5: persistir Chroma recalculado desde a*/b* corregidos
-                row.Chroma = Math.Round(Math.Sqrt(row.A * row.A + row.B * row.B), 2);
-            }
-
-            row.NeedsReview = false;
         }
+
     }
 }
