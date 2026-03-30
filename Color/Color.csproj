@@ -165,12 +165,10 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Content Include="tesdata\eng.traineddata">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="tesdata\spa.traineddata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="tesdata\eng.traineddata" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

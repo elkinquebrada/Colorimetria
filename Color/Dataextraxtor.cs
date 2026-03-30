@@ -1,7 +1,8 @@
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Net.Http;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
@@ -10,12 +11,9 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Tesseract;
-using OpenCvSharp;
-using OpenCvSharp.Extensions;
 
 namespace Color
 {
-
     // MODELOS
     public class ColorimetricRow
     {
@@ -117,14 +115,12 @@ namespace Color
         public static bool IsValidDH(double v) { return v >= -50 && v <= 50; }
         public static bool IsValidDE(double v) { return v >= 0 && v <= 10; }
     }
-
     // Región de celda detectada en imagen original
     internal class CellRegion
     {
         public Rectangle Bounds { get; set; }
         public string ColumnHint { get; set; }
     }
-
     // EXTRACTOR PRINCIPAL
     public class ColorimetricDataExtractor : IDisposable
     {
@@ -207,6 +203,13 @@ namespace Color
             return ExtractReportFromBitmap(original).Measures;
         }
         // ... dentro de la clase ColorimetricDataExtractor ...
+        private double ExtractDoubleSafe(Mat gray, Rectangle rect)
+        {
+            lock (_engineLock)
+            {
+                return ExtractDouble(GetEngine(), gray, rect);
+            }
+        }
 
         private static double ExtractDouble(TesseractEngine engine, Mat grayImage, Rectangle rect)
         {
@@ -239,17 +242,6 @@ namespace Color
             catch { /* Error de límites o formato */ }
             return 0.0;
         }
-
-        private Rectangle GetRelativeRect(Mat img, double xPct, double yPct, double wPct, double hPct)
-        {
-            return new Rectangle(
-                (int)(img.Width * xPct),
-                (int)(img.Height * yPct),
-                (int)(img.Width * wPct),
-                (int)(img.Height * hPct)
-            );
-        }
-
         public OcrReport ExtractReportFromFile(string imagePath)
         {
             using (var bmp = new Bitmap(imagePath))
@@ -502,7 +494,6 @@ namespace Color
             }
             return -1;
         }
-
         /// OCR sobre la banda inferior de la imagen (debajo de la tabla) para leer tolerancias.
         private Tuple<double, double, double, double> ParseTolerancesFromImage(
             Bitmap original, Rectangle tableBounds)
@@ -572,7 +563,6 @@ namespace Color
                 }
             }
         }
-
         private static void DivideByTen(ColorimetricRow row, List<string> log)
         {
             double newA = row.A / 10.0;
@@ -595,239 +585,138 @@ namespace Color
 
             row.NeedsReview = false;
         }
-
         // ══════════════════════════════════════════════════════════════
         // ESTRATEGIA A+C — Re-OCR dirigido sobre celdas con error Chroma
         // ══════════════════════════════════════════════════════════════
-
         private void ReOcrFailedCells(Bitmap original, OcrReport report)
         {
-            if (report == null || report.Measures == null || report.Measures.Count == 0) return;
+            if (report == null || report.Measures == null || report.Measures.Count == 0)
+                return;
 
-            // Verificar si hay filas que necesitan corrección antes de lanzar detección
             bool anyNeeds = false;
             foreach (var row in report.Measures)
             {
                 double chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
                 if (Math.Abs(chromaCalc - row.Chroma) > REOCR_CHROMA_THRESHOLD)
-                { anyNeeds = true; break; }
+                {
+                    anyNeeds = true;
+                    break;
+                }
             }
             if (!anyNeeds) return;
 
-            // Obtener bounding boxes de todos los tokens usando Tesseract
-            var wordBoxes = GetWordBoundingBoxes(original);
-            if (wordBoxes == null || wordBoxes.Count == 0) return;
-
-            foreach (var row in report.Measures)
+            // ✅ AQUÍ se crean mat y gray
+            using (var mat = OpenCvSharp.Extensions.BitmapConverter.ToMat(original))
+            using (var gray = new Mat())
             {
-                double chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
-                double chromaErr = Math.Abs(chromaCalc - row.Chroma);
-                if (chromaErr <= REOCR_CHROMA_THRESHOLD) continue;
+                Cv2.CvtColor(mat, gray, ColorConversionCodes.BGR2GRAY);
 
-                report.ParseLog.Add(string.Format(
-                    "[REOCR] {0}/{1} chromaErr={2:F3} → segunda pasada",
-                    row.Illuminant, row.Type, chromaErr));
-
-                // A+C: localizar la fila en la imagen usando bounding boxes
-                var rowRect = FindRowRectByBoxes(wordBoxes, row.Illuminant, row.Type);
-                if (rowRect == null)
+                var detection = ColrTableDetector.Detect(original);
+                if (!detection.Success || detection.Cells.Count == 0)
                 {
-                    report.ParseLog.Add(string.Format(
-                        "[REOCR] {0}/{1} no se encontró banda en imagen", row.Illuminant, row.Type));
-                    continue;
+                    if (detection.ScaledImage != null) detection.ScaledImage.Dispose();
+                    return;
                 }
 
-                TryReOcrRow(original, rowRect.Value, row, report.ParseLog);
-            }
-        }
-
-        // ── Obtener bounding boxes de palabras via Tesseract ──────────────
-
-        private List<Tuple<string, Rectangle>> GetWordBoundingBoxes(Bitmap original)
-        {
-            var result = new List<Tuple<string, Rectangle>>();
-            string tmp = Path.Combine(Path.GetTempPath(),
-                string.Format("bbox_{0:N}.png", Guid.NewGuid()));
-            try
-            {
-                // Usar preprocesado estándar para las bboxes
-                using (var processed = Preprocess(original))
+                try
                 {
-                    processed.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
-                    int sw = processed.Width, sh = processed.Height;
-
-                    using (var img = Pix.LoadFromFile(tmp))
-                    using (var page = GetEngine().Process(img, PageSegMode.SingleBlock))
-                    using (var iter = page.GetIterator())
+                    foreach (var row in report.Measures)
                     {
-                        iter.Begin();
-                        do
+                        double chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
+                        double chromaErr = Math.Abs(chromaCalc - row.Chroma);
+
+                        if (chromaErr <= REOCR_CHROMA_THRESHOLD)
+                            continue;
+
+                        var bRectScaled = FindRowRectByBoxes(detection, row.Illuminant, row.Type);
+                        if (!bRectScaled.HasValue)
+                            continue;
+
+                        // Des-escalar el rectángulo a la imagen original
+                        float invScale = 1f / detection.ScaleFactor;
+                        var bRect = new Rectangle(
+                            (int)(bRectScaled.Value.X * invScale),
+                            (int)(bRectScaled.Value.Y * invScale),
+                            (int)(bRectScaled.Value.Width * invScale),
+                            (int)(bRectScaled.Value.Height * invScale)
+                        );
+
+                        // ✅ AQUÍ ES DONDE SE LLAMA CORRECTAMENTE
+                        double newB = ExtractDoubleSafe(gray, bRect);
+
+                        if (ColorimetryRanges.IsValidAB(newB))
                         {
-                            string word = iter.GetText(PageIteratorLevel.Word);
-                            if (string.IsNullOrWhiteSpace(word)) continue;
+                            double newChroma = Math.Sqrt(row.A * row.A + newB * newB);
+                            if (Math.Abs(newChroma - row.Chroma) < chromaErr)
+                            {
+                                report.ParseLog.Add(
+                                    $"[REOCR/NUM] {row.Illuminant}/{row.Type} b*: {row.B:F2} → {newB:F2}"
+                                );
 
-                            Tesseract.Rect bbox;
-                            if (!iter.TryGetBoundingBox(PageIteratorLevel.Word, out bbox)) continue;
+                                row.B = newB;
+                                row.Chroma = newChroma;
 
-                            // Convertir coordenadas de imagen procesada → imagen original
-                            float scaleX = (float)original.Width / sw;
-                            float scaleY = (float)original.Height / sh;
-                            var origRect = new Rectangle(
-                                (int)(bbox.X1 * scaleX),
-                                (int)(bbox.Y1 * scaleY),
-                                (int)((bbox.X2 - bbox.X1) * scaleX),
-                                (int)((bbox.Y2 - bbox.Y1) * scaleY));
+                                double h = Math.Atan2(row.B, row.A) * 180.0 / Math.PI;
+                                if (h < 0) h += 360.0;
+                                row.Hue = Math.Round(h);
 
-                            result.Add(Tuple.Create(word.Trim(), origRect));
+                                row.NeedsReview = false;
+                            }
                         }
-                        while (iter.Next(PageIteratorLevel.Word));
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                // Si falla la iteración de bboxes, continuar sin re-OCR
-                System.Diagnostics.Debug.WriteLine("[REOCR] GetWordBoundingBoxes: " + ex.Message);
-            }
-            finally { if (File.Exists(tmp)) File.Delete(tmp); }
 
-            return result;
+                finally
+                {
+                    if (detection.ScaledImage != null)
+                        detection.ScaledImage.Dispose();
+                }
+            }
         }
 
-        // ── Localizar fila por bounding boxes ────────────────────────────
+        // ── Localizar celda B* usando celdas OpenCV ────────────────────────────
 
         private Rectangle? FindRowRectByBoxes(
-            List<Tuple<string, Rectangle>> boxes, string illuminant, string type)
+            ColrTableDetector.CvDetectionResult detection, string illuminant, string type)
         {
+            if (detection.Cells == null || detection.Cells.Count == 0) return null;
+
             string illUpper = illuminant.ToUpperInvariant();
             string typeUpper = type.ToUpperInvariant();
 
-            // Buscar todas las ocurrencias del iluminante
-            var illBoxes = new List<Rectangle>();
-            foreach (var box in boxes)
+            int maxRow = 0;
+            foreach (var c in detection.Cells)
+                if (c.Row > maxRow) maxRow = c.Row;
+
+            for (int r = 0; r <= maxRow; r++)
             {
-                string w = NormalizeOCRLine(box.Item1);
-                if (w.Contains(illUpper)) illBoxes.Add(box.Item2);
-            }
-            if (illBoxes.Count == 0) return null;
+                ColrTableDetector.CvTableCell illCell = null;
+                ColrTableDetector.CvTableCell typeCell = null;
+                ColrTableDetector.CvTableCell bCell = null;
 
-            // Para cada ocurrencia del iluminante, buscar si en la misma línea (±Y) hay STD o LOT
-            foreach (var illRect in illBoxes)
-            {
-                int rowY = illRect.Y;
-                int rowH = illRect.Height;
-                int rowTol = Math.Max(rowH, 12);
-
-                bool foundType = false;
-                int minX = illRect.X, maxX = illRect.Right;
-                int minY = rowY - rowTol, maxY = rowY + rowH + rowTol;
-
-                foreach (var box in boxes)
+                foreach (var c in detection.Cells)
                 {
-                    string w = NormalizeOCRLine(box.Item1);
-                    bool sameRow = box.Item2.Y >= minY && box.Item2.Y <= maxY;
-                    if (!sameRow) continue;
-
-                    if (w.Contains(typeUpper) ||
-                        (type == "Std" && (w.Contains("STD") || w.Contains("5TD"))) ||
-                        (type == "Lot" && w.Contains("LOT")))
-                    {
-                        foundType = true;
-                    }
-                    // Expandir el rectángulo horizontal con todos los tokens de esta línea
-                    if (box.Item2.X < minX) minX = box.Item2.X;
-                    if (box.Item2.Right > maxX) maxX = box.Item2.Right;
+                    if (c.Row == r && c.Col == 0) illCell = c;
+                    if (c.Row == r && c.Col == 1) typeCell = c;
+                    if (c.Row == r && c.Col == 4) bCell = c;
                 }
 
-                if (foundType)
+                if (illCell == null || typeCell == null || bCell == null) continue;
+
+                string illText = NormalizeOCRLine(OcrCellRegion(detection.ScaledImage, illCell.Bounds, PageSegMode.SingleWord, false));
+                if (!illText.Contains(illUpper)) continue;
+
+                string typeText = NormalizeOCRLine(OcrCellRegion(detection.ScaledImage, typeCell.Bounds, PageSegMode.SingleWord, false));
+                if (typeText.Contains(typeUpper) ||
+                    (type == "Std" && (typeText.Contains("STD") || typeText.Contains("5TD") || typeText.Contains("ST0"))) ||
+                    (type == "Lot" && (typeText.Contains("LOT") || typeText.Contains("L0T"))))
                 {
-                    // Construir rectángulo completo de la fila con margen
-                    int margin = 3;
-                    return new Rectangle(
-                        Math.Max(0, minX - margin),
-                        Math.Max(0, rowY - margin),
-                        maxX - minX + margin * 2,
-                        rowH + margin * 2);
+                    // Retornar directamente la celda OpenCV de la columna 4 (b*)
+                    return bCell.Bounds;
                 }
             }
             return null;
         }
-
-        /// Re-OCR de todos los campos numéricos de una banda y actualiza la fila si mejora.
-        private void TryReOcrRow(Bitmap original, Rectangle band, ColorimetricRow row, List<string> log)
-        {
-            int w = original.Width;
-
-            // Dividir la banda en 5 zonas para L,a,b,C,h
-            int dataStart = (int)(w * 0.32);
-            int dataWidth = w - dataStart;
-            int colW = dataWidth / 5;
-
-            var colNames = new[] { "L", "a", "b", "C", "h" };
-            var results = new double[5];
-            var success = new bool[5];
-
-            for (int ci = 0; ci < 5; ci++)
-            {
-                var cellRect = new Rectangle(
-                    dataStart + ci * colW + 2,
-                    band.Y,
-                    colW - 4,
-                    band.Height);
-
-                // A: OCR de celda individual con preproceso agresivo
-                string cellText = OcrCellRegion(original, cellRect, PageSegMode.SingleWord);
-                cellText = cellText.Trim()
-                    .Replace(" ", "").Replace(",", ".")
-                    .Replace("O", "0").Replace("l", "1").Replace("I", "1");
-
-                var m = Regex.Match(cellText, @"-?\d+(?:\.\d+)?");
-                if (m.Success)
-                {
-                    double v = RestoreMeasureDecimal(m.Value);
-                    results[ci] = v;
-                    success[ci] = true;
-                    if (log != null)
-                        log.Add(string.Format("[REOCR] {0}/{1} col={2} raw='{3}' → {4:F4}",
-                            row.Illuminant, row.Type, colNames[ci], cellText.Trim(), v));
-                }
-            }
-
-            double newA = success[1] ? results[1] : row.A;
-            double newB = success[2] ? results[2] : row.B;
-            double newC = success[3] ? results[3] : row.Chroma;
-            double newH = success[4] ? results[4] : row.Hue;
-            double newL = success[0] ? results[0] : row.L;
-
-            // Aplicar correcciones de coherencia sobre los valores re-OCR
-            newB = FixBviaChroma(newB, newB.ToString("F2"), newA, newC);
-            newA = FixAviaChroma(newA, newA.ToString("F2"), newB, newC);
-
-            double errNew = Math.Abs(Math.Sqrt(newA * newA + newB * newB) - newC);
-            double errOld = Math.Abs(Math.Sqrt(row.A * row.A + row.B * row.B) - row.Chroma);
-
-            if (errNew < errOld)
-            {
-                if (log != null)
-                    log.Add(string.Format(
-                        "[REOCR] {0}/{1} MEJORA err {2:F4}→{3:F4} | a:{4:F2}→{5:F2} b:{6:F2}→{7:F2}",
-                        row.Illuminant, row.Type, errOld, errNew, row.A, newA, row.B, newB));
-
-                if (ColorimetryRanges.IsValidL(newL)) row.L = newL;
-                if (ColorimetryRanges.IsValidAB(newA)) row.A = newA;
-                if (ColorimetryRanges.IsValidAB(newB)) row.B = newB;
-                if (ColorimetryRanges.IsValidChroma(newC)) row.Chroma = newC;
-                if (ColorimetryRanges.IsValidHue(newH)) row.Hue = newH;
-                row.NeedsReview = errNew > REOCR_CHROMA_THRESHOLD;
-            }
-            else
-            {
-                if (log != null)
-                    log.Add(string.Format("[REOCR] {0}/{1} sin mejora errNew={2:F4} >= errOld={3:F4}",
-                        row.Illuminant, row.Type, errNew, errOld));
-            }
-        }
-
         /// A: OCR de una región específica de la imagen original con preproceso agresivo.
         private string OcrCellRegion(Bitmap original, Rectangle region, PageSegMode psm, bool numericOnly = true)
         {
@@ -894,7 +783,6 @@ namespace Color
             catch { return string.Empty; }
             finally { if (File.Exists(tmp)) File.Delete(tmp); }
         }
-
         /// Binarización por umbral Otsu — C# 7.3, sin unsafe, usa Marshal.Copy para velocidad.
         private static Bitmap BinarizeOtsu(Bitmap src)
         {
@@ -977,7 +865,6 @@ namespace Color
             result.UnlockBits(dstData);
             return result;
         }
-
         // ── Preprocesamiento ───────────────────────────────────
 
         private static float MeasureSharpness(Bitmap src)
@@ -1125,25 +1012,6 @@ namespace Color
                 if (File.Exists(tmp)) File.Delete(tmp);
             }
         }
-
-        // ── Parse general ─────────────────────────────────────
-        private OcrReport ParseFullReport(string ocrText)
-        {
-            var report = new OcrReport();
-
-            ParseCombinedTable(ocrText, report);
-
-            var t = ParseTolerances(ocrText);
-            report.TolDL = t.Item1;
-            report.TolDC = t.Item2;
-            report.TolDH = t.Item3;
-            report.TolDE = t.Item4;
-
-            report.PrintDate = ParsePrintDate(ocrText);
-
-            return report;
-        }
-
         // PARSER PRINCIPAL — tabla combinada
         private void ParseCombinedTable(string ocrText, OcrReport report)
         {
@@ -1245,7 +1113,6 @@ namespace Color
 
             report.Measures = DedupAndSort(report.Measures);
             report.CmcDifferences = DedupCmc(report.CmcDifferences);
-
             // CAMBIO 3 — Resumen de extracción al final del log para diagnóstico rápido
             int totalMeasures = report.Measures.Count;
             int needsReview = 0;
@@ -1360,7 +1227,6 @@ namespace Color
                     vA = aMul; vB = bMul; vC = cMul;
                 }
             }
-
             // ── FIX: Truncamiento simultáneo de a*, b* y Chroma ────────────────
             {
                 double vH_pre = ParseHueDouble(tokens[base_ + 4]);
@@ -1402,14 +1268,14 @@ namespace Color
                         // Coherencia interna con los nuevos valores
                         double chromaCalc = Math.Sqrt(tryA * tryA + tryB * tryB);
                         double chromaErr = Math.Abs(chromaCalc - tryC);
-                        if (chromaErr > 1.5) continue; 
+                        if (chromaErr > 1.5) continue;
 
                         // Coherencia con Hue: el ángulo atan2(b,a) debe coincidir con vH_pre
                         double hueCalc = Math.Atan2(tryB, tryA) * 180.0 / Math.PI;
                         if (hueCalc < 0) hueCalc += 360.0;
                         double hueErr = Math.Abs(hueCalc - vH_pre);
                         if (hueErr > 180) hueErr = 360 - hueErr;
-                        if (hueErr > 15.0) continue; 
+                        if (hueErr > 15.0) continue;
 
                         double totalErr = chromaErr + hueErr * 0.1;
                         if (totalErr < bestTripleErr)
@@ -1430,7 +1296,6 @@ namespace Color
                     }
                 }
             }
-
             // Corregir b* via coherencia con Chroma 
             vB = FixBviaChroma(vB, tokens[base_ + 2], vA, vC);
             // FIX: Corregir a* también via coherencia con Chroma 
@@ -1518,7 +1383,6 @@ namespace Color
                 NeedsReview = (!ok || corrected)
             };
         }
-
         /// Localiza el índice base del quintuplo [L, a*, b*, Chroma, Hue] en la lista de tokens.
         private static int FindMeasureBase(List<string> tokens)
         {
@@ -1597,7 +1461,6 @@ namespace Color
             return double.TryParse(candidate, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out v) && v <= 100 ? v : double.NaN;
         }
-
         private static bool LooksLikeHue(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return false;
@@ -1616,7 +1479,6 @@ namespace Color
             }
             return true;
         }
-
         // Inserta punto decimal en mediciones si el OCR lo omitió (XX.XX)
         private static double RestoreMeasureDecimal(string token)
         {
@@ -1655,35 +1517,8 @@ namespace Color
             if (!Regex.IsMatch(d, @"^\d+$")) return SafeParse(token);
             if (d.Length <= 2) return SafeParse(token);
 
-            // Para 3 dígitos con signo NEGATIVO:
-            //
-            // Para 3 dígitos POSITIVOS:
-            if (d.Length == 3)
-            {
-                double candXX1;
-                string rebuildXX1 = (neg ? "-" : "") + d.Substring(0, 2) + "." + d[2];
-                double candX2X;
-                string rebuildX2X = (neg ? "-" : "") + d[0] + "." + d.Substring(1);
-                bool okXX1 = double.TryParse(rebuildXX1, NumberStyles.Float,
-                    CultureInfo.InvariantCulture, out candXX1) && Math.Abs(candXX1) <= 100;
-                bool okX2X = double.TryParse(rebuildX2X, NumberStyles.Float,
-                    CultureInfo.InvariantCulture, out candX2X) && Math.Abs(candX2X) <= 100;
-
-                if (neg)
-                {
-                    // Negativo: preferir X.XX (más común para a*/b* en textiles)
-                    if (okX2X) return candX2X;
-                    if (okXX1) return candXX1;
-                }
-                else
-                {
-                    // Positivo: XX.X si <= 60, X.XX si XX.X > 60 (improbable para a*/Chroma)
-                    if (okXX1 && candXX1 <= 60.0) return candXX1;
-                    if (okX2X) return candX2X;
-                    if (okXX1) return candXX1;
-                }
-            }
-
+            // Sin punto decimal y más de 2 caracteres: asumir 2 decimales fijos (ej. 189 -> 1.89)
+            // Esto es porque los reportes colorimétricos siempre usan 2 decimales para L*, a*, b*, C*
             return SafeParse((neg ? "-" : "") + d.Substring(0, d.Length - 2) + "." + d.Substring(d.Length - 2));
         }
 
@@ -1704,7 +1539,6 @@ namespace Color
             if (diff > 180) diff = 360 - diff;
             if (diff > 5) lot.Hue = Math.Round(newHue);
         }
-
         // Corrige b* usando coherencia con Chroma: prueba variantes OCR (3↔8, 6↔8)
         private static double FixBviaChroma(double bRestored, string bToken, double a, double cOcr)
         {
@@ -1723,7 +1557,7 @@ namespace Color
                 bool bNeg2 = bStr2.StartsWith("-");
                 string abs2 = bNeg2 ? bStr2.Substring(1) : bStr2;
                 int dp2 = abs2.IndexOf('.');
-                if (dp2 > 1) 
+                if (dp2 > 1)
                 {
                     // Mover punto 1 izquierda: "36.0"→"3.60", "50.6"→"5.06"
                     string newAbs2 = abs2.Substring(0, dp2 - 1) + "." + abs2[dp2 - 1] + abs2.Substring(dp2 + 1);
@@ -1773,14 +1607,12 @@ namespace Color
                 // Retorno temprano si ya encontramos solución buena
                 if (bestErr <= THRESHOLD) return bestVal;
             }
-
             // ── Si el positivo es incoherente con Chroma, probar negativo ────────
             if (errOrig > 2.0 && bOrig > 0)
             {
                 double errNeg = Math.Abs(Math.Sqrt(a * a + (-bOrig) * (-bOrig)) - cOcr);
                 if (errNeg < bestErr) { bestErr = errNeg; bestVal = -bOrig; }
             }
-
             // ── Punto decimal desplazado ×10 ─────────────────────────────────────
             if (errOrig > 2.0)
             {
@@ -1798,7 +1630,6 @@ namespace Color
                 }
                 if (bestErr <= THRESHOLD) return bestVal;
             }
-
             // ── Confusiones de dígitos (3↔8, 6↔8, etc.) ────────────────────────
             var confusions = new Dictionary<char, char[]>
             {
@@ -1828,7 +1659,6 @@ namespace Color
                     if (e < bestErr) { bestErr = e; bestVal = v; }
                 }
             }
-
             // Probar 2 dígitos
             for (int i = 0; i < s.Length; i++)
             {
@@ -1851,7 +1681,6 @@ namespace Color
                         }
                 }
             }
-
             // ── Dígito faltante ──────────────────────────────────────────────────
             {
                 string bStrFix = (bToken ?? "").Trim().Replace(',', '.');
@@ -1890,7 +1719,6 @@ namespace Color
 
             return bestVal;
         }
-
         // Corrige a* via coherencia con Chroma (simétrico a FixBviaChroma)
         private static double FixAviaChroma(double aRestored, string aToken, double b, double cOcr)
         {
@@ -2025,11 +1853,10 @@ namespace Color
 
             return bestVal;
         }
-
         // Corrige L* usando coherencia entre iluminantes: si difiere >2 del promedio, prueba 6↔8
         private static double FixLviaNeighbors(double lVal, string lToken, List<ColorimetricRow> existing)
         {
-            const double OUTLIER_THRESHOLD = 2.0; 
+            const double OUTLIER_THRESHOLD = 2.0;
             if (existing == null || existing.Count < 2) return lVal;
             double sum = 0; int cnt = 0;
             foreach (var r in existing) { sum += r.L; cnt++; }
@@ -2043,7 +1870,7 @@ namespace Color
                 {'6', new[]{'8','9'}},
                 {'8', new[]{'6','9'}},
                 {'3', new[]{'8'}},
-                {'4', new[]{'8'}},   
+                {'4', new[]{'8'}},
                 {'7', new[]{'8'}},
                 {'9', new[]{'8'}},
                 {'0', new[]{'8'}}
@@ -2097,7 +1924,6 @@ namespace Color
 
             return v;
         }
-
         // Deltas
         private static double RestoreDeltaDecimal(string token)
         {
@@ -2146,7 +1972,6 @@ namespace Color
                 // Fallback: módulo 360
                 v = v % 360;
             }
-
             // FIX: Hue = 0 cuando debería ser ~200: el OCR perdió dígitos.
             return v;
         }
@@ -2164,7 +1989,6 @@ namespace Color
 
             return hue;
         }
-
         // ── Helpers para FIX/DIGIT (truncamiento simultáneo) ──────────────────
         private static int CountIntDigits(string token)
         {
@@ -2174,7 +1998,6 @@ namespace Color
             string intPart = dot >= 0 ? s.Substring(0, dot) : s;
             return intPart.TrimStart('0').Length == 0 ? 1 : intPart.Length;
         }
-
         /// Intenta insertar 'ins' como primer dígito de la parte entera del token.
         private static double TryInsertLeadingDigit(string token, char ins)
         {
@@ -2191,7 +2014,6 @@ namespace Color
             if (Math.Abs(v) > 100) return double.NaN;
             return v;
         }
-
         private static double SafeParse(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return 0;
@@ -2199,7 +2021,6 @@ namespace Color
             double v;
             return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out v) ? v : 0;
         }
-
         // Corrección de signos vía Hue
         private static void CorrectSignsByHue(ref double a, ref double b, double hue)
         {
@@ -2233,7 +2054,6 @@ namespace Color
             double e = Math.Abs(h - refH);
             return e > 180 ? 360 - e : e;
         }
-
         // Autocorrección de un dígito (8↔3/5/6, 6↔0, 1↔7, etc.)
         private static void TryFixOneDigit(string originalText, double current, Func<double, double> scorer, out bool ok, out double fixedVal)
         {
@@ -2248,8 +2068,8 @@ namespace Color
             map['5'] = new[] { '6' };
             map['6'] = new[] { '8', '0' };
             map['7'] = new[] { '1' };
-            map['8'] = new[] { '3', '6', '0', '9' }; 
-            map['9'] = new[] { '0', '8' };            
+            map['8'] = new[] { '3', '6', '0', '9' };
+            map['9'] = new[] { '0', '8' };
 
             for (int i = 0; i < s.Length; i++)
             {
@@ -2263,7 +2083,6 @@ namespace Color
                     }
                 }
             }
-
             // Insertar punto si no existe 
             if (s.IndexOf('.') < 0 && Regex.IsMatch(s, @"^-?\d{3,}$"))
             {
@@ -2274,7 +2093,6 @@ namespace Color
                     set.Add(candDot);
                 }
             }
-
             // FIX: Eliminar dígito extra al inicio
             if (s.IndexOf('.') < 0 && s.TrimStart('-').Length > 3)
             {
@@ -2303,7 +2121,6 @@ namespace Color
             ok = best < 0.9;
             fixedVal = bestVal;
         }
-
         // DELTAS CMC — búsqueda por rango
         private static CmcDifferenceRow ParseCmcFromStdPart(
             string stdRaw, string lotNorm, string illuminant, List<string> log)
@@ -2396,15 +2213,14 @@ namespace Color
             }
             return -1;
         }
-
         // EXTRACCIÓN DE TOKENS NUMÉRICOS
         private static List<string> ExtractNumericTokens(string rawLine)
         {
             var result = new List<string>();
 
             string line = (rawLine ?? string.Empty)
-                .Replace('\u2212', '-')  
-                .Replace(',', '.');      
+                .Replace('\u2212', '-')
+                .Replace(',', '.');
 
             // 1) Enmascarar números dentro del nombre del iluminante 
             line = MaskIlluminantNumbers(line);
@@ -2476,7 +2292,7 @@ namespace Color
             line = Regex.Replace(line, @"\bF12\b", "FXX", RegexOptions.IgnoreCase);
             line = Regex.Replace(line, @"\bF2\b", "FX", RegexOptions.IgnoreCase);
             line = Regex.Replace(line, @"\bF7\b", "FX", RegexOptions.IgnoreCase);
-       
+
             return line;
         }
 
@@ -2630,8 +2446,8 @@ namespace Color
             if (string.IsNullOrEmpty(s)) return string.Empty;
 
             string t = s
-                .Replace('\u2212', '-')  
-                .Replace(',', '.')       
+                .Replace('\u2212', '-')
+                .Replace(',', '.')
                 .Replace('\u2018', '\'')
                 .Replace('\u201C', '"')
                 .Replace('\u201D', '"')
@@ -2642,65 +2458,64 @@ namespace Color
 
             // ── STD / LOT ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\b5TD\b", "STD");
-            t = Regex.Replace(t, @"\b5T0\b", "STD"); 
-            t = Regex.Replace(t, @"\bST0\b", "STD"); 
-            t = Regex.Replace(t, @"\bSTB\b", "STD"); 
-            t = Regex.Replace(t, @"\bSTO\b", "STD"); 
-            t = Regex.Replace(t, @"\b5L0\b", "STD"); 
+            t = Regex.Replace(t, @"\b5T0\b", "STD");
+            t = Regex.Replace(t, @"\bST0\b", "STD");
+            t = Regex.Replace(t, @"\bSTB\b", "STD");
+            t = Regex.Replace(t, @"\bSTO\b", "STD");
+            t = Regex.Replace(t, @"\b5L0\b", "STD");
             t = Regex.Replace(t, @"\bL0T\b", "LOT");
-            t = Regex.Replace(t, @"\bL0T\b", "LOT"); 
 
             // ── TL84 / TL83 / TL85 ───────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bTLS4\b", "TL84"); 
+            t = Regex.Replace(t, @"\bTLS4\b", "TL84");
             t = Regex.Replace(t, @"\bTLS3\b", "TL83");
             t = Regex.Replace(t, @"\bTLS5\b", "TL85");
-            t = Regex.Replace(t, @"\bTL8A\b", "TL84"); 
-            t = Regex.Replace(t, @"\bTL8B\b", "TL83"); 
-            t = Regex.Replace(t, @"\bTLB4\b", "TL84"); 
+            t = Regex.Replace(t, @"\bTL8A\b", "TL84");
+            t = Regex.Replace(t, @"\bTL8B\b", "TL83");
+            t = Regex.Replace(t, @"\bTLB4\b", "TL84");
             t = Regex.Replace(t, @"\bTLB3\b", "TL83");
             t = Regex.Replace(t, @"\bTI84\b", "TL84");
             t = Regex.Replace(t, @"\bTI83\b", "TL83");
             t = Regex.Replace(t, @"\bT1[8S]4\b", "TL84");
-            t = Regex.Replace(t, @"\b1L84\b", "TL84"); 
+            t = Regex.Replace(t, @"\b1L84\b", "TL84");
             t = Regex.Replace(t, @"\b1L83\b", "TL83");
-            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84"); 
+            t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*4\b", "TL84");
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*3\b", "TL83");
             t = Regex.Replace(t, @"\bT\s*L\s*[8S]\s*5\b", "TL85");
 
             // ── D65 / D50 / D55 / D75 ────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bD6S\b", "D65");  
-            t = Regex.Replace(t, @"\bDG5\b", "D65");  
-            t = Regex.Replace(t, @"\b065\b", "D65");  
-            t = Regex.Replace(t, @"\bDO5\b", "D65");  
-            t = Regex.Replace(t, @"\bD6O\b", "D65");  
-            t = Regex.Replace(t, @"\bDSO\b", "D50");  
-            t = Regex.Replace(t, @"\bD5O\b", "D50");  
-            t = Regex.Replace(t, @"\bDS0\b", "D50");  
-            t = Regex.Replace(t, @"\b0S0\b", "D50");  
-            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");  
+            t = Regex.Replace(t, @"\bD6S\b", "D65");
+            t = Regex.Replace(t, @"\bDG5\b", "D65");
+            t = Regex.Replace(t, @"\b065\b", "D65");
+            t = Regex.Replace(t, @"\bDO5\b", "D65");
+            t = Regex.Replace(t, @"\bD6O\b", "D65");
+            t = Regex.Replace(t, @"\bDSO\b", "D50");
+            t = Regex.Replace(t, @"\bD5O\b", "D50");
+            t = Regex.Replace(t, @"\bDS0\b", "D50");
+            t = Regex.Replace(t, @"\b0S0\b", "D50");
+            t = Regex.Replace(t, @"\bD\s*6\s*5\b", "D65");
             t = Regex.Replace(t, @"\bD\s*[5S]\s*0\b", "D50");
             t = Regex.Replace(t, @"\bD\s*[5S]\s*5\b", "D55");
             t = Regex.Replace(t, @"\bD\s*7\s*5\b", "D75");
 
             // ── CWF / CWF2 ───────────────────────────────────────────────────────
-            t = Regex.Replace(t, @"\bCVF\b", "CWF");  
-            t = Regex.Replace(t, @"\bGWF\b", "CWF");  
-            t = Regex.Replace(t, @"\bCW-F\b", "CWF");  
-            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF"); 
+            t = Regex.Replace(t, @"\bCVF\b", "CWF");
+            t = Regex.Replace(t, @"\bGWF\b", "CWF");
+            t = Regex.Replace(t, @"\bCW-F\b", "CWF");
+            t = Regex.Replace(t, @"\bC\s*W\s*F\b", "CWF");
             t = Regex.Replace(t, @"\bCW/F\b", "CWF");
 
             // ── F11 / F12 ─────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\bF\s*1\s*1\b", "F11");
             t = Regex.Replace(t, @"\bF\s*1\s*2\b", "F12");
-            t = Regex.Replace(t, @"\bFI1\b", "F11"); 
-            t = Regex.Replace(t, @"\bFl1\b", "F11"); 
-            t = Regex.Replace(t, @"\bF1I\b", "F11"); 
+            t = Regex.Replace(t, @"\bFI1\b", "F11");
+            t = Regex.Replace(t, @"\bFl1\b", "F11");
+            t = Regex.Replace(t, @"\bF1I\b", "F11");
 
             // ── MEJORA 6: iluminantes adicionales no cubiertos antes ──────────────
-            t = Regex.Replace(t, @"\bUY\b", "UV");        
-            t = Regex.Replace(t, @"\bCWF1\b", "CWF");    
-            t = Regex.Replace(t, @"\bD6S5\b", "D65");     
-            t = Regex.Replace(t, @"\bD\s+65\b", "D65");   
+            t = Regex.Replace(t, @"\bUY\b", "UV");
+            t = Regex.Replace(t, @"\bCWF1\b", "CWF");
+            t = Regex.Replace(t, @"\bD6S5\b", "D65");
+            t = Regex.Replace(t, @"\bD\s+65\b", "D65");
 
             // ── Otros ────────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\[LLUMINANT\b", "ILLUMINANT");
@@ -2724,7 +2539,6 @@ namespace Color
     // ══════════════════════════════════════════════════════════════════════════
     // CV TABLE DETECTOR — Detección de tabla colorimétrica con OpenCV multi-pass
     // ══════════════════════════════════════════════════════════════════════════
-
     internal static class ColrTableDetector
     {
         public class CvDetectionResult
@@ -2735,7 +2549,7 @@ namespace Color
             public int RowCount;
             public int ColCount;
             public List<CvTableCell> Cells = new List<CvTableCell>();
-            public Bitmap ScaledImage;   
+            public Bitmap ScaledImage;
             public float ScaleFactor;
         }
 
@@ -2745,7 +2559,7 @@ namespace Color
             public int Col;
             public Rectangle Bounds;
             public string Field;
-            public string FieldName { get { return Field; } } 
+            public string FieldName { get { return Field; } }
         }
 
         private const int TARGET_WIDTH = 1200;
@@ -2825,7 +2639,6 @@ namespace Color
             }
             finally { mat.Dispose(); gray.Dispose(); }
         }
-
         private static CvDetectionResult TryDetect(Mat gray, DetectConfig cfg)
         {
             var result = new CvDetectionResult();
@@ -2913,7 +2726,7 @@ namespace Color
                 vLines = MergeLines(vLines, false, cfg.MergeTol);
 
                 // Construir celdas — compensar offset absoluto (trLocal coords → image coords)
-                int absOffX = tr.X; 
+                int absOffX = tr.X;
                 int absOffY = tr.Y;
 
                 for (int r = 0; r < hLines.Length - 1; r++)
@@ -2951,7 +2764,6 @@ namespace Color
                 if (inter != null) inter.Dispose();
             }
         }
-
         private static OpenCvSharp.Rect? GetTableRegion(Mat gray)
         {
             Mat edges = new Mat();
@@ -2978,7 +2790,6 @@ namespace Color
             }
             finally { edges.Dispose(); }
         }
-
         private static LineSegmentPoint[] MergeLines(LineSegmentPoint[] lines, bool horizontal, int tol)
         {
             if (lines == null || lines.Length == 0) return lines;
@@ -3009,7 +2820,6 @@ namespace Color
             }
             return merged;
         }
-
         private static string MapColumnToField(int col)
         {
             switch (col)
@@ -3028,7 +2838,6 @@ namespace Color
                 default: return "Other";
             }
         }
-
         private static Rectangle ScaleRect(Rectangle r, float s)
         {
             return new Rectangle((int)(r.X * s), (int)(r.Y * s), (int)(r.Width * s), (int)(r.Height * s));
@@ -3038,7 +2847,6 @@ namespace Color
     // ══════════════════════════════════════════════════════════════════════════
     // CV TABLE PARSER — Construye OcrReport desde diccionario de textos por celda
     // ══════════════════════════════════════════════════════════════════════════
-
     internal static class ColrTableParser
     {
         public static OcrReport BuildReport(
@@ -3132,13 +2940,11 @@ namespace Color
             }
             return report;
         }
-
         private static string GetCell(Dictionary<int, string> row, int col)
         { if (col < 0) return string.Empty; string v; return row.TryGetValue(col, out v) ? (v ?? string.Empty) : string.Empty; }
 
         private static string NormUpper(string s)
         { return string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().ToUpperInvariant(); }
-
         private static string NormalizeIlluminant(string raw)
         {
             string u = NormUpper(raw);
@@ -3167,7 +2973,6 @@ namespace Color
     // ══════════════════════════════════════════════════════════════════════════
     // LOCAL CORRECTOR — Portado de ClaudeService (ColorimetriaAPI)
     // ══════════════════════════════════════════════════════════════════════════
-
     public class LocalCorrectionResult
     {
         public string Field { get; set; }
@@ -3179,14 +2984,12 @@ namespace Color
         public double NewCoherenceError { get; set; }
         public string Reason { get; set; }
     }
-
     internal static class LocalCorrector
     {
         private const double IMPROVEMENT_THRESHOLD = 0.3;
         private const double CHROMA_THRESHOLD = 0.35;
 
         // ── Punto de entrada ─────────────────────────────────────────────────
-
         public static List<LocalCorrectionResult> CorrectReport(OcrReport report)
         {
             var results = new List<LocalCorrectionResult>();
