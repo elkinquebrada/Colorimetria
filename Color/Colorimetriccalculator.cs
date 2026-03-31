@@ -42,7 +42,6 @@ namespace Color
     // ================================
     public static class ColorimetricCalculator
     {
-        /// Calcula diferencias por iluminante (Std vs Lot):
 
         public static List<ColorCorrectionResult> Calculate(List<ColorimetricRow> rows)
         {

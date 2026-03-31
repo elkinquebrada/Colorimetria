@@ -673,7 +673,6 @@ namespace Color
                 }
             }
         }
-
         // ── Localizar celda B* usando celdas OpenCV ────────────────────────────
 
         private Rectangle? FindRowRectByBoxes(
@@ -1182,9 +1181,6 @@ namespace Color
                     tokens[base_ + 3], tokens[base_ + 4]));
 
             // Eliminar FIX UNIVERSAL (/10) y FIX UNIVERSAL INVERSO (x10): 
-            // estas heurísticas basadas en C/L ratio causaban corrupción falsa
-            // de la coma decimal. La responsabilidad de colocar los decimales se 
-            // mantiene 100% en RestoreMeasureDecimal.
             {
                 double vH_pre = ParseHueDouble(tokens[base_ + 4]);
                 bool hueValid = vH_pre >= 1.0 && vH_pre <= 360.0;
@@ -1403,18 +1399,18 @@ namespace Color
             AcceptPosition:
                 return i;
             }
-            return 0; // fallback prudente
+            return 0; 
         }
 
         private static double RestoreMeasureDecimalAlt(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return double.NaN;
             string t = token.Trim().Replace(',', '.');
-            if (t.StartsWith("-")) return double.NaN; // solo positivos
-            if (t.Contains(".")) return double.NaN;   // ya tiene punto
-            if (!Regex.IsMatch(t, @"^\d{3}$")) return double.NaN; // solo exactamente 3 dígitos
+            if (t.StartsWith("-")) return double.NaN; 
+            if (t.Contains(".")) return double.NaN;   
+            if (!Regex.IsMatch(t, @"^\d{3}$")) return double.NaN; 
             double v;
-            string candidate = t[0] + "." + t.Substring(1); // X.XX
+            string candidate = t[0] + "." + t.Substring(1); 
             return double.TryParse(candidate, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out v) && v <= 100 ? v : double.NaN;
         }
@@ -1475,7 +1471,6 @@ namespace Color
             if (d.Length <= 2) return SafeParse(token);
 
             // Sin punto decimal y más de 2 caracteres: asumir 2 decimales fijos (ej. 189 -> 1.89)
-            // Esto es porque los reportes colorimétricos siempre usan 2 decimales para L*, a*, b*, C*
             return SafeParse((neg ? "-" : "") + d.Substring(0, d.Length - 2) + "." + d.Substring(d.Length - 2));
         }
 
@@ -2654,7 +2649,7 @@ namespace Color
 
                 // Recortar horiz y vert a tableRect relativo a workBin
                 OpenCvSharp.Rect trLocal = new OpenCvSharp.Rect(tr.X - offX, tr.Y - offY, tr.Width, tr.Height);
-                // Clamp a tamaño de workBin
+             
                 int wbW = workBin.Width, wbH = workBin.Height;
                 trLocal = new OpenCvSharp.Rect(
                     Math.Max(0, trLocal.X), Math.Max(0, trLocal.Y),
@@ -2800,7 +2795,6 @@ namespace Color
             return new Rectangle((int)(r.X * s), (int)(r.Y * s), (int)(r.Width * s), (int)(r.Height * s));
         }
     }
-
     // ══════════════════════════════════════════════════════════════════════════
     // CV TABLE PARSER — Construye OcrReport desde diccionario de textos por celda
     // ══════════════════════════════════════════════════════════════════════════
@@ -2926,7 +2920,6 @@ namespace Color
                 System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0.0;
         }
     }
-
     // ══════════════════════════════════════════════════════════════════════════
     // LOCAL CORRECTOR — Portado de ClaudeService (ColorimetriaAPI)
     // ══════════════════════════════════════════════════════════════════════════

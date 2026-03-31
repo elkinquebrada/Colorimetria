@@ -11,11 +11,11 @@ namespace Color
     public class DetectedCell
     {
         public Rectangle Bounds { get; set; }
-        public int Row { get; set; }  // índice de fila en la tabla (0 = encabezado)
-        public int Col { get; set; }  // índice de columna
-        public string Illuminant { get; set; }  // "D65", "TL84", etc. (null si no determinado)
-        public string RowType { get; set; }  // "Std" | "Lot" | "Header" | null
-        public string FieldName { get; set; }  // "L", "A", "B", "Chroma", "Hue", "dL"...
+        public int Row { get; set; }  
+        public int Col { get; set; }  
+        public string Illuminant { get; set; }  
+        public string RowType { get; set; } 
+        public string FieldName { get; set; }  
     }
 
     /// Resultado de la detección de tabla.
@@ -30,19 +30,18 @@ namespace Color
     }
 
     /// Detecta la estructura de la tabla CMC en una imagen usando OpenCV.
-    /// Estrategia: morfología + detección de líneas + clustering de intersecciones.
     public static class OpenCvTableDetector
     {
         // ── Constantes de configuración ───────────────────────────────────────
-        private const int MIN_H_LINE_LENGTH_PCT = 20;  // % del ancho mínimo para línea H
-        private const int MIN_V_LINE_LENGTH_PCT = 5;   // % del alto mínimo para línea V
-        private const int LINE_GAP = 8;   // tolerancia de gap en HoughLinesP
-        private const int LINE_THICKNESS = 2;   // grosor para dilatar líneas
-        private const int CELL_PADDING = 3;   // padding dentro de cada celda para OCR
-        private const int MIN_ROWS = 4;   // mínimo filas esperadas (D65+TL84+A = 6 filas de datos)
-        private const int MIN_COLS = 5;   // mínimo columnas (L,a,b,C,H)
-        private const int CLUSTER_TOLERANCE = 12;  // px para agrupar líneas paralelas cercanas
-        private const double MIN_TABLE_WIDTH_PCT = 0.4; // la tabla debe ocupar al menos 40% del ancho
+        private const int MIN_H_LINE_LENGTH_PCT = 20;  
+        private const int MIN_V_LINE_LENGTH_PCT = 5;   
+        private const int LINE_GAP = 8;   
+        private const int LINE_THICKNESS = 2;   
+        private const int CELL_PADDING = 3;   
+        private const int MIN_ROWS = 4;   
+        private const int MIN_COLS = 5;  
+        private const int CLUSTER_TOLERANCE = 12;  
+        private const double MIN_TABLE_WIDTH_PCT = 0.4; 
 
         // Nombres de campos por índice de columna (0-based, columna 0 = iluminante)
         private static readonly string[] FIELD_NAMES =
@@ -50,7 +49,6 @@ namespace Color
 
         // ── API pública ───────────────────────────────────────────────────────
 
-        /// Detecta la tabla CMC en la imagen y retorna las celdas con sus coordenadas.
         public static TableDetectionResult Detect(Bitmap original)
         {
             var result = new TableDetectionResult();
@@ -200,12 +198,10 @@ namespace Color
             int cols = lineMat.Cols;
 
             // Calcular proyección manualmente: sumar píxeles por fila o por columna
-            // Convertir Mat → Bitmap para lectura via LockBits (compatible .NET 4.8)
             int threshold = (int)(size * 0.20 * 255);
 
             if (horizontal)
             {
-                // Proyección Y: para cada fila, sumar todos los píxeles
                 for (int r = 0; r < rows; r++)
                 {
                     long rowSum = 0;
@@ -218,7 +214,6 @@ namespace Color
             }
             else
             {
-                // Proyección X: para cada columna, sumar todos los píxeles
                 for (int c = 0; c < cols; c++)
                 {
                     long colSum = 0;
@@ -261,7 +256,6 @@ namespace Color
             return result;
         }
     }
-
     // ══════════════════════════════════════════════════════════════════════════
     // PARSER DE TABLA DETECTADA
     // ══════════════════════════════════════════════════════════════════════════
@@ -280,8 +274,6 @@ namespace Color
             var report = new OcrReport();
 
             // Agrupar filas de datos por iluminante
-            // Estructura esperada: cada iluminante ocupa 2 filas (Std + Lot)
-            // Col 0 = Illuminant (solo en fila Std), Col 1 = Type, Col 2-6 = L,a,b,C,H
             string currentIlluminant = null;
             ColorimetricRow stdRow = null;
 

@@ -1,4 +1,4 @@
-// ColorimetryController.cs — Endpoints de la API
+
 using ColorimetriaAPI.Models;
 using ColorimetriaAPI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -19,26 +19,12 @@ namespace ColorimetriaAPI.Controllers
             _logger = logger;
         }
 
-        /// <summary>
         /// Healthcheck — verifica que la API está corriendo
-        /// </summary>
         [HttpGet("health")]
         public IActionResult Health() =>
             Ok(new { status = "ok", timestamp = DateTime.UtcNow });
 
-        /// <summary>
         /// Corrige tokens colorimétricos erróneos detectados por OCR.
-        /// Envía las medidas CIELab y recibe las correcciones sugeridas por Claude.
-        /// </summary>
-        /// <remarks>
-        /// Ejemplo de body:
-        /// {
-        ///   "chromaThreshold": 0.35,
-        ///   "measures": [
-        ///     { "illuminant": "D65", "type": "Std", "l": 52.3, "a": -3.6, "b": -36.0, "chroma": 5.06, "hue": 264.2 }
-        ///   ]
-        /// }
-        /// </remarks>
         [HttpPost("correct")]
         [ProducesResponseType(typeof(CorrectReportResponse), 200)]
         [ProducesResponseType(400)]
@@ -62,10 +48,7 @@ namespace ColorimetriaAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
         /// Valida coherencia colorimétrica sin llamar a Claude.
-        /// Útil para pre-filtrar antes de enviar al corrector.
-        /// </summary>
         [HttpPost("validate")]
         [ProducesResponseType(200)]
         public IActionResult Validate([FromBody] OcrReportRequest request)

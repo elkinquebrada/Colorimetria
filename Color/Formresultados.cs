@@ -22,14 +22,12 @@ namespace Color
         // ======= Controles de la vista =======
         private TextBox txtReport;
         private TextBox txtRecomendacion;
-        private SplitContainer splitMedicionesCmc; // IZQ: Reporte/OCR | DER: CMC/Recomendación
+        private SplitContainer splitMedicionesCmc; 
         private Button btnExportar;
         private Button btnCerrar;
         private Button btnRegresar;
 
         // ======= Tolerancias (L*, Hue y ΔE) =======
-        // Tolerancias — se leen desde Settings para que el usuario las configure
-        // Tolerancias LCH configurables por el usuario
         private double DL_MAX => Properties.Settings.Default.ToleranciaDL;
         private double DC_MAX => Properties.Settings.Default.ToleranciaDC;
         private double DH_MAX => Properties.Settings.Default.ToleranciaDH;
@@ -60,7 +58,7 @@ namespace Color
             txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
         }
 
-        /// <summary>Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.</summary>
+        // Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.
         public FormResultados(string resumen, List<EngineRes> corrections, List<Color.IlluminantCorrectionResult> recipeCorrections)
         {
             _resumenLegacy = resumen ?? "";
@@ -82,7 +80,7 @@ namespace Color
             txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
         }
 
-        /// <summary>Referencia al formulario OCR de origen — para el boton Regresar.</summary>
+        /// Referencia al formulario OCR de origen — para el boton Regresar.
         public Form FormOcrOrigen { get; set; }
 
         // ======= Inicialización de la UI (layout elástico) =======
@@ -90,7 +88,7 @@ namespace Color
         {
             // ---- Ventana y escalado ----
             this.Text = "Resultados — Corrección Colorimétrica";
-            this.FormBorderStyle = FormBorderStyle.Sizable; // permite min/max y resize
+            this.FormBorderStyle = FormBorderStyle.Sizable; 
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.ControlBox = true;
@@ -98,7 +96,7 @@ namespace Color
 
             this.BackColor = System.Drawing.Color.White;
             this.ForeColor = System.Drawing.Color.Black;
-            this.AutoScaleMode = AutoScaleMode.Dpi; // respeta 125%, 150%, etc.
+            this.AutoScaleMode = AutoScaleMode.Dpi; 
 
             // Tamaño inicial cómodo (90% del área de trabajo)
             var wa = Screen.PrimaryScreen.WorkingArea;
@@ -162,15 +160,15 @@ namespace Color
             // ---- Split central (Dock=Fill) ----
             splitMedicionesCmc = new SplitContainer
             {
-                Dock = DockStyle.Fill,                // clave para crecer con la ventana
-                Orientation = Orientation.Vertical,   // izquierda/derecha
+                Dock = DockStyle.Fill,                
+                Orientation = Orientation.Vertical,   
                 BackColor = System.Drawing.Color.White
             };
 
             // Panel IZQUIERDO: Reporte/OCR (encabezado + textbox)
             var panelLeftHeader = new Label
             {
-                Text = "📝 Reporte (Mediciones / OCR)",
+                Text = "📝 Reporte (Receta / OCR)",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
@@ -202,7 +200,7 @@ namespace Color
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black); // ámbar
+            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black); 
             txtRecomendacion.Dock = DockStyle.Fill;
 
             var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
@@ -219,9 +217,9 @@ namespace Color
                 RowCount = 3,
                 BackColor = System.Drawing.Color.White
             };
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));  // Título
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Centro (Split)
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Botones
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));  
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); 
 
             // Fila 0: Título
             var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.FromArgb(0, 102, 204) };
@@ -417,10 +415,6 @@ namespace Color
                 // 👉 L*, a*, b* con % y acción en el formato que pediste
                 sb.Append(BuildPerAxisPercentAdvice(r));
 
-                // (Opcional) Si quieres mostrar también la línea "Ejes L*, a*, b* ... % a corregir",
-                // descomenta la siguiente línea:
-                // sb.Append(BuildAxesBlock(r));
-
                 // Plano polar (a*, b*) + dominancia
                 sb.Append(BuildPlanoPolarAdvice(r));
 
@@ -508,40 +502,17 @@ namespace Color
             return sb.ToString();
         }
 
-        // ======= (Opcional) Bloque de ejes L*, a*, b* con Δ y % a corregir =======
-        private static string BuildAxesBlock(EngineRes r)
-        {
-            var sb = new StringBuilder();
-
-            Func<double, string> FmtPct = v =>
-                double.IsNaN(v) ? "N/D" : (v.ToString("0;-0;0", CultureInfo.InvariantCulture) + "%");
-
-            // Línea de deltas (signadas)
-            sb.AppendLine(string.Format(
-                CultureInfo.InvariantCulture,
-                " * Ejes L*, a*, b*: ΔL={0:+0.00;-0.00}, Δa={1:+0.00;-0.00}, Δb={2:+0.00;-0.00}",
-                r.DeltaL, r.DeltaA, r.DeltaB));
-
-            // Línea de porcentajes a corregir por iluminante
-            sb.AppendLine(string.Format(
-                CultureInfo.InvariantCulture,
-                "   % a corregir (este iluminante): L={0}  A={1}  B={2}",
-                FmtPct(r.PercentL), FmtPct(r.PercentA), FmtPct(r.PercentB)));
-
-            return sb.ToString();
-        }
-
         // ======= Diagnóstico en plano polar (a*, b*) =======
         private static string BuildPlanoPolarAdvice(EngineRes r)
         {
             var sb = new StringBuilder();
 
-            double da = r.DeltaA;     // +a* = más ROJO ;  -a* = más VERDE
-            double db = r.DeltaB;     // +b* = más AMARILLO ; -b* = más AZUL
-            double eps = 0.01;        // umbral de “casi cero”
+            double da = r.DeltaA;     
+            double db = r.DeltaB;     
+            double eps = 0.01;        
 
             // Ángulo polar del vector (Δa, Δb) y módulo en el plano a*-b*
-            double angleRad = Math.Atan2(db, da); // y = Δb , x = Δa
+            double angleRad = Math.Atan2(db, da); 
             double angleDeg = angleRad * 180.0 / Math.PI;
             if (angleDeg < 0) angleDeg += 360.0;
             double modulo = Math.Sqrt(da * da + db * db);
@@ -580,8 +551,8 @@ namespace Color
             // 2) Convertir a filas para el motor (Std/Lot por iluminante)
             List<EngineRow> rowsForEngine = rep.Measures.Select(m => new EngineRow
             {
-                Illuminant = m.Illuminant, // D65 / TL84 / A...
-                Type = m.Type,       // "Std" o "Lot"
+                Illuminant = m.Illuminant,
+                Type = m.Type,      
                 L = m.L,
                 A = m.A,
                 B = m.B,

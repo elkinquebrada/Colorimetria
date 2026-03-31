@@ -4,14 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
-using System.Linq;
 using System.Windows.Forms;
 using SysColor = System.Drawing.Color;
 
 namespace Colorimetria
 {
-    /// Verifica datos extraídos por OCR: Mediciones + CMC(2:1) + Tolerances/PrintDate.
-    /// Vista combinada: una sola pestaña con Split arriba (Mediciones ↑ / CMC ↓) y Texto abajo.
+    
+  
     public partial class FormConfirmacionOCR : Form
     {
         // ===== Salidas =====
@@ -169,7 +168,6 @@ namespace Colorimetria
             };
             lblSubtitulo = new Label
             {
-                Text = "Revisa los valores antes de continuar con los cálculos de corrección colorimétrica.",
                 Font = new Font("Segoe UI", 9),
                 ForeColor = SysColor.FromArgb(80, 80, 80),
                 AutoSize = true,
@@ -367,7 +365,7 @@ namespace Colorimetria
                 BackgroundColor = SysColor.White,
                 GridColor = SysColor.FromArgb(180, 180, 180),
                 BorderStyle = BorderStyle.None,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells, // mide por contenido
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells, 
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 26 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,

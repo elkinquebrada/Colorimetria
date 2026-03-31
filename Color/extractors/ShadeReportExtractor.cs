@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Text.RegularExpressions;
 using Tesseract;
@@ -83,9 +82,6 @@ namespace Color
         private const string OCR_LANG = "eng+spa";
 
         // Regex del archivo original
-        // FIX 1: [^\d]* antes del código para tolerar caracteres extra del OCR (ej: paréntesis)
-        // FIX 2: primer carácter del nombre acepta minúsculas
-        // FIX 3: porcentaje acepta dígitos sin punto decimal (se restaura en ExtractRecipe)
         private static readonly Regex RecipeRegex = new Regex(
             @"(?mi)[^\d]*(\d{8})\s+([A-Za-z][A-Za-z0-9\s\-\(\)\/\.,_]+?)\s+([0-9OL][0-9OL.,]*)\s*%",
             RegexOptions.Compiled);
@@ -183,8 +179,6 @@ namespace Color
             catch { }
 
             // Intentar mejorar la receta con OCR dirigido sobre el recorte de la zona de ingredientes.
-            // Si el recorte devuelve más ítems que el OCR general, lo usamos.
-            // Si el recorte devuelve menos o falla, mantenemos el resultado del OCR completo.
             try
             {
                 var shadeName = ExtractShadeNameFromBitmap(bmp);
@@ -224,8 +218,8 @@ namespace Color
             {
                 ShadeName = "[Desde EXCEL]",
                 Recipe = recipe,
-                Lab = new LabValues(),           // evitar null
-                Batch = new BatchMeasure(),      // evitar null
+                Lab = new LabValues(),           
+                Batch = new BatchMeasure(),     
                 RawText = "[EXCEL importado]"
             };
         }
@@ -236,8 +230,6 @@ namespace Color
             if (string.IsNullOrWhiteSpace(ocrText)) return list;
 
             // Normalizar errores OCR comunes antes de aplicar el regex:
-            // 'L' leída como '1' en contexto numérico (ej: "L7826" → "17826")
-            // Solo sustituir L cuando está entre dígitos o al inicio de un token numérico
             string normalized = Regex.Replace(ocrText, @"\bL(\d)", "1$1");
             normalized = Regex.Replace(normalized, @"(\d)L(\d)", "$11$2");
 
@@ -248,12 +240,11 @@ namespace Color
                 var code = m.Groups[1].Value.Trim();
                 var name = m.Groups[2].Value.Trim();
                 var pctRaw = m.Groups[3].Value.Trim()
-                    .Replace('O', '0')   // O leída como 0
-                    .Replace('L', '1')   // L leída como 1
-                    .Replace(',', '.');  // coma → punto
+                    .Replace('O', '0')   
+                    .Replace('L', '1')   
+                    .Replace(',', '.');  
 
                 // Restaurar punto decimal si el OCR lo omitió
-                // "038450" → "0.38450" | "117826" → "1.17826"
                 string pctFixed = pctRaw;
                 // Cambia la línea 253 por esta:
                 if (!pctFixed.Contains(".") && pctFixed.Length >= 2)
@@ -344,7 +335,6 @@ namespace Color
         //-------------------------------------------------------------------
         // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
-
         private string ExtractShadeNameFromBitmap(Bitmap original)
         {
             // El Shade Name está en la parte superior izquierda (aprox 0% al 15% de altura y 0 al 60% de ancho)
@@ -399,9 +389,6 @@ namespace Color
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)
         {
             // Zona de ingredientes en el Shade History Report:
-            // Empieza aprox en 24% de la altura (después de encabezado + Std L A B)
-            // Termina aprox en 50% (antes de Batch Id / Lot No)
-            // El recorte anterior (34%-62%) dejaba las primeras 2 líneas de ingredientes fuera
             int top = (int)(original.Height * 0.24);
             int bot = (int)(original.Height * 0.50);
             int h = bot - top;
@@ -426,7 +413,6 @@ namespace Color
             crop.Dispose();
 
             // FIX: ejecutar OCR sobre el recorte y pasar el TEXTO resultante
-            // (antes se pasaba el contenido binario del PNG → siempre devolvía lista vacía)
             string ocrText = string.Empty;
             try
             {

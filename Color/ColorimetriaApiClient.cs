@@ -1,7 +1,3 @@
-// ColorimetriaApiClient.cs — Cliente HTTP para llamar a la API desde tu app Windows Forms
-// Agrega este archivo a tu proyecto Color (.NET Framework 4.8)
-// No requiere NuGet adicional — usa HttpWebRequest como tu código original
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,10 +8,7 @@ using System.Globalization;
 
 namespace Color
 {
-    /// <summary>
     /// Cliente para la API REST de corrección colorimétrica.
-    /// Reemplaza el uso directo de ClaudeTokenCorrector cuando la API está activa.
-    /// </summary>
     public class ColorimetriaApiClient
     {
         private readonly string _apiBaseUrl;
@@ -43,10 +36,7 @@ namespace Color
 
         // ── Corrección principal ───────────────────────────────────────────────
 
-        /// <summary>
         /// Envía el reporte OCR a la API y devuelve las correcciones aceptadas.
-        /// Equivale a ClaudeTokenCorrector.CorrectReport()
-        /// </summary>
         public List<ApiCorrectionResult> CorrectReport(OcrReport report, double chromaThreshold = 0.35)
         {
             var results = new List<ApiCorrectionResult>();

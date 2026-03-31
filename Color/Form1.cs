@@ -101,7 +101,7 @@ namespace Color
         {
             Text = "🔄 Cambiar imagen",
             Size = new Size(160, 32),
-            BackColor = System.Drawing.Color.FromArgb(30, 90, 180), // Fix CS0234
+            BackColor = System.Drawing.Color.FromArgb(30, 90, 180), 
             ForeColor = System.Drawing.Color.White,
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
@@ -189,7 +189,7 @@ namespace Color
                 {
                     AutoSize = true,
                     Font = new Font("Segoe UI", 9),
-                    ForeColor = System.Drawing.Color.FromArgb(60, 64, 70) // Fix CS0234
+                    ForeColor = System.Drawing.Color.FromArgb(60, 64, 70)
                 };
                 contentBorder.Controls.Add(lbl);
             }

@@ -1,17 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using Tesseract;
 using ClosedXML.Excel;
 
 namespace OCR
 {
-    /// <summary>
     /// Extrae texto desde imágenes usando OCR, reconstruye una tabla
-    /// agrupando palabras por coordenadas y exporta un archivo Excel
-    /// temporal para ser leído por los extractores internos.
-    /// </summary>
     public class ReportExtractor
     {
         private readonly string _tessdata;
@@ -21,9 +16,7 @@ namespace OCR
             _tessdata = tessdataPath;
         }
 
-        /// <summary>
         /// Convierte una imagen -> OCR -> tabla -> Excel temporal.
-        /// </summary>
         public string ProcessImageToExcel(string imagePath)
         {
             var words = ExtractWordsWithBoxes(imagePath);
@@ -152,9 +145,7 @@ namespace OCR
         }
     }
 
-    /// <summary>
     /// Contenedor de palabra OCR + posición en la imagen.
-    /// </summary>
     public class OcrWord
     {
         public string Text { get; set; }

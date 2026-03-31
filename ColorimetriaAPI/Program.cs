@@ -1,4 +1,3 @@
-// Program.cs — Punto de entrada de la API ASP.NET Core (sin dependencias externas)
 using ColorimetriaAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);

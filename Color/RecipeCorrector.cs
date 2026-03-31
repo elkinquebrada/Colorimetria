@@ -7,43 +7,41 @@ namespace Color
 {
     // ── Modelos de entrada ──────────────────────────────────────────────────
 
-    /// Un ingrediente de la receta con su porcentaje real.
     public class RecipeIngredientInput
     {
         public string Code { get; set; }
         public string Name { get; set; }
-        public double Percentage { get; set; }   // ej: 1.17826
+        public double Percentage { get; set; }   
     }
 
     ///Deltas CMC de un iluminante (viene del OcrReport).
     public class IlluminantDelta
     {
-        public string Illuminant { get; set; }  // "D65", "TL84", "A"
-        public double DeltaLightness { get; set; }  // dL
-        public double DeltaChroma { get; set; }  // dC
+        public string Illuminant { get; set; }  
+        public double DeltaLightness { get; set; }  
+        public double DeltaChroma { get; set; }  
     }
 
     // ── Modelos de resultado ────────────────────────────────────────────────
 
-    ///Resultado de corrección de un ingrediente para un iluminante.
     public class IngredientCorrectionDetail
     {
         public string Name { get; set; }
-        public double Original { get; set; }   // % original
-        public double Calc1 { get; set; }   // proporción relativa
-        public double Calc2 { get; set; }   // ajustado por Lightness
-        public double CalcI { get; set; }   // Calc2 normalizado
-        public double Calc3 { get; set; }   // ajustado por Lightness + Chroma
-        public double NewPct2 { get; set; }   // % corregido solo Lightness
-        public double NewPct3 { get; set; }   // % corregido Lightness + Chroma
+        public double Original { get; set; }   
+        public double Calc1 { get; set; }  
+        public double Calc2 { get; set; }   
+        public double CalcI { get; set; }   
+        public double Calc3 { get; set; }   
+        public double NewPct2 { get; set; }   
+        public double NewPct3 { get; set; }  
     }
 
     ///Resultado completo de corrección para un iluminante.
     public class IlluminantCorrectionResult
     {
         public string Illuminant { get; set; }
-        public double ConvLightness { get; set; }   // dL * 10
-        public double ConvChroma { get; set; }   // dC * 10
+        public double ConvLightness { get; set; }   
+        public double ConvChroma { get; set; }   
 
         public List<IngredientCorrectionDetail> Ingredients { get; set; }
             = new List<IngredientCorrectionDetail>();
@@ -55,8 +53,8 @@ namespace Color
         public double SumCalc3 { get; set; }
 
         // Resultados finales
-        public double ResultadoLightness { get; set; }   // (SumCalc2/SumCalc1) - 1
-        public double ResultadoChroma { get; set; }   // (SumCalc3/SumCalcI) - 1
+        public double ResultadoLightness { get; set; }  
+        public double ResultadoChroma { get; set; }   
 
         public override string ToString()
         {
@@ -71,7 +69,6 @@ namespace Color
     public static class RecipeCorrector
     {
         /// Calcula la corrección de la receta para cada iluminante.
-        /// <returns>Lista de resultados, uno por iluminante.</returns>
         public static List<IlluminantCorrectionResult> Calculate(
             List<RecipeIngredientInput> ingredients,
             List<IlluminantDelta> deltas)
@@ -115,8 +112,8 @@ namespace Color
                         Name = ing.Name,
                         Original = ing.Percentage,
                         Calc1 = calc1,
-                        Calc2 = calc2,   // nuevo % corregido Lightness
-                        Calc3 = calc3    // nuevo % corregido Lightness+Chroma
+                        Calc2 = calc2,   
+                        Calc3 = calc3    
                     });
                 }
 
