@@ -22,7 +22,7 @@ namespace Color
         // ======= Controles de la vista =======
         private TextBox txtReport;
         private TextBox txtRecomendacion;
-        private SplitContainer splitMedicionesCmc; 
+        private SplitContainer splitMedicionesCmc;
         private Button btnExportar;
         private Button btnCerrar;
         private Button btnRegresar;
@@ -88,7 +88,7 @@ namespace Color
         {
             // ---- Ventana y escalado ----
             this.Text = "Resultados — Corrección Colorimétrica";
-            this.FormBorderStyle = FormBorderStyle.Sizable; 
+            this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.ControlBox = true;
@@ -96,7 +96,7 @@ namespace Color
 
             this.BackColor = System.Drawing.Color.White;
             this.ForeColor = System.Drawing.Color.Black;
-            this.AutoScaleMode = AutoScaleMode.Dpi; 
+            this.AutoScaleMode = AutoScaleMode.Dpi;
 
             // Tamaño inicial cómodo (90% del área de trabajo)
             var wa = Screen.PrimaryScreen.WorkingArea;
@@ -160,8 +160,8 @@ namespace Color
             // ---- Split central (Dock=Fill) ----
             splitMedicionesCmc = new SplitContainer
             {
-                Dock = DockStyle.Fill,                
-                Orientation = Orientation.Vertical,   
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
                 BackColor = System.Drawing.Color.White
             };
 
@@ -200,7 +200,7 @@ namespace Color
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black); 
+            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black);
             txtRecomendacion.Dock = DockStyle.Fill;
 
             var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
@@ -217,9 +217,9 @@ namespace Color
                 RowCount = 3,
                 BackColor = System.Drawing.Color.White
             };
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));  
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  
-            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); 
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            panelRoot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
 
             // Fila 0: Título
             var panelHeader = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.FromArgb(0, 102, 204) };
@@ -507,12 +507,12 @@ namespace Color
         {
             var sb = new StringBuilder();
 
-            double da = r.DeltaA;     
-            double db = r.DeltaB;     
-            double eps = 0.01;        
+            double da = r.DeltaA;
+            double db = r.DeltaB;
+            double eps = 0.01;
 
             // Ángulo polar del vector (Δa, Δb) y módulo en el plano a*-b*
-            double angleRad = Math.Atan2(db, da); 
+            double angleRad = Math.Atan2(db, da);
             double angleDeg = angleRad * 180.0 / Math.PI;
             if (angleDeg < 0) angleDeg += 360.0;
             double modulo = Math.Sqrt(da * da + db * db);
@@ -552,7 +552,7 @@ namespace Color
             List<EngineRow> rowsForEngine = rep.Measures.Select(m => new EngineRow
             {
                 Illuminant = m.Illuminant,
-                Type = m.Type,      
+                Type = m.Type,
                 L = m.L,
                 A = m.A,
                 B = m.B,
@@ -613,11 +613,31 @@ namespace Color
         // =========================================================
         private void BtnRegresar_Click(object sender, EventArgs e)
         {
-            if (FormOcrOrigen == null) return;
-            this.Hide();
-            FormOcrOrigen.ShowDialog();
-            // Si el usuario confirma de nuevo, cerrar esta ventana
-            this.Close();
+            if (FormOcrOrigen == null || FormOcrOrigen.IsDisposed) return;
+
+            try
+            {
+                this.Hide();
+                var result = FormOcrOrigen.ShowDialog();
+
+                if (result == System.Windows.Forms.DialogResult.OK)
+                {
+                    // Usuario confirmó — Form1 detectará RowsConfirmed y reabrirá Resultados
+                    // Cerrar este FormResultados para que el ciclo en Form1 continúe
+                    this.DialogResult = System.Windows.Forms.DialogResult.OK;
+                    this.Close();
+                }
+                else
+                {
+                    // Usuario canceló — cerrar sin señal de recálculo
+                    this.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+                    this.Close();
+                }
+            }
+            catch
+            {
+                this.Show();
+            }
         }
 
         private void BtnExportar_Click(object sender, EventArgs e)

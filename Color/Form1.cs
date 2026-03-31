@@ -101,7 +101,7 @@ namespace Color
         {
             Text = "🔄 Cambiar imagen",
             Size = new Size(160, 32),
-            BackColor = System.Drawing.Color.FromArgb(30, 90, 180), 
+            BackColor = System.Drawing.Color.FromArgb(30, 90, 180),
             ForeColor = System.Drawing.Color.White,
             FlatStyle = FlatStyle.Flat,
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
@@ -234,9 +234,35 @@ namespace Color
                     var deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
                     var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
 
-                    using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>))
+                    // Ciclo: el usuario puede regresar al OCR y volver a Resultados
+                    bool seguir = true;
+                    while (seguir)
                     {
+                        var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>);
+
+                        // Crear nuevo OCR fresco para el botón Regresar
+                        var dlgOcr = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
+                        dlgOcr.MainFormOwner = this;
+                        frmRes.FormOcrOrigen = dlgOcr;
+
                         frmRes.ShowDialog();
+
+                        // Si el usuario regresó al OCR y volvió a confirmar
+                        if (!dlgOcr.IsDisposed && dlgOcr.RowsConfirmed != null && dlgOcr.RowsConfirmed.Count > 0)
+                        {
+                            // Recalcular con los nuevos datos
+                            correcciones = ColorimetricCalculator.Calculate(dlgOcr.RowsConfirmed);
+                            ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
+                            deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
+                            corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
+                        }
+                        else
+                        {
+                            seguir = false;
+                        }
+
+                        if (!dlgOcr.IsDisposed) dlgOcr.Dispose();
+                        frmRes.Dispose();
                     }
                 }
                 this.Show();

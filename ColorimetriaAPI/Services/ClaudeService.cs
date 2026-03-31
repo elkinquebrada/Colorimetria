@@ -1,6 +1,3 @@
-// ClaudeService.cs — Corrección colorimétrica 100% local (sin API externa)
-// Lógica matemática pura: detecta errores de punto decimal del OCR
-// y corrige usando identidades CIELab: Chroma = sqrt(a²+b²), Hue = atan2(b,a)*180/PI
 using ColorimetriaAPI.Models;
 
 namespace ColorimetriaAPI.Services

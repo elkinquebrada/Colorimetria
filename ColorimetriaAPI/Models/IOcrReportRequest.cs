@@ -1,4 +1,4 @@
-﻿// Models.cs — Modelos de datos de la API Colorimetría
+﻿
 
 namespace ColorimetriaAPI.Models
 {
