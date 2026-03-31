@@ -1181,53 +1181,10 @@ namespace Color
                     tokens[base_], tokens[base_ + 1], tokens[base_ + 2],
                     tokens[base_ + 3], tokens[base_ + 4]));
 
-            // FIX UNIVERSAL...
-            if (vL > 0 && vC / vL > 0.6 && vC > 5.0)
-            {
-                double aDiv = vA / 10.0;
-                double bDiv = vB / 10.0;
-                double cDiv = vC / 10.0;
-                double chromaCheckDiv = Math.Sqrt(aDiv * aDiv + bDiv * bDiv);
-                double errDiv = Math.Abs(chromaCheckDiv - cDiv);
-                // Aplicar /10 si coherencia se mantiene 
-                if (errDiv < 0.5 && cDiv / vL < 0.5)
-                {
-                    if (log != null)
-                        log.Add(string.Format(
-                            "[FIX/10] {0}/{1} a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
-                            illuminant, type, vA, aDiv, vB, bDiv, vC, cDiv));
-                    vA = aDiv; vB = bDiv; vC = cDiv;
-                }
-            }
-
-            // FIX UNIVERSAL INVERSO: detección de escala /10
-            if (vL > 10.0 && vC / vL < 0.10 && vC < 5.0)
-            {
-                double aMul = vA * 10.0;
-                double bMul = vB * 10.0;
-                double cMul = vC * 10.0;
-                double chromaCheckMul = Math.Sqrt(aMul * aMul + bMul * bMul);
-                double errMul = Math.Abs(chromaCheckMul - cMul);
-                // Verificar coherencia interna Y que el Hue calculado coincide con el OCR
-                double vH_check = ParseHueDouble(tokens[base_ + 4]);
-                double hueCalcMul = Math.Atan2(bMul, aMul) * 180.0 / Math.PI;
-                if (hueCalcMul < 0) hueCalcMul += 360.0;
-                double hueErrMul = Math.Abs(hueCalcMul - vH_check);
-                if (hueErrMul > 180) hueErrMul = 360.0 - hueErrMul;
-                // Aplicar ×10 si: coherencia interna buena, Hue coincide, valores en rango textil
-                if (errMul < 1.0 && hueErrMul < 15.0
-                    && Math.Abs(aMul) <= 80.0 && Math.Abs(bMul) <= 80.0
-                    && cMul / vL < 0.8)
-                {
-                    if (log != null)
-                        log.Add(string.Format(
-                            "[FIX/x10] {0}/{1} punto decimal desplazado: " +
-                            "a:{2:F2}->{3:F2} b:{4:F2}->{5:F2} C:{6:F2}->{7:F2}",
-                            illuminant, type, vA, aMul, vB, bMul, vC, cMul));
-                    vA = aMul; vB = bMul; vC = cMul;
-                }
-            }
-            // ── FIX: Truncamiento simultáneo de a*, b* y Chroma ────────────────
+            // Eliminar FIX UNIVERSAL (/10) y FIX UNIVERSAL INVERSO (x10): 
+            // estas heurísticas basadas en C/L ratio causaban corrupción falsa
+            // de la coma decimal. La responsabilidad de colocar los decimales se 
+            // mantiene 100% en RestoreMeasureDecimal.
             {
                 double vH_pre = ParseHueDouble(tokens[base_ + 4]);
                 bool hueValid = vH_pre >= 1.0 && vH_pre <= 360.0;

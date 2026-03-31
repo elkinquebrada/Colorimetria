@@ -1,4 +1,4 @@
-using OCR;           
+using OCR;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -56,6 +56,7 @@ namespace Color
 
     public class ShadeExtractionResult
     {
+        public string ShadeName { get; set; }
         public List<RecipeItem> Recipe { get; set; } = new List<RecipeItem>();
         public LabValues Lab { get; set; }
         public BatchMeasure Batch { get; set; }
@@ -114,7 +115,7 @@ namespace Color
             using (var img = Pix.LoadFromFile(imagePath))
             using (var page = engine.Process(img, PageSegMode.SingleBlock))
             {
-                return page.GetText();
+                return page.GetText() ?? string.Empty;
             }
         }
 
@@ -137,7 +138,7 @@ namespace Color
             using (var pix = Pix.LoadFromFile(tmp))
             using (var page = engine.Process(pix))
             {
-                return page.GetText();
+                return page.GetText() ?? string.Empty;
             }
         }
 
@@ -160,7 +161,7 @@ namespace Color
         //-------------------------------------------------------------------
         public ShadeExtractionResult ExtractFromBitmap(Bitmap bmp)
         {
-            string text = ExtractTextFromBitmap(bmp);
+            string text = ExtractTextFromBitmap(bmp) ?? string.Empty;
 
             var result = ExtractAll(text);
 
@@ -184,6 +185,14 @@ namespace Color
             // Intentar mejorar la receta con OCR dirigido sobre el recorte de la zona de ingredientes.
             // Si el recorte devuelve más ítems que el OCR general, lo usamos.
             // Si el recorte devuelve menos o falla, mantenemos el resultado del OCR completo.
+            try
+            {
+                var shadeName = ExtractShadeNameFromBitmap(bmp);
+                if (!string.IsNullOrWhiteSpace(shadeName))
+                    result.ShadeName = shadeName;
+            }
+            catch { }
+
             try
             {
                 var r2 = ExtractRecipeFromCrop(bmp);
@@ -213,17 +222,13 @@ namespace Color
 
             return new ShadeExtractionResult
             {
+                ShadeName = "[Desde EXCEL]",
                 Recipe = recipe,
                 Lab = new LabValues(),           // evitar null
                 Batch = new BatchMeasure(),      // evitar null
                 RawText = "[EXCEL importado]"
             };
         }
-
-        //-------------------------------------------------------------------
-        // El resto del código sigue EXACTAMENTE igual que en tu archivo
-        // (ExtractRecipe, ExtractLabValues, Batch, OCR de recortes, etc.)
-        //-------------------------------------------------------------------
 
         public List<RecipeItem> ExtractRecipe(string ocrText)
         {
@@ -337,9 +342,59 @@ namespace Color
         }
 
         //-------------------------------------------------------------------
-        // Métodos de recorte (ExtractRecipeFromCrop, ExtractBatchMeasureFromBitmap)
-        // Aquí solo retiramos File.Delete(tmp)
+        // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
+
+        private string ExtractShadeNameFromBitmap(Bitmap original)
+        {
+            // El Shade Name está en la parte superior izquierda (aprox 0% al 15% de altura y 0 al 60% de ancho)
+            int h = (int)(original.Height * 0.15);
+            int w = (int)(original.Width * 0.60);
+
+            if (h <= 0 || w <= 0) return null;
+
+            // Escalar 3x mejora consistentemente las lecturas alfanuméricas complejas (e.g. SYLB8792 vs sesm2)
+            Bitmap crop = new Bitmap(w * 3, h * 3);
+            using (var g = Graphics.FromImage(crop))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(original,
+                    new Rectangle(0, 0, crop.Width, crop.Height),
+                    new Rectangle(0, 0, w, h),
+                    GraphicsUnit.Pixel);
+            }
+
+            string tmp = Path.Combine(Path.GetTempPath(),
+                "shade_" + Guid.NewGuid().ToString("N") + ".png");
+
+            crop.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+            crop.Dispose();
+
+            string ocrText = string.Empty;
+            try
+            {
+                using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
+                using (var pix = Pix.LoadFromFile(tmp))
+                using (var page = engine.Process(pix, PageSegMode.SingleBlock))
+                {
+                    ocrText = page.GetText() ?? string.Empty;
+                }
+            }
+            finally
+            {
+                if (File.Exists(tmp)) File.Delete(tmp);
+            }
+
+            // Expresión regular para ubicar "Shade Name:" y capturar hasta antes de "Dyehouse:" o el fin de la línea
+            var match = Regex.Match(ocrText, @"Shade Name:\s*(.+?)(?=\s*Dyehouse:|\s*$)", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+            if (match.Success)
+            {
+                return match.Groups[1].Value.Trim();
+            }
+
+            return null;
+        }
 
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)
         {
@@ -390,9 +445,125 @@ namespace Color
             return ExtractRecipe(ocrText);
         }
 
+        // REEMPLAZO IMPLEMENTADO: Extraer BatchMeasure usando Recorte dirigido
         private BatchMeasure ExtractBatchMeasureFromBitmap(Bitmap original)
         {
-            return null; // Mantener tu implementación original si lo deseas
+            // La fila de Batch Measure está en la parte inferior (aprox 65% a 95% de la altura).
+            int top = (int)(original.Height * 0.60);
+            int h = (int)(original.Height * 0.35);
+
+            if (h <= 0 || top + h > original.Height) return null;
+
+            // Recortar y escalar 3x para mejorar calidad OCR numérico (igual que Recipe)
+            Bitmap crop = new Bitmap(original.Width * 3, h * 3);
+
+            using (var g = Graphics.FromImage(crop))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(original,
+                    new Rectangle(0, 0, crop.Width, crop.Height),
+                    new Rectangle(0, top, original.Width, h),
+                    GraphicsUnit.Pixel);
+            }
+
+            string tmp = Path.Combine(Path.GetTempPath(),
+                "batch_" + Guid.NewGuid().ToString("N") + ".png");
+
+            crop.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+            crop.Dispose();
+
+            string ocrText = string.Empty;
+            try
+            {
+                using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
+                using (var pix = Pix.LoadFromFile(tmp))
+                using (var page = engine.Process(pix, PageSegMode.SingleBlock))
+                {
+                    ocrText = page.GetText() ?? string.Empty;
+                }
+            }
+            finally
+            {
+                if (File.Exists(tmp)) File.Delete(tmp);
+            }
+
+            if (string.IsNullOrWhiteSpace(ocrText)) return null;
+
+            // Para proteger de comas decimales europeas o confusas:
+            ocrText = ocrText.Replace(',', '.').Replace('O', '0').Replace('o', '0');
+            string[] lines = ocrText.Split('\n');
+
+            foreach (string raw in lines)
+            {
+                var line = raw.Trim();
+
+                // Miremos si la línea termina en un 'P' o 'F' aislado
+                var pfMatch = Regex.Match(line, @"\b([FfPp])\s*$");
+                if (!pfMatch.Success) continue;
+
+                // Extraemos todos los números, forzando un punto en caso de pérdida OCR a nivel interno si es necesario.
+                var nums = new List<double>();
+                var rawNums = new List<string>();
+
+                foreach (Match m in Regex.Matches(line, @"-?\d{1,5}(?:\.\d+)?"))
+                {
+                    if (double.TryParse(m.Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double v))
+                    {
+                        nums.Add(v);
+                        rawNums.Add(m.Value);
+                    }
+                }
+
+                // Necesitamos al menos los 7 valores de Lab + dL dC dH dE
+                if (nums.Count >= 7)
+                {
+                    int start = nums.Count - 7;
+
+                    // Función local para restaurar el decimal si OCR lo ignoró (ej: 3224 -> 32.24)
+                    string FixNum(string s)
+                    {
+                        if (s.Contains(".")) return s;
+                        bool neg = s.StartsWith("-");
+                        string abs = neg ? s.Substring(1) : s;
+                        if (abs.Length >= 3 && abs.Length <= 5)
+                            return (neg ? "-" : "") + abs.Insert(abs.Length - 2, ".");
+
+                        // Para deltas como 0.80 que se leen como 80 o 28
+                        if (abs.Length == 2)
+                            return (neg ? "-" : "") + "0." + abs;
+                        if (abs.Length == 1)
+                            return (neg ? "-" : "") + "0.0" + abs;
+
+                        return s;
+                    }
+
+                    string rawL = FixNum(rawNums[start + 0]);
+                    string rawA = FixNum(rawNums[start + 1]);
+
+                    // Prueba de cordura, L* debe estar entre 0 y 105
+                    double L = double.Parse(rawL, System.Globalization.CultureInfo.InvariantCulture);
+                    if (L < 0 || L > 105) continue;
+
+                    // A* debe estar entre -150 y 150
+                    double A = double.Parse(rawA, System.Globalization.CultureInfo.InvariantCulture);
+                    if (Math.Abs(A) > 150) continue;
+
+                    return new BatchMeasure
+                    {
+                        L = rawL,
+                        A = rawA,
+                        B = FixNum(rawNums[start + 2]),
+                        dL = FixNum(rawNums[start + 3]),
+                        dC = FixNum(rawNums[start + 4]),
+                        dH = FixNum(rawNums[start + 5]),
+                        dE = FixNum(rawNums[start + 6]),
+                        PF = pfMatch.Groups[1].Value.ToUpper()
+                    };
+                }
+            }
+
+            // Fallback original con el texto procesado por OCR dirigido si fallan los filtros agresivos
+            return ExtractBatchMeasure(ocrText);
         }
     }
 }

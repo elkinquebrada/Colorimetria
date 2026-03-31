@@ -1,4 +1,4 @@
-﻿// Formconfirmacionocr.cs
+// Formconfirmacionocr.cs
 using Color;
 using System;
 using System.Collections.Generic;
