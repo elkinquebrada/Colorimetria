@@ -53,9 +53,13 @@ namespace Color
             _resultsLegacy = results ?? new List<EngineRes>();
             InitializeComponents();
 
+            // Extraer metadata global (puente)
+            string prefix = GetGlobalMetadataPrefix();
+
             // Poblar vistas
-            txtReport.Text = _resumenLegacy;
+            txtReport.Text = string.IsNullOrEmpty(prefix) ? _resumenLegacy : prefix + _resumenLegacy;
             txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
+            if (!string.IsNullOrEmpty(prefix)) txtRecomendacion.Text = prefix + txtRecomendacion.Text;
         }
 
         // Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.
@@ -66,8 +70,12 @@ namespace Color
             _recipeResults = recipeCorrections;
             InitializeComponents();
 
+            // Extraer metadata global (puente)
+            string prefix = GetGlobalMetadataPrefix();
+
             // Panel izquierdo: receta + corrección de receta por iluminante
             var sbLeft = new System.Text.StringBuilder();
+            if (!string.IsNullOrEmpty(prefix)) sbLeft.Append(prefix);
             sbLeft.Append(_resumenLegacy);
             if (_recipeResults != null && _recipeResults.Count > 0)
             {
@@ -78,6 +86,38 @@ namespace Color
             txtReport.Text = sbLeft.ToString();
 
             txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
+            if (!string.IsNullOrEmpty(prefix)) txtRecomendacion.Text = prefix + txtRecomendacion.Text;
+        }
+
+        private static string GetGlobalMetadataPrefix()
+        {
+            var globalRes = Color.ShadeReportExtractor.LastResult;
+            if (globalRes == null) return string.Empty;
+
+            var sb = new System.Text.StringBuilder();
+            bool hasData = false;
+
+            if (!string.IsNullOrWhiteSpace(globalRes.ShadeName))
+            {
+                sb.Append(" Shade Name : ").Append(globalRes.ShadeName);
+                hasData = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(globalRes.DtMain))
+            {
+                if (hasData) sb.Append("    |    ");
+                sb.Append("DT Main : ").Append(globalRes.DtMain);
+                hasData = true;
+            }
+
+            if (hasData)
+            {
+                sb.AppendLine();
+                sb.AppendLine("───────────────────────────────────────────────────────────────");
+                return sb.ToString();
+            }
+
+            return string.Empty;
         }
 
         /// Referencia al formulario OCR de origen — para el boton Regresar.
@@ -105,6 +145,7 @@ namespace Color
             this.MinimumSize = new Size(980, 640);
             this.Size = new Size(targetWidth, targetHeight);
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.WindowState = FormWindowState.Maximized; // Abrir maximizado por defecto
             this.ResizeRedraw = true;
 
             // ---- Título ----
@@ -277,8 +318,13 @@ namespace Color
                 if (e.Control && e.KeyCode == Keys.D2) { txtRecomendacion.Focus(); e.SuppressKeyPress = true; }
             };
 
-            // Mantener proporción del divisor en Load/Resize
-            this.Load += (s, e) => ApplySplitRatio();
+            // Mantener proporción del divisor y limpiar selección de texto en Load/Resize
+            this.Load += (s, e) => {
+                ApplySplitRatio();
+                txtReport.SelectionLength = 0;
+                txtRecomendacion.SelectionLength = 0;
+                btnCerrar.Focus(); // Forzar el foco a un botón para evitar el sombreado del texto
+            };
             this.Resize += (s, e) => ApplySplitRatio();
         }
 
@@ -315,6 +361,7 @@ namespace Color
                 ForeColor = System.Drawing.Color.Black,
                 ReadOnly = true,
                 WordWrap = false,
+                TabStop = false, // Evita que gane el foco por tabulación
                 Text = string.Empty
             };
         }
@@ -562,12 +609,51 @@ namespace Color
             // 3) Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)
             List<EngineRes> calcResults = EngineCalc.Calculate(rowsForEngine);
 
-            // 4) Reutilizar el generador de texto unificado
-            return BuildRecomendacionFromResults(calcResults,
+            // 4) Prefijo con Shade Name y DT Main de manera segura
+            string shadeName = string.Empty;
+            string dtMain = string.Empty;
+
+            var globalRes = Color.ShadeReportExtractor.LastResult;
+            if (globalRes != null)
+            {
+                shadeName = globalRes.ShadeName;
+                dtMain = globalRes.DtMain;
+            }
+
+            if (string.IsNullOrWhiteSpace(shadeName) || string.IsNullOrWhiteSpace(dtMain))
+            {
+                try
+                {
+                    var pShade = rep.GetType().GetProperty("ShadeName");
+                    if (pShade != null && string.IsNullOrWhiteSpace(shadeName)) shadeName = pShade.GetValue(rep, null) as string;
+
+                    var pDt = rep.GetType().GetProperty("DtMain");
+                    if (pDt != null && string.IsNullOrWhiteSpace(dtMain)) dtMain = pDt.GetValue(rep, null) as string;
+                }
+                catch { }
+            }
+
+            string prefix = string.Empty;
+            if (!string.IsNullOrWhiteSpace(shadeName) || !string.IsNullOrWhiteSpace(dtMain))
+            {
+                var sb2 = new StringBuilder();
+                sb2.AppendLine();
+                if (!string.IsNullOrWhiteSpace(shadeName))
+                    sb2.AppendLine(" Shade Name : " + shadeName);
+                if (!string.IsNullOrWhiteSpace(dtMain))
+                    sb2.AppendLine(" DT Main    : " + dtMain);
+                sb2.AppendLine("───────────────────────────────────────────────────────────────");
+                prefix = sb2.ToString();
+            }
+
+            // 5) Reutilizar el generador de texto unificado
+            string body = BuildRecomendacionFromResults(calcResults,
                 Properties.Settings.Default.ToleranciaDL,
                 Properties.Settings.Default.ToleranciaDC,
                 Properties.Settings.Default.ToleranciaDH,
                 Properties.Settings.Default.ToleranciaDE);
+
+            return string.IsNullOrEmpty(prefix) ? body : prefix + body;
         }
 
         // =========================================================
@@ -582,6 +668,41 @@ namespace Color
             sb.AppendLine(" RESULTADOS DE CORRECCIÓN COLORIMÉTRICA — OCR");
             sb.AppendLine(" Fecha: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture));
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
+
+            // ---- Shade Name y DT Main (Usando variable global estática o Reflection como Fallback) ----
+            string shadeName = string.Empty;
+            string dtMain = string.Empty;
+
+            var globalRes = Color.ShadeReportExtractor.LastResult;
+            if (globalRes != null)
+            {
+                shadeName = globalRes.ShadeName;
+                dtMain = globalRes.DtMain;
+            }
+
+            if (string.IsNullOrWhiteSpace(shadeName) || string.IsNullOrWhiteSpace(dtMain))
+            {
+                try
+                {
+                    var pShade = rep.GetType().GetProperty("ShadeName");
+                    if (pShade != null && string.IsNullOrWhiteSpace(shadeName)) shadeName = pShade.GetValue(rep, null) as string;
+
+                    var pDt = rep.GetType().GetProperty("DtMain");
+                    if (pDt != null && string.IsNullOrWhiteSpace(dtMain)) dtMain = pDt.GetValue(rep, null) as string;
+                }
+                catch { }
+            }
+
+            bool hasMeta = !string.IsNullOrWhiteSpace(shadeName) || !string.IsNullOrWhiteSpace(dtMain);
+            if (hasMeta)
+            {
+                sb.AppendLine();
+                if (!string.IsNullOrWhiteSpace(shadeName))
+                    sb.AppendLine(" Shade Name : " + shadeName);
+                if (!string.IsNullOrWhiteSpace(dtMain))
+                    sb.AppendLine(" DT Main    : " + dtMain);
+                sb.AppendLine("───────────────────────────────────────────────────────────────");
+            }
 
             if (rep.Measures != null && rep.Measures.Count > 0)
             {
@@ -623,7 +744,6 @@ namespace Color
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
                     // Usuario confirmó — Form1 detectará RowsConfirmed y reabrirá Resultados
-                    // Cerrar este FormResultados para que el ciclo en Form1 continúe
                     this.DialogResult = System.Windows.Forms.DialogResult.OK;
                     this.Close();
                 }

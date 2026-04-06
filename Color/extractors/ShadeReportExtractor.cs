@@ -56,6 +56,8 @@ namespace Color
     public class ShadeExtractionResult
     {
         public string ShadeName { get; set; }
+        /// <summary>DT Main (e.g. "DFC12") extraído del encabezado del Shade History Report.</summary>
+        public string DtMain { get; set; }
         public List<RecipeItem> Recipe { get; set; } = new List<RecipeItem>();
         public LabValues Lab { get; set; }
         public BatchMeasure Batch { get; set; }
@@ -93,6 +95,14 @@ namespace Color
         private static readonly Regex LabValuesRegex = new Regex(
             @"([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([FP])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        // Regex para extraer el DT Main del encabezado (ej: "DT Main: DFC12")
+        private static readonly Regex DtMainRegex = new Regex(
+            @"DT\s*Main[:\s]+([A-Z0-9]+)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Variable estática para modo de emergencia / compatibilidad cruzada entre ventanas
+        public static ShadeExtractionResult LastResult { get; set; }
 
         //-------------------------------------------------------------------
         // Constructor
@@ -143,13 +153,24 @@ namespace Color
         //-------------------------------------------------------------------
         public ShadeExtractionResult ExtractAll(string ocrText)
         {
-            return new ShadeExtractionResult
+            var res = new ShadeExtractionResult
             {
                 RawText = ocrText,
+                DtMain = ExtractDtMain(ocrText),
                 Recipe = ExtractRecipe(ocrText),
                 Lab = ExtractLabValues(ocrText),
                 Batch = ExtractBatchMeasure(ocrText)
             };
+            LastResult = res;
+            return res;
+        }
+
+        /// <summary>Extrae el DT Main del texto OCR completo (ej: "DFC12").</summary>
+        public string ExtractDtMain(string ocrText)
+        {
+            if (string.IsNullOrWhiteSpace(ocrText)) return null;
+            var m = DtMainRegex.Match(ocrText);
+            return m.Success ? m.Groups[1].Value.Trim() : null;
         }
 
         //-------------------------------------------------------------------
@@ -187,6 +208,15 @@ namespace Color
             }
             catch { }
 
+            // Intentar mejorar DT Main con OCR dirigido sobre el encabezado central del reporte
+            try
+            {
+                var dtMain = ExtractDtMainFromBitmap(bmp);
+                if (!string.IsNullOrWhiteSpace(dtMain))
+                    result.DtMain = dtMain;
+            }
+            catch { }
+
             try
             {
                 var r2 = ExtractRecipeFromCrop(bmp);
@@ -204,6 +234,7 @@ namespace Color
             }
             catch { }
 
+            LastResult = result;
             return result;
         }
 
@@ -214,14 +245,16 @@ namespace Color
         {
             var recipe = ExcelReader.LoadRecipe(excelPath);
 
-            return new ShadeExtractionResult
+            var res = new ShadeExtractionResult
             {
                 ShadeName = "[Desde EXCEL]",
                 Recipe = recipe,
-                Lab = new LabValues(),           
-                Batch = new BatchMeasure(),     
+                Lab = new LabValues(),
+                Batch = new BatchMeasure(),
                 RawText = "[EXCEL importado]"
             };
+            LastResult = res;
+            return res;
         }
 
         public List<RecipeItem> ExtractRecipe(string ocrText)
@@ -240,9 +273,9 @@ namespace Color
                 var code = m.Groups[1].Value.Trim();
                 var name = m.Groups[2].Value.Trim();
                 var pctRaw = m.Groups[3].Value.Trim()
-                    .Replace('O', '0')   
-                    .Replace('L', '1')   
-                    .Replace(',', '.');  
+                    .Replace('O', '0')
+                    .Replace('L', '1')
+                    .Replace(',', '.');
 
                 // Restaurar punto decimal si el OCR lo omitió
                 string pctFixed = pctRaw;
@@ -335,6 +368,55 @@ namespace Color
         //-------------------------------------------------------------------
         // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
+
+        /// <summary>
+        /// Extrae el DT Main usando un recorte dirigido sobre la banda central del encabezado
+        /// del Shade History Report (aprox. entre el 20% y el 38% de la altura de la imagen),
+        /// donde aparece la línea "Major Recipe Version Number: X   DT Main: XXXXXX".
+        /// </summary>
+        private string ExtractDtMainFromBitmap(Bitmap original)
+        {
+            // La línea "DT Main:" está en el encabezado medio, aprox entre 20% y 38% de la altura
+            int top = (int)(original.Height * 0.20);
+            int bot = (int)(original.Height * 0.38);
+            int h = bot - top;
+
+            if (h <= 0 || top + h > original.Height) return null;
+
+            // Escalar 3x para mejorar la lectura alfanumérica
+            Bitmap crop = new Bitmap(original.Width * 3, h * 3);
+            using (var g = Graphics.FromImage(crop))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(original,
+                    new Rectangle(0, 0, crop.Width, crop.Height),
+                    new Rectangle(0, top, original.Width, h),
+                    GraphicsUnit.Pixel);
+            }
+
+            string tmp = Path.Combine(Path.GetTempPath(),
+                "dtmain_" + Guid.NewGuid().ToString("N") + ".png");
+
+            crop.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+            crop.Dispose();
+
+            string ocrText = string.Empty;
+            try
+            {
+                using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
+                using (var pix = Pix.LoadFromFile(tmp))
+                using (var page = engine.Process(pix, PageSegMode.SingleBlock))
+                {
+                    ocrText = page.GetText() ?? string.Empty;
+                }
+            }
+            finally
+            {
+                if (File.Exists(tmp)) File.Delete(tmp);
+            }
+
+            return ExtractDtMain(ocrText);
+        }
         private string ExtractShadeNameFromBitmap(Bitmap original)
         {
             // El Shade Name está en la parte superior izquierda (aprox 0% al 15% de altura y 0 al 60% de ancho)

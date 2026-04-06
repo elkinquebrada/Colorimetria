@@ -9,8 +9,8 @@ using SysColor = System.Drawing.Color;
 
 namespace Colorimetria
 {
-    
-  
+
+
     public partial class FormConfirmacionOCR : Form
     {
         // ===== Salidas =====
@@ -83,6 +83,9 @@ namespace Colorimetria
             _report = report ?? new OcrReport();
             _rows = _report.Measures ?? new List<ColorimetricRow>();
             _shadeResult = shadeResult;
+
+            // Guardar para que FormResultados lo pueda ver (puente global)
+            Color.ShadeReportExtractor.LastResult = shadeResult;
 
             InitializeComponents();
             LoadData();
@@ -365,7 +368,7 @@ namespace Colorimetria
                 BackgroundColor = SysColor.White,
                 GridColor = SysColor.FromArgb(180, 180, 180),
                 BorderStyle = BorderStyle.None,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells, 
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 26 },
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
