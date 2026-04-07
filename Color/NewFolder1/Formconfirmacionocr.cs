@@ -1,4 +1,4 @@
-﻿// Formconfirmacionocr.cs
+// Formconfirmacionocr.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,8 +9,8 @@ using System.Windows.Forms;
 namespace Colorimetria
 {
     /// <summary>
-    /// Verifica datos extraídos por OCR: Mediciones + CMC(2:1) + Tolerances/PrintDate.
-    /// Vista combinada: una sola pestaña con Split arriba (Mediciones ↑ / CMC ↓) y Texto abajo.
+    /// Verifica datos extra�dos por OCR: Mediciones + CMC(2:1) + Tolerances/PrintDate.
+    /// Vista combinada: una sola pesta�a con Split arriba (Mediciones ? / CMC ?) y Texto abajo.
     /// </summary>
     public partial class FormConfirmacionOCR : Form
     {
@@ -37,7 +37,7 @@ namespace Colorimetria
         private Label lblCount;
         private Label lblTol;
 
-        // Contenedor superior (arriba/abajo) y su proporción (70% arriba, 30% abajo)
+        // Contenedor superior (arriba/abajo) y su proporci�n (70% arriba, 30% abajo)
         private SplitContainer splitTop;
         private double splitTopRatio = 0.70;
 
@@ -57,7 +57,7 @@ namespace Colorimetria
             LoadData();
             HookSizingEvents();
 
-            // ===== NUEVO: Minimización diferida del MainForm =====
+            // ===== NUEVO: Minimizaci�n diferida del MainForm =====
             this.Load += FormConfirmacionOCR_Load;
         }
 
@@ -65,7 +65,7 @@ namespace Colorimetria
         {
             if (extractor == null) throw new ArgumentNullException("extractor");
             if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentNullException("imagePath");
-            if (!System.IO.File.Exists(imagePath)) throw new System.IO.FileNotFoundException("No se encontró la imagen", imagePath);
+            if (!System.IO.File.Exists(imagePath)) throw new System.IO.FileNotFoundException("No se encontr� la imagen", imagePath);
 
             _report = extractor.ExtractReportFromFile(imagePath);
             _rows = (_report != null && _report.Measures != null)
@@ -92,7 +92,7 @@ namespace Colorimetria
             this.Load += FormConfirmacionOCR_Load;
         }
 
-        [Obsolete("Usa los constructores con OcrReport o con extractor+imagen para ver también la CMC(2:1).")]
+        [Obsolete("Usa los constructores con OcrReport o con extractor+imagen para ver tambi�n la CMC(2:1).")]
         public FormConfirmacionOCR(List<ColorimetricRow> rows)
         {
             _rows = rows ?? new List<ColorimetricRow>();
@@ -107,18 +107,18 @@ namespace Colorimetria
         }
 
         // =========================================================
-        // NUEVO: Load → mostrar delante y minimizar MainForm
+        // NUEVO: Load ? mostrar delante y minimizar MainForm
         // =========================================================
         private void FormConfirmacionOCR_Load(object sender, EventArgs e)
         {
             try
             {
-                // Asegurar que este diálogo esté visible y al frente
+                // Asegurar que este di�logo est� visible y al frente
                 this.Show();
                 this.Activate();
                 this.BringToFront();
 
-                // Minimizar el formulario principal después de mostrar este
+                // Minimizar el formulario principal despu�s de mostrar este
                 if (MainFormOwner != null)
                 {
                     MainFormOwner.WindowState = FormWindowState.Minimized;
@@ -126,7 +126,7 @@ namespace Colorimetria
             }
             catch
             {
-                // Ignorar: no debe bloquear la verificación por problemas de foco
+                // Ignorar: no debe bloquear la verificaci�n por problemas de foco
             }
         }
 
@@ -136,17 +136,17 @@ namespace Colorimetria
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.Text = "Verificar datos extraídos";
-            // Barra estándar con min/max y redimensionamiento
+            this.Text = "Verificar datos extra�dos";
+            // Barra est�ndar con min/max y redimensionamiento
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
             this.ControlBox = true;
             this.ShowIcon = true;
-            this.BackColor = Color.FromArgb(30, 30, 30);
+            this.BackColor = System.Drawing.Color.FromArgb(30, 30, 30);
             this.AutoScaleMode = AutoScaleMode.Dpi; // respeta 125%, 150%, etc.
 
-            // Tamaño dinámico: 90% del área de trabajo
+            // Tama�o din�mico: 90% del �rea de trabajo
             var wa = Screen.PrimaryScreen.WorkingArea;
             int targetWidth = (int)(wa.Width * 0.90);
             int targetHeight = (int)(wa.Height * 0.90);
@@ -155,10 +155,10 @@ namespace Colorimetria
             this.StartPosition = FormStartPosition.CenterScreen;
             this.ResizeRedraw = true;
 
-            // ---- Títulos ----
+            // ---- T�tulos ----
             lblTitulo = new Label
             {
-                Text = "DATOS EXTRAÍDOS POR OCR",
+                Text = "DATOS EXTRA�DOS POR OCR",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 ForeColor = Color.White,
                 AutoSize = true,
@@ -166,22 +166,22 @@ namespace Colorimetria
             };
             lblSubtitulo = new Label
             {
-                Text = "Revisa los valores antes de continuar con los cálculos de corrección colorimétrica.",
+                Text = "Revisa los valores antes de continuar con los c�lculos de correcci�n colorim�trica.",
                 Font = new Font("Segoe UI", 9),
                 ForeColor = Color.LightGray,
                 AutoSize = true,
                 Location = new Point(20, 45)
             };
 
-            // ---- TabControl con UNA sola pestaña ("Combinado") ----
+            // ---- TabControl con UNA sola pesta�a ("Combinado") ----
             tabControl = new TabControl
             {
                 Location = new Point(20, 75),
                 Font = new Font("Segoe UI", 9)
             };
-            var tabCombined = new TabPage("📎 Combinado")
+            var tabCombined = new TabPage("?? Combinado")
             {
-                BackColor = Color.FromArgb(45, 45, 45)
+                BackColor = System.Drawing.Color.FromArgb(45, 45, 45)
             };
 
             // Layout principal: 2 filas (superior: split arriba/abajo, inferior: texto)
@@ -190,9 +190,9 @@ namespace Colorimetria
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                BackColor = Color.FromArgb(45, 45, 45)
+                BackColor = System.Drawing.Color.FromArgb(45, 45, 45)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 75f)); // más espacio para tablas apiladas
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 75f)); // m�s espacio para tablas apiladas
             tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 25f)); // menos para el bloque de texto
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
@@ -201,7 +201,7 @@ namespace Colorimetria
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal, // arriba/abajo
-                BackColor = Color.FromArgb(45, 45, 45)
+                BackColor = System.Drawing.Color.FromArgb(45, 45, 45)
             };
 
             // Grilla de Mediciones (ARRIBA)
@@ -221,7 +221,7 @@ namespace Colorimetria
                 ScrollBars = ScrollBars.Both,
                 Dock = DockStyle.Fill,
                 Font = new Font("Consolas", 10.5f),
-                BackColor = Color.FromArgb(20, 20, 20),
+                BackColor = System.Drawing.Color.FromArgb(20, 20, 20),
                 ForeColor = Color.LightGreen,
                 ReadOnly = true,
                 WordWrap = false
@@ -235,9 +235,9 @@ namespace Colorimetria
             // ---- Botones y etiquetas inferiores ----
             btnCancelar = new Button
             {
-                Text = "❌ Cancelar",
+                Text = "? Cancelar",
                 Size = new Size(160, 40),
-                BackColor = Color.FromArgb(180, 50, 50),
+                BackColor = System.Drawing.Color.FromArgb(180, 50, 50),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
@@ -248,9 +248,9 @@ namespace Colorimetria
 
             btnConfirmar = new Button
             {
-                Text = "✅ Confirmar",
+                Text = "? Confirmar",
                 Size = new Size(160, 40),
-                BackColor = Color.FromArgb(46, 125, 50),
+                BackColor = System.Drawing.Color.FromArgb(46, 125, 50),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
@@ -274,7 +274,7 @@ namespace Colorimetria
                 AutoSize = true
             };
 
-            // Posicionar controles inferiores según tamaño actual
+            // Posicionar controles inferiores seg�n tama�o actual
             PositionBottomControls();
 
             // Agregar a la ventana
@@ -290,7 +290,7 @@ namespace Colorimetria
             this.CancelButton = btnCancelar;
         }
 
-        // Reposiciona botones y etiquetas al cambiar tamaño
+        // Reposiciona botones y etiquetas al cambiar tama�o
         private void PositionBottomControls()
         {
             int margin = 20;
@@ -307,7 +307,7 @@ namespace Colorimetria
             if (lblTol != null) lblTol.Location = new Point(20, bottomY - 24);
 
             // Redimensionar TabControl para ocupar el centro
-            int topOfTabs = 75; // debajo del subtítulo
+            int topOfTabs = 75; // debajo del subt�tulo
             int tabsHeight = (btnConfirmar != null ? (btnConfirmar.Top - 10) : (this.ClientSize.Height - 80)) - topOfTabs;
             if (tabControl != null)
             {
@@ -318,7 +318,7 @@ namespace Colorimetria
 
         private void HookSizingEvents()
         {
-            // Aplica proporción del divisor al cargar y cada vez que cambie el tamaño
+            // Aplica proporci�n del divisor al cargar y cada vez que cambie el tama�o
             this.Load += (s, e) => { ApplySplitRatio(); };
             this.Resize += (s, e) =>
             {
@@ -335,13 +335,13 @@ namespace Colorimetria
                 {
                     int h = splitTop.ClientSize.Height;
                     int distance = (int)(h * splitTopRatio); // 70% para Mediciones (arriba)
-                    distance = Math.Max(180, Math.Min(h - 180, distance)); // margen mínimo
+                    distance = Math.Max(180, Math.Min(h - 180, distance)); // margen m�nimo
                     splitTop.SplitterDistance = distance;
                 }
             }
             catch
             {
-                // Ignorar si el control aún no está listo para medir
+                // Ignorar si el control a�n no est� listo para medir
             }
         }
 
@@ -354,8 +354,8 @@ namespace Colorimetria
                 AllowUserToDeleteRows = false,
                 ReadOnly = false,
                 RowHeadersVisible = false,
-                BackgroundColor = Color.FromArgb(45, 45, 45),
-                GridColor = Color.FromArgb(80, 80, 80),
+                BackgroundColor = System.Drawing.Color.FromArgb(45, 45, 45),
+                GridColor = System.Drawing.Color.FromArgb(80, 80, 80),
                 BorderStyle = BorderStyle.None,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells, // mide por contenido
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
@@ -365,16 +365,16 @@ namespace Colorimetria
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersHeight = 34
             };
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(0, 120, 215);
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
             dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = Color.FromArgb(55, 55, 55);
+            dgv.DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(55, 55, 55);
             dgv.DefaultCellStyle.ForeColor = Color.White;
-            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(45, 45, 45);
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(45, 45, 45);
 
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante", DataPropertyName = "Illuminant" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Type", HeaderText = "Tipo", DataPropertyName = "Type" });
@@ -382,7 +382,7 @@ namespace Colorimetria
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "A", HeaderText = "a*", DataPropertyName = "A" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "B", HeaderText = "b*", DataPropertyName = "B" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Chroma", HeaderText = "Chroma", DataPropertyName = "Chroma" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Hue", HeaderText = "Hue°", DataPropertyName = "Hue" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Hue", HeaderText = "Hue�", DataPropertyName = "Hue" });
 
             DataGridViewColumn col;
             col = dgv.Columns["L"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -403,8 +403,8 @@ namespace Colorimetria
                 AllowUserToDeleteRows = false,
                 ReadOnly = true,
                 RowHeadersVisible = false,
-                BackgroundColor = Color.FromArgb(45, 45, 45),
-                GridColor = Color.FromArgb(80, 80, 80),
+                BackgroundColor = System.Drawing.Color.FromArgb(45, 45, 45),
+                GridColor = System.Drawing.Color.FromArgb(80, 80, 80),
                 BorderStyle = BorderStyle.None,
 
                 // Partimos midiendo por contenido; tras cargar filas, cambiaremos a Fill
@@ -417,27 +417,27 @@ namespace Colorimetria
                 ColumnHeadersHeight = 34
             };
 
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(0, 120, 215);
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
             dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = Color.FromArgb(55, 55, 55);
+            dgv.DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(55, 55, 55);
             dgv.DefaultCellStyle.ForeColor = Color.White;
-            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(45, 45, 45);
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(45, 45, 45);
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaLightness", HeaderText = "ΔL (Lightness)" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaChroma", HeaderText = "ΔC (Chroma)" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaHue", HeaderText = "ΔH (Hue)" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaLightness", HeaderText = "?L (Lightness)" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaChroma", HeaderText = "?C (Chroma)" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaHue", HeaderText = "?H (Hue)" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaCMC", HeaderText = "CMC(2:1)" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "LightnessFlag", HeaderText = "Claridad" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ChromaHueFlag", HeaderText = "Croma/Hue" });
 
-            // Formatos numéricos
+            // Formatos num�ricos
             DataGridViewColumn col;
             col = dgv.Columns["DeltaLightness"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             col = dgv.Columns["DeltaChroma"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -448,7 +448,7 @@ namespace Colorimetria
             dgv.Columns["LightnessFlag"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
             dgv.Columns["ChromaHueFlag"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
-            // Mantener números en una sola línea
+            // Mantener n�meros en una sola l�nea
             dgv.Columns["Illuminant"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             dgv.Columns["DeltaLightness"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             dgv.Columns["DeltaChroma"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
@@ -483,11 +483,11 @@ namespace Colorimetria
                 ColorimetricRow r = _rows[i];
                 int idx = dgvData.Rows.Add(r.Illuminant, r.Type, r.L, r.A, r.B, r.Chroma, r.Hue);
 
-                Color rowColor = Color.FromArgb(55, 55, 55);
-                if (r.Illuminant == "D65") rowColor = Color.FromArgb(40, 60, 100);
-                else if (r.Illuminant == "TL84") rowColor = Color.FromArgb(40, 80, 60);
-                else if (r.Illuminant == "A") rowColor = Color.FromArgb(80, 80, 40);
-                else if (r.Illuminant == "CWF") rowColor = Color.FromArgb(80, 55, 40);
+                Color rowColor = System.Drawing.Color.FromArgb(55, 55, 55);
+                if (r.Illuminant == "D65") rowColor = System.Drawing.Color.FromArgb(40, 60, 100);
+                else if (r.Illuminant == "TL84") rowColor = System.Drawing.Color.FromArgb(40, 80, 60);
+                else if (r.Illuminant == "A") rowColor = System.Drawing.Color.FromArgb(80, 80, 40);
+                else if (r.Illuminant == "CWF") rowColor = System.Drawing.Color.FromArgb(80, 55, 40);
 
                 dgvData.Rows[idx].DefaultCellStyle.BackColor = rowColor;
             }
@@ -498,7 +498,7 @@ namespace Colorimetria
             dgvData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
             dgvData.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            // Pesos/mínimos
+            // Pesos/m�nimos
             dgvData.Columns["Illuminant"].FillWeight = 85f; dgvData.Columns["Illuminant"].MinimumWidth = 90;
             dgvData.Columns["Type"].FillWeight = 70f; dgvData.Columns["Type"].MinimumWidth = 70;
             dgvData.Columns["L"].FillWeight = 80f; dgvData.Columns["L"].MinimumWidth = 80;
@@ -507,7 +507,7 @@ namespace Colorimetria
             dgvData.Columns["Chroma"].FillWeight = 95f; dgvData.Columns["Chroma"].MinimumWidth = 90;
             dgvData.Columns["Hue"].FillWeight = 70f; dgvData.Columns["Hue"].MinimumWidth = 70;
 
-            // Filas: números en una línea
+            // Filas: n�meros en una l�nea
             dgvData.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
         }
 
@@ -530,10 +530,10 @@ namespace Colorimetria
                     r.LightnessFlag,
                     r.ChromaHueFlag);
 
-                Color rowColor = Color.FromArgb(55, 55, 55);
-                if (r.Illuminant == "D65") rowColor = Color.FromArgb(40, 60, 100);
-                else if (r.Illuminant == "TL84") rowColor = Color.FromArgb(40, 80, 60);
-                else if (r.Illuminant == "A") rowColor = Color.FromArgb(80, 80, 40);
+                Color rowColor = System.Drawing.Color.FromArgb(55, 55, 55);
+                if (r.Illuminant == "D65") rowColor = System.Drawing.Color.FromArgb(40, 60, 100);
+                else if (r.Illuminant == "TL84") rowColor = System.Drawing.Color.FromArgb(40, 80, 60);
+                else if (r.Illuminant == "A") rowColor = System.Drawing.Color.FromArgb(80, 80, 40);
 
                 dgvCmc.Rows[dgvCmc.Rows.Count - 1].DefaultCellStyle.BackColor = rowColor;
             }
@@ -541,7 +541,7 @@ namespace Colorimetria
             // 1) Mide por contenido visible
             dgvCmc.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
 
-            // 2) Rellenar con Fill equilibrando pesos y mínimos
+            // 2) Rellenar con Fill equilibrando pesos y m�nimos
             dgvCmc.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvCmc.Columns["Illuminant"].FillWeight = 80f; dgvCmc.Columns["Illuminant"].MinimumWidth = 90;
             dgvCmc.Columns["DeltaLightness"].FillWeight = 70f; dgvCmc.Columns["DeltaLightness"].MinimumWidth = 90;
@@ -549,11 +549,11 @@ namespace Colorimetria
             dgvCmc.Columns["DeltaHue"].FillWeight = 70f; dgvCmc.Columns["DeltaHue"].MinimumWidth = 80;
             dgvCmc.Columns["DeltaCMC"].FillWeight = 110f; dgvCmc.Columns["DeltaCMC"].MinimumWidth = 130;
 
-            // Flags (textos) con wrap y alto automático
+            // Flags (textos) con wrap y alto autom�tico
             dgvCmc.Columns["LightnessFlag"].FillWeight = 85f; dgvCmc.Columns["LightnessFlag"].MinimumWidth = 110;
             dgvCmc.Columns["ChromaHueFlag"].FillWeight = 100f; dgvCmc.Columns["ChromaHueFlag"].MinimumWidth = 120;
 
-            // 3) Alto automático por celdas mostradas (solo necesario en CMC por el wrap)
+            // 3) Alto autom�tico por celdas mostradas (solo necesario en CMC por el wrap)
             dgvCmc.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
         }
 
@@ -563,7 +563,7 @@ namespace Colorimetria
             bool anyTol = (rep.TolDL != 0) || (rep.TolDC != 0) || (rep.TolDH != 0) || (rep.TolDE != 0);
 
             lblTol.Text = anyTol
-                ? string.Format("Tolerancias — DL: {0:0.00} DC: {1:0.00} DH: {2:0.00} DE: {3:0.00}",
+                ? string.Format("Tolerancias � DL: {0:0.00} DC: {1:0.00} DH: {2:0.00} DE: {3:0.00}",
                     rep.TolDL, rep.TolDC, rep.TolDH, rep.TolDE)
                 : "";
         }
@@ -575,22 +575,22 @@ namespace Colorimetria
         {
             var sb = new System.Text.StringBuilder();
 
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
-            sb.AppendLine(" DATOS COLORIMÉTRICOS EXTRAÍDOS (OCR)");
+            sb.AppendLine("----------------------------------------------------------------------------------------------------------");
+            sb.AppendLine(" DATOS COLORIM�TRICOS EXTRA�DOS (OCR)");
             sb.AppendLine(string.Format(" Fecha: {0:dd/MM/yyyy HH:mm:ss}", DateTime.Now));
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
+            sb.AppendLine("----------------------------------------------------------------------------------------------------------");
             sb.AppendLine();
             sb.AppendLine("Mediciones");
             sb.AppendLine(string.Format("{0,-10} {1,-6} {2,8} {3,8} {4,8} {5,8} {6,8}",
-                "Iluminante", "Tipo", "L*", "a*", "b*", "Chroma", "Hue°"));
-            sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                "Iluminante", "Tipo", "L*", "a*", "b*", "Chroma", "Hue�"));
+            sb.AppendLine("----------------------------------------------------------------------------------------------------------");
 
             string lastIll = "";
             for (int i = 0; i < _rows.Count; i++)
             {
                 ColorimetricRow r = _rows[i];
                 if (r.Illuminant != lastIll && lastIll != "")
-                    sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                    sb.AppendLine("----------------------------------------------------------------------------------------------------------");
 
                 sb.AppendLine(string.Format("{0,-10} {1,-6} {2,8:0.00} {3,8:0.00} {4,8:0.00} {5,8:0.00} {6,8:0}",
                     r.Illuminant, r.Type, r.L, r.A, r.B, r.Chroma, r.Hue));
@@ -600,10 +600,10 @@ namespace Colorimetria
             if (_report != null && _report.CmcDifferences != null && _report.CmcDifferences.Count > 0)
             {
                 sb.AppendLine();
-                sb.AppendLine("CMC(2:1) — Difference in (Lightness / Chroma / Hue) [Col Diff CMC(2:1)]");
+                sb.AppendLine("CMC(2:1) � Difference in (Lightness / Chroma / Hue) [Col Diff CMC(2:1)]");
                 sb.AppendLine(string.Format("{0,-10} {1,8} {2,8} {3,8} {4,8} {5,-10} {6,-14}",
-                    "Iluminante", "ΔL", "ΔC", "ΔH", "CMC", "Claridad", "Croma/Hue"));
-                sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                    "Iluminante", "?L", "?C", "?H", "CMC", "Claridad", "Croma/Hue"));
+                sb.AppendLine("----------------------------------------------------------------------------------------------------------");
 
                 for (int i = 0; i < _report.CmcDifferences.Count; i++)
                 {
@@ -632,7 +632,7 @@ namespace Colorimetria
                 sb.AppendLine(_report.PrintDate);
             }
 
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
+            sb.AppendLine("----------------------------------------------------------------------------------------------------------");
             return sb.ToString();
         }
 

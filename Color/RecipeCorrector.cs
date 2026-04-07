@@ -190,8 +190,7 @@ namespace Color
             foreach (var r in results)
             {
                 sb.AppendLine();
-                sb.AppendLine(string.Format("  ── [{0}]  CMC(2:1)  convL={1:0.0}%  convC={2:0.0}%",
-                    r.Illuminant, r.ConvLightness, r.ConvChroma));
+                // Se ocultó el titulo del iluminante a petición del usuario.
                 sb.AppendLine();
 
                 // Encabezado tabla

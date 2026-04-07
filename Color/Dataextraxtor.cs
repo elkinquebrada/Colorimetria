@@ -89,6 +89,18 @@ namespace Color
 
         public bool NeedsReview { get; set; }
     }
+
+    public class BatchInfo
+    {
+        public string ShadeName { get; set; }
+        public string LotNo { get; set; }
+        public string BatchId { get; set; }
+        public double dE { get; set; }
+        public double dL { get; set; }
+        public double dC { get; set; }
+        public double dH { get; set; }
+        public string PF { get; set; } // Pass / Fail
+    }
     public class OcrReport
     {
         public List<ColorimetricRow> Measures { get; set; } = new List<ColorimetricRow>();
@@ -101,6 +113,12 @@ namespace Color
         public string PrintDate { get; set; }
 
         public List<string> ParseLog { get; set; } = new List<string>();
+
+        // --- Estructura para Historial Detallado (Know-How) ---
+        public BatchInfo Batch { get; set; } = new BatchInfo();
+
+        public string DiagnosticoL { get; set; }
+        public string Recomendacion { get; set; }
     }
 
     // RANGOS
@@ -1399,18 +1417,18 @@ namespace Color
             AcceptPosition:
                 return i;
             }
-            return 0; 
+            return 0;
         }
 
         private static double RestoreMeasureDecimalAlt(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return double.NaN;
             string t = token.Trim().Replace(',', '.');
-            if (t.StartsWith("-")) return double.NaN; 
-            if (t.Contains(".")) return double.NaN;   
-            if (!Regex.IsMatch(t, @"^\d{3}$")) return double.NaN; 
+            if (t.StartsWith("-")) return double.NaN;
+            if (t.Contains(".")) return double.NaN;
+            if (!Regex.IsMatch(t, @"^\d{3}$")) return double.NaN;
             double v;
-            string candidate = t[0] + "." + t.Substring(1); 
+            string candidate = t[0] + "." + t.Substring(1);
             return double.TryParse(candidate, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out v) && v <= 100 ? v : double.NaN;
         }
@@ -2649,7 +2667,7 @@ namespace Color
 
                 // Recortar horiz y vert a tableRect relativo a workBin
                 OpenCvSharp.Rect trLocal = new OpenCvSharp.Rect(tr.X - offX, tr.Y - offY, tr.Width, tr.Height);
-             
+
                 int wbW = workBin.Width, wbH = workBin.Height;
                 trLocal = new OpenCvSharp.Rect(
                     Math.Max(0, trLocal.X), Math.Max(0, trLocal.Y),
