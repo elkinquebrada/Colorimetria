@@ -811,6 +811,8 @@ namespace Color
             }
         }
 
+        private bool _historialGuardado = false;
+        
         private void BtnHistorial_Click(object sender, EventArgs e)
         {
             try
@@ -839,7 +841,7 @@ namespace Color
                 double deltaLcalc = _report?.Batch?.dL ?? 0.0;
                 string iluminanteActivo = "D65";
 
-                if (_resultsLegacy != null && _resultsLegacy.Count > 0)
+                if (!_historialGuardado && _resultsLegacy != null && _resultsLegacy.Count > 0)
                 {
                     foreach (var r in _resultsLegacy)
                     {
@@ -884,6 +886,7 @@ namespace Color
                             diagB, corrB
                         );
                     }
+                    _historialGuardado = true;
                 }
 
                 // ✅ Abrir historial

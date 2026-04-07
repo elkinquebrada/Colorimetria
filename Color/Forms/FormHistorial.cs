@@ -114,25 +114,28 @@ namespace Color.Forms
                 if (dlg.ShowDialog() != DialogResult.OK)
                     return;
 
-                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(dlg.FileName))
+                // Usar UTF8 con BOM para que Excel detecte automáticamente los acentos
+                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(dlg.FileName, false, new System.Text.UTF8Encoding(true)))
                 {
                     // Encabezados
+                    var headers = new System.Collections.Generic.List<string>();
                     foreach (DataGridViewColumn col in dgvHistorial.Columns)
                     {
-                        sw.Write(col.HeaderText + ";");
+                        headers.Add(col.HeaderText);
                     }
-                    sw.WriteLine();
+                    sw.WriteLine(string.Join(";", headers));
 
                     // Filas visibles
                     foreach (DataGridViewRow row in dgvHistorial.Rows)
                     {
-                        if (!row.Visible) continue;
+                        if (!row.Visible || row.IsNewRow) continue;
 
+                        var cells = new System.Collections.Generic.List<string>();
                         foreach (DataGridViewCell cell in row.Cells)
                         {
-                            sw.Write((cell.Value ?? "") + ";");
+                            cells.Add((cell.Value ?? "").ToString());
                         }
-                        sw.WriteLine();
+                        sw.WriteLine(string.Join(";", cells));
                     }
                 }
 
