@@ -21,7 +21,7 @@ namespace Color
         // ΔChroma: diferencia de croma (Chroma_Lot - Chroma_Std), con Chroma = √(a² + b²)
         public double DeltaChroma { get; set; }
 
-        // Diferencia de tono angular (±180°) — calculada; no necesariamente mostrada en UI
+        // Diferencia de tono angular (±180°) — calculada;
         public double DeltaHue { get; set; }
 
         // ΔE*ab (CIE76)

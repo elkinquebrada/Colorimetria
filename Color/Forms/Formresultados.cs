@@ -148,7 +148,7 @@ namespace Color
             this.MinimumSize = new Size(980, 640);
             this.Size = new Size(targetWidth, targetHeight);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.WindowState = FormWindowState.Maximized; // Abrir maximizado por defecto
+            this.WindowState = FormWindowState.Maximized; 
             this.ResizeRedraw = true;
 
             // ---- Título ----
@@ -169,7 +169,7 @@ namespace Color
             {
                 Text = "💾 Exportar .txt",
                 Size = new Size(150, 38),
-                BackColor = System.Drawing.Color.FromArgb(70, 130, 180), // Steel Blue
+                BackColor = System.Drawing.Color.FromArgb(70, 130, 180), 
                 ForeColor = System.Drawing.Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
@@ -181,7 +181,7 @@ namespace Color
             {
                 Text = "📜 Historial",
                 Size = new Size(150, 38),
-                BackColor = System.Drawing.Color.FromArgb(34, 139, 34), // Forest Green
+                BackColor = System.Drawing.Color.FromArgb(34, 139, 34), 
                 ForeColor = System.Drawing.Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold)
@@ -234,7 +234,7 @@ namespace Color
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtReport = BuildTextBox(null); // Consolas + verde sobre negro
+            txtReport = BuildTextBox(null); 
             txtReport.Dock = DockStyle.Fill;
 
             var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
@@ -339,7 +339,7 @@ namespace Color
                 ApplySplitRatio();
                 txtReport.SelectionLength = 0;
                 txtRecomendacion.SelectionLength = 0;
-                btnCerrar.Focus(); // Forzar el foco a un botón para evitar el sombreado del texto
+                btnCerrar.Focus(); 
             };
             this.Resize += (s, e) => ApplySplitRatio();
         }
@@ -377,7 +377,7 @@ namespace Color
                 ForeColor = System.Drawing.Color.Black,
                 ReadOnly = true,
                 WordWrap = false,
-                TabStop = false, // Evita que gane el foco por tabulación
+                TabStop = false, 
                 Text = string.Empty
             };
         }
@@ -580,16 +580,18 @@ namespace Color
             if (angleDeg < 0) angleDeg += 360.0;
             double modulo = Math.Sqrt(da * da + db * db);
 
-            // Cuadrantes para contexto
+            // Cuadrantes para contexto (pendiente: se usará con la instrucción del plano polar)
+            /*
             string cuadrante;
             if (da >= 0 && db >= 0) cuadrante = "rojo‑amarillo (+a,+b)";
             else if (da < 0 && db >= 0) cuadrante = "verde‑amarillo (−a,+b)";
             else if (da < 0 && db < 0) cuadrante = "verde‑azul (−a,−b)";
             else cuadrante = "rojo‑azul (+a,−b)";
+            */
 
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+           /* sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 " Plano polar (a*, b*): módulo={0:0.00}, ángulo={1:0.0}° → cuadrante {2}.",
-                modulo, angleDeg, cuadrante));
+                modulo, angleDeg, cuadrante));*/
 
             // Dominancia cromática (qué eje pesa más)
             if (Math.Abs(da) > Math.Abs(db) + eps)
@@ -675,11 +677,11 @@ namespace Color
                 if (rep.Batch == null) rep.Batch = new BatchInfo();
                 rep.Batch.ShadeName = shadeName;
                 rep.Batch.BatchId = dtMain;
-                rep.Batch.LotNo = string.Empty; // Extraer si estuviera disponible
+                rep.Batch.LotNo = string.Empty; 
 
                 if (calcResults != null && calcResults.Count > 0)
                 {
-                    var r = calcResults[0]; // Se toma el primer iluminante como base
+                    var r = calcResults[0]; 
                     rep.Batch.dL = r.DeltaL;
                     rep.Batch.dC = r.DeltaChroma;
                     rep.Batch.dH = r.DeltaHue;
@@ -839,10 +841,13 @@ namespace Color
                 string lotNo = _report?.Batch?.LotNo ?? "N/A";
                 double deltaEcalc = _report?.Batch?.dE ?? 0.0;
                 double deltaLcalc = _report?.Batch?.dL ?? 0.0;
-                string iluminanteActivo = "D65";
 
                 if (!_historialGuardado && _resultsLegacy != null && _resultsLegacy.Count > 0)
                 {
+                    // Preguntar si está seguro de guardar
+                    var resultConfirm = MessageBox.Show("¿Está seguro de que desea guardar los datos en el historial?", "Confirmar Guardado", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (resultConfirm == DialogResult.No) return;
+
                     foreach (var r in _resultsLegacy)
                     {
                         string iluminante = r.Illuminant;
@@ -887,6 +892,7 @@ namespace Color
                         );
                     }
                     _historialGuardado = true;
+                    MessageBox.Show("Datos guardados correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
                 // ✅ Abrir historial
@@ -904,29 +910,194 @@ namespace Color
         {
             try
             {
-                // Verificar si hay información para exportar
-                if (string.IsNullOrWhiteSpace(txtReport.Text))
+                if (string.IsNullOrWhiteSpace(txtReport.Text) && string.IsNullOrWhiteSpace(txtRecomendacion.Text))
                 {
                     MessageBox.Show("No hay información en el reporte para exportar.", "Reporte Vacío", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                // EXPORTACIÓN TXT
-                using (SaveFileDialog sfd = new SaveFileDialog())
-                {
-                    sfd.Filter = "Texto (*.txt)|*.txt";
-                    sfd.FileName = "Reporte_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".txt";
-                    if (sfd.ShowDialog() == DialogResult.OK)
-                    {
-                        System.IO.File.WriteAllText(sfd.FileName, txtReport.Text, System.Text.Encoding.UTF8);
-                        MessageBox.Show("Archivo de texto guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
+                // Preguntar al usuario qué formato quiere
+                var resultado = MessageBox.Show(
+                    "¿Desea exportar a Excel?\n\n" +
+                    "  • [Sí]  → Exportar a Excel (.xls) con tabla estructurada\n" +
+                    "  • [No]  → Exportar como texto plano (.txt)",
+                    "Formato de exportación",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (resultado == DialogResult.Cancel) return;
+
+                if (resultado == DialogResult.Yes)
+                    ExportarExcel();
+                else
+                    ExportarTxt();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al guardar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al exportar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        private void ExportarTxt()
+        {
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Texto (*.txt)|*.txt";
+                sfd.FileName = "Reporte_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".txt";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    string contenido = txtReport.Text + Environment.NewLine +
+                                       new string('=', 70) + Environment.NewLine +
+                                       txtRecomendacion.Text;
+                    System.IO.File.WriteAllText(sfd.FileName, contenido, System.Text.Encoding.UTF8);
+                    MessageBox.Show("Archivo de texto guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void ExportarExcel()
+        {
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Excel (*.xls)|*.xls";
+                sfd.FileName = "Reporte_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xls";
+                if (sfd.ShowDialog() != DialogResult.OK) return;
+
+                var sb = new StringBuilder();
+
+                // Cabecera XML de Excel
+                sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                sb.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
+                sb.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+                sb.AppendLine(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
+                sb.AppendLine("<Styles>");
+
+                // Estilo título
+                sb.AppendLine("<Style ss:ID=\"sTitle\">");
+                sb.AppendLine("<Font ss:Bold=\"1\" ss:Size=\"13\" ss:Color=\"#FFFFFF\"/>");
+                sb.AppendLine("<Interior ss:Color=\"#1F3864\" ss:Pattern=\"Solid\"/>");
+                sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+                sb.AppendLine("</Style>");
+                // Estilo encabezado
+                sb.AppendLine("<Style ss:ID=\"sHeader\">");
+                sb.AppendLine("<Font ss:Bold=\"1\" ss:Size=\"10\" ss:Color=\"#FFFFFF\"/>");
+                sb.AppendLine("<Interior ss:Color=\"#2E75B6\" ss:Pattern=\"Solid\"/>");
+                sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/>");
+                sb.AppendLine("</Style>");
+                // Estilo fila normal
+                sb.AppendLine("<Style ss:ID=\"sRow\">");
+                sb.AppendLine("<Font ss:Size=\"10\"/>");
+                sb.AppendLine("<Interior ss:Color=\"#FFFFFF\" ss:Pattern=\"Solid\"/>");
+                sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
+                sb.AppendLine("</Style>");
+                // Estilo fila alterna
+                sb.AppendLine("<Style ss:ID=\"sAlt\">");
+                sb.AppendLine("<Font ss:Size=\"10\"/>");
+                sb.AppendLine("<Interior ss:Color=\"#DEEAF1\" ss:Pattern=\"Solid\"/>");
+                sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
+                sb.AppendLine("</Style>");
+                // Estilo aprobado/rechazado
+                sb.AppendLine("<Style ss:ID=\"sOk\">");
+                sb.AppendLine("<Font ss:Bold=\"1\" ss:Color=\"#1E8449\"/>");
+                sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+                sb.AppendLine("</Style>");
+                sb.AppendLine("<Style ss:ID=\"sFail\">");
+                sb.AppendLine("<Font ss:Bold=\"1\" ss:Color=\"#C0392B\"/>");
+                sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+                sb.AppendLine("</Style>");
+                sb.AppendLine("</Styles>");
+
+                // ═══════════════════════════════════════
+                // HOJA 1 – DIAGNÓSTICO POR ILUMINANTE
+                // ═══════════════════════════════════════
+                sb.AppendLine("<Worksheet ss:Name=\"Diagnóstico\">");
+                sb.AppendLine("<Table>");
+
+                // Título
+                string shadeName = "N/A";
+                var globalRes = Color.ShadeReportExtractor.LastResult;
+                if (globalRes != null && !string.IsNullOrWhiteSpace(globalRes.ShadeName))
+                    shadeName = globalRes.ShadeName;
+
+                sb.AppendLine("<Row ss:Height=\"35\">");
+                sb.AppendLine($"<Cell ss:MergeAcross=\"9\" ss:StyleID=\"sTitle\"><Data ss:Type=\"String\">REPORTE COLORIMÉTRICO  •  Shade: {Esc(shadeName)}  •  {DateTime.Now:dd/MM/yyyy HH:mm}</Data></Cell>");
+                sb.AppendLine("</Row>");
+                sb.AppendLine("<Row ss:Height=\"5\"/>");
+
+                // Encabezados
+                sb.AppendLine("<Row ss:Height=\"28\">");
+                foreach (var h in new[] { "Iluminante", "ΔL*", "ΔC*", "ΔH*", "ΔE*", "Estado", "Diagnóstico L*", "Corrección L*", "Diagnóstico a*/b*", "Recomendación" })
+                    sb.AppendLine($"<Cell ss:StyleID=\"sHeader\"><Data ss:Type=\"String\">{Esc(h)}</Data></Cell>");
+                sb.AppendLine("</Row>");
+
+                if (_resultsLegacy != null)
+                {
+                    int ri = 0;
+                    foreach (var r in _resultsLegacy)
+                    {
+                        // Determinar estado basándose en tolerancias
+                        bool ok = Math.Abs(r.DeltaL) <= DL_MAX && Math.Abs(r.DeltaChroma) <= DC_MAX && r.DeltaE <= DE_MAX;
+                        string est = ok ? "CUMPLE" : "NO CUMPLE";
+                        string stRow = (ri % 2 == 0) ? "sRow" : "sAlt";
+                        string stEst = ok ? "sOk" : "sFail";
+
+                        double pctL = Math.Round(Math.Abs(r.PercentL), 1);
+                        double pctA = Math.Round(Math.Abs(r.PercentA), 1);
+                        double pctB = Math.Round(Math.Abs(r.PercentB), 1);
+                        string diagL = r.DeltaL < -0.01 ? "Lote más OSCURO" : r.DeltaL > 0.01 ? "Lote más CLARO" : "Sin desviación";
+                        string corrL = r.DeltaL < -0.01 ? $"ACLARAR {pctL:0.0}%" : r.DeltaL > 0.01 ? $"OSCURECER {pctL:0.0}%" : "N/A";
+                        string diagAB = "";
+                        if (r.DeltaA > 0.01) diagAB += $"MÁS ROJO ({pctA:0.0}%)  ";
+                        else if (r.DeltaA < -0.01) diagAB += $"MÁS VERDE ({pctA:0.0}%)  ";
+                        if (r.DeltaB > 0.01) diagAB += $"MÁS AMARILLO ({pctB:0.0}%)";
+                        else if (r.DeltaB < -0.01) diagAB += $"MÁS AZUL ({pctB:0.0}%)";
+
+                        sb.AppendLine("<Row ss:Height=\"20\">");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(r.Illuminant)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaL:F3}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaChroma:F3}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaHue:F3}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaE:F3}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stEst}\"><Data ss:Type=\"String\">{Esc(est)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagL)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(corrL)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagAB.Trim())}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(r.LightnessFlag ?? "")}</Data></Cell>");
+                        sb.AppendLine("</Row>");
+                        ri++;
+                    }
+                }
+
+                sb.AppendLine("</Table>");
+                sb.AppendLine("</Worksheet>");
+
+                // ═══════════════════════════════════════
+                // HOJA 2 – REPORTE COMPLETO (texto)
+                // ═══════════════════════════════════════
+                sb.AppendLine("<Worksheet ss:Name=\"Reporte Completo\">");
+                sb.AppendLine("<Table>");
+                sb.AppendLine("<Row ss:Height=\"30\">");
+                sb.AppendLine("<Cell ss:StyleID=\"sTitle\"><Data ss:Type=\"String\">REPORTE COMPLETO</Data></Cell>");
+                sb.AppendLine("</Row>");
+
+                foreach (var linea in (txtReport.Text + Environment.NewLine + txtRecomendacion.Text).Split('\n'))
+                {
+                    sb.AppendLine("<Row ss:Height=\"16\">");
+                    sb.AppendLine($"<Cell ss:StyleID=\"sRow\"><Data ss:Type=\"String\">{Esc(linea.TrimEnd('\r'))}</Data></Cell>");
+                    sb.AppendLine("</Row>");
+                }
+
+                sb.AppendLine("</Table>");
+                sb.AppendLine("</Worksheet>");
+                sb.AppendLine("</Workbook>");
+
+                System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), new System.Text.UTF8Encoding(true));
+                MessageBox.Show("Reporte exportado a Excel correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        // Escapa caracteres especiales XML
+        private static string Esc(string s) =>
+            System.Security.SecurityElement.Escape(s ?? "");
     }
 }

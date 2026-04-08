@@ -7,10 +7,13 @@ using System.Drawing;
 
 namespace Color.Services
 {
+    /// Servicio estático encargado de la persistencia de datos colorimétricos en un archivo local.
     public static class HistorialService
     {
+        /// Ruta absoluta del archivo de base de datos CSV, ubicado en el directorio de ejecución de la aplicación.
         private static string rutaArchivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DB_Colorimetria.csv");
 
+        /// Registra una nueva medición individual en el archivo de historial.
         public static void GuardarMedicionDetallada(
             DateTime fecha, string shadeName, string iluminante,
             string lightnessPct, string chromaPct,
@@ -19,13 +22,14 @@ namespace Color.Services
             string diagB, string corrB)
         {
             try
-            {
+            { // Verifica la existencia del archivo para escribir encabezados si es nuevo
                 if (!File.Exists(rutaArchivo))
                 {
                     string headers = "FechaHora;ShadeName;Iluminante;Lightness;Chroma;Diagnostico_L;Correccion_L;Diagnostico_a;Correccion_a;Diagnostico_b;Correccion_b" + Environment.NewLine;
                     File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
                 }
 
+                // Construye la línea formateada. Se utiliza "N/A" como valor por defecto para nulos.
                 string linea = string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10}",
                     fecha.ToString("yyyy-MM-dd HH:mm"),
                     shadeName ?? "N/A",
@@ -39,11 +43,13 @@ namespace Color.Services
                     diagB ?? "N/A",
                     corrB ?? "N/A");
 
+                // Agrega la línea al final del archivo existente
                 File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
             }
             catch { }
         }
 
+        /// Carga todos los registros almacenados en el archivo CSV y los transforma en un objeto DataTable.
         public static DataTable ObtenerHistorial()
         {
             DataTable dt = new DataTable();
@@ -64,28 +70,36 @@ namespace Color.Services
                 if (File.Exists(rutaArchivo))
                 {
                     string[] lineas = File.ReadAllLines(rutaArchivo, Encoding.UTF8);
-                    for (int i = 1; i < lineas.Length; i++)
+                    // Empezamos en i = 1 para omitir la fila de encabezados
+                    for (int i = 1; i < lineas.Length; i++) 
                     {
                         if (string.IsNullOrWhiteSpace(lineas[i])) continue;
                         string[] celdas = lineas[i].Split(';');
+                        // Validación de integridad: la fila debe tener exactamente 11 columnas
                         if (celdas.Length == 11) dt.Rows.Add(celdas);
                     }
                 }
             }
-            catch { }
+            catch 
+            {
+                // Manejo silencioso de errores según implementación original
+            }
 
             return dt;
         }
 
+        /// Sobrescribe el archivo actual con la información contenida en un DataTable.
         public static void GuardarHistorialCompleto(DataTable dt)
         {
             try
             {
+                // Reinicia el archivo con los encabezados
                 string headers = "FechaHora;ShadeName;Iluminante;Lightness;Chroma;Diagnostico_L;Correccion_L;Diagnostico_a;Correccion_a;Diagnostico_b;Correccion_b" + Environment.NewLine;
                 File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
 
                 foreach (DataRow row in dt.Rows)
                 {
+                    // Formateo de cada fila del DataTable a string delimitado por ";"
                     string linea = string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10}",
                         row["FechaHora"] ?? "N/A", row["ShadeName"] ?? "N/A", row["Iluminante"] ?? "N/A",
                         row["Lightness"] ?? "N/A", row["Chroma"] ?? "N/A", row["Diagnostico_L"] ?? "N/A",
@@ -95,7 +109,10 @@ namespace Color.Services
                     File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
                 }
             }
-            catch { }
+            catch 
+            {
+                // Manejo silencioso de errores
+            }
         }
     }
 }

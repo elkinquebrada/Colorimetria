@@ -99,7 +99,7 @@ namespace Color
         public double dL { get; set; }
         public double dC { get; set; }
         public double dH { get; set; }
-        public string PF { get; set; } // Pass / Fail
+        public string PF { get; set; } 
     }
     public class OcrReport
     {
@@ -568,7 +568,7 @@ namespace Color
                     double errDiv = Math.Abs(dCDiv10 - dCReported);
                     double errOrig = Math.Abs(dCCalculated - dCReported);
 
-                    if (errDiv < errOrig * 0.3) // ÷10 mejora al menos 70%
+                    if (errDiv < errOrig * 0.3) 
                     {
                         report.ParseLog.Add(string.Format(
                             "[CMC-VAL] {0}: ΔC calculado={1:F3} reportado={2:F3} ratio={3:F1} → ×10 detectado, dividiendo por 10",

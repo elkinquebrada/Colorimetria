@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-
 namespace Color
 {
     // ── Modelos de entrada ──────────────────────────────────────────────────
@@ -230,7 +229,6 @@ namespace Color
                     "Chroma",
                     r.ResultadoChroma));
             }
-
             sb.AppendLine();
             sb.AppendLine("══════════════════════════════════════════════════════════════════");
             return sb.ToString();

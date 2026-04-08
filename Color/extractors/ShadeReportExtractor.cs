@@ -56,7 +56,7 @@ namespace Color
     public class ShadeExtractionResult
     {
         public string ShadeName { get; set; }
-        /// <summary>DT Main (e.g. "DFC12") extraído del encabezado del Shade History Report.</summary>
+        /// DT Main (e.g. "DFC12") extraído del encabezado del Shade History Report.
         public string DtMain { get; set; }
         public List<RecipeItem> Recipe { get; set; } = new List<RecipeItem>();
         public LabValues Lab { get; set; }
@@ -165,7 +165,7 @@ namespace Color
             return res;
         }
 
-        /// <summary>Extrae el DT Main del texto OCR completo (ej: "DFC12").</summary>
+        /// Extrae el DT Main del texto OCR completo (ej: "DFC12").
         public string ExtractDtMain(string ocrText)
         {
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
@@ -368,12 +368,7 @@ namespace Color
         //-------------------------------------------------------------------
         // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
-
-        /// <summary>
         /// Extrae el DT Main usando un recorte dirigido sobre la banda central del encabezado
-        /// del Shade History Report (aprox. entre el 20% y el 38% de la altura de la imagen),
-        /// donde aparece la línea "Major Recipe Version Number: X   DT Main: XXXXXX".
-        /// </summary>
         private string ExtractDtMainFromBitmap(Bitmap original)
         {
             // La línea "DT Main:" está en el encabezado medio, aprox entre 20% y 38% de la altura

@@ -77,7 +77,8 @@ namespace OCR
             // Ordenar por Y ascendente (de arriba hacia abajo)
             words.Sort((a, b) => a.Y.CompareTo(b.Y));
 
-            int tolerance = 10;  // margen vertical para determinar filas
+            // margen vertical para determinar filas
+            int tolerance = 10;  
             int currentRowY = -9999;
             List<OcrWord> currentRow = null;
 

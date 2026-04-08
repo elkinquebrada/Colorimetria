@@ -11,6 +11,7 @@ namespace Color.Forms
         public FormHistorial()
         {
             InitializeComponent();
+            this.WindowState = FormWindowState.Maximized;
             ConfigurarColumnas();
         }
 
@@ -108,42 +109,87 @@ namespace Color.Forms
         {
             using (SaveFileDialog dlg = new SaveFileDialog())
             {
-                dlg.Filter = "CSV (*.csv)|*.csv";
-                dlg.FileName = "Historial_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".csv";
+                dlg.Filter = "Excel (*.xls)|*.xls";
+                dlg.FileName = "Historial_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xls";
 
                 if (dlg.ShowDialog() != DialogResult.OK)
                     return;
 
-                // Usar UTF8 con BOM para que Excel detecte automáticamente los acentos
-                using (System.IO.StreamWriter sw = new System.IO.StreamWriter(dlg.FileName, false, new System.Text.UTF8Encoding(true)))
+                try
                 {
-                    // Encabezados
-                    var headers = new System.Collections.Generic.List<string>();
+                    var sb = new System.Text.StringBuilder();
+
+                    // Cabecera XML de Excel
+                    sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                    sb.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
+                    sb.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+                    sb.AppendLine(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
+                    sb.AppendLine("<Styles>");
+                    // Estilo encabezado
+                    sb.AppendLine("<Style ss:ID=\"sHeader\">");
+                    sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/>");
+                    sb.AppendLine("<Font ss:Bold=\"1\" ss:Color=\"#FFFFFF\" ss:Size=\"10\"/>");
+                    sb.AppendLine("<Interior ss:Color=\"#1F3864\" ss:Pattern=\"Solid\"/>");
+                    sb.AppendLine("<Borders><Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"2\" ss:Color=\"#FFFFFF\"/></Borders>");
+                    sb.AppendLine("</Style>");
+                    // Estilo fila normal
+                    sb.AppendLine("<Style ss:ID=\"sRow\">");
+                    sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
+                    sb.AppendLine("<Font ss:Size=\"10\"/>");
+                    sb.AppendLine("<Interior ss:Color=\"#FFFFFF\" ss:Pattern=\"Solid\"/>");
+                    sb.AppendLine("</Style>");
+                    // Estilo fila alterna
+                    sb.AppendLine("<Style ss:ID=\"sAlt\">");
+                    sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
+                    sb.AppendLine("<Font ss:Size=\"10\"/>");
+                    sb.AppendLine("<Interior ss:Color=\"#DCE6F1\" ss:Pattern=\"Solid\"/>");
+                    sb.AppendLine("</Style>");
+                    sb.AppendLine("</Styles>");
+
+                    sb.AppendLine("<Worksheet ss:Name=\"Historial Colorimetría\">");
+                    sb.AppendLine("<Table>");
+
+                    // Fila de encabezados
+                    sb.AppendLine("<Row ss:Height=\"30\">");
                     foreach (DataGridViewColumn col in dgvHistorial.Columns)
                     {
-                        headers.Add(col.HeaderText);
+                        sb.AppendLine($"<Cell ss:StyleID=\"sHeader\"><Data ss:Type=\"String\">{System.Security.SecurityElement.Escape(col.HeaderText)}</Data></Cell>");
                     }
-                    sw.WriteLine(string.Join(";", headers));
+                    sb.AppendLine("</Row>");
 
-                    // Filas visibles
+                    // Filas de datos
+                    int rowIndex = 0;
                     foreach (DataGridViewRow row in dgvHistorial.Rows)
                     {
                         if (!row.Visible || row.IsNewRow) continue;
 
-                        var cells = new System.Collections.Generic.List<string>();
+                        string estilo = (rowIndex % 2 == 0) ? "sRow" : "sAlt";
+                        sb.AppendLine("<Row ss:Height=\"20\">");
                         foreach (DataGridViewCell cell in row.Cells)
                         {
-                            cells.Add((cell.Value ?? "").ToString());
+                            string val = System.Security.SecurityElement.Escape((cell.Value ?? "").ToString());
+                            sb.AppendLine($"<Cell ss:StyleID=\"{estilo}\"><Data ss:Type=\"String\">{val}</Data></Cell>");
                         }
-                        sw.WriteLine(string.Join(";", cells));
+                        sb.AppendLine("</Row>");
+                        rowIndex++;
                     }
-                }
 
-                MessageBox.Show(
-                    "Exportación completada correctamente.",
-                    "Exportar CSV",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    sb.AppendLine("</Table>");
+                    sb.AppendLine("</Worksheet>");
+                    sb.AppendLine("</Workbook>");
+
+                    System.IO.File.WriteAllText(dlg.FileName, sb.ToString(), new System.Text.UTF8Encoding(true));
+
+                    MessageBox.Show(
+                        "Exportación a Excel completada correctamente.\nAbra el archivo con Microsoft Excel.",
+                        "Exportar Excel",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error al exportar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 

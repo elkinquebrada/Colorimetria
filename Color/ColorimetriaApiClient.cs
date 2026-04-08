@@ -35,8 +35,6 @@ namespace Color
         }
 
         // ── Corrección principal ───────────────────────────────────────────────
-
-        /// Envía el reporte OCR a la API y devuelve las correcciones aceptadas.
         public List<ApiCorrectionResult> CorrectReport(OcrReport report, double chromaThreshold = 0.35)
         {
             var results = new List<ApiCorrectionResult>();

@@ -4,20 +4,24 @@ using Color;
 
 namespace OCR
 {
+    /// Proporciona métodos estáticos para la lectura y mapeo de datos desde archivos Excel (.xlsx)
     public static class ExcelReader
     {
+        /// Lee la primera hoja de un archivo Excel y la convierte en una estructura de listas.
         public static List<List<string>> LoadTable(string excelPath)
         {
             var table = new List<List<string>>();
 
             using (var wb = new XLWorkbook(excelPath))
             {
+                // Se procesa únicamente la primera hoja del libro
                 var ws = wb.Worksheet(1);
 
                 foreach (var row in ws.RowsUsed())
                 {
                     var list = new List<string>();
                     foreach (var cell in row.CellsUsed())
+                        // Se obtiene el valor de la celda convertido a string
                         list.Add(cell.GetValue<string>());
 
                     table.Add(list);
@@ -27,6 +31,7 @@ namespace OCR
             return table;
         }
 
+        /// Carga y mapea los datos de una receta desde un archivo Excel.
         public static List<RecipeItem> LoadRecipe(string excelPath)
         {
             var table = LoadTable(excelPath);
@@ -34,6 +39,7 @@ namespace OCR
 
             foreach (var row in table)
             {
+                // Validación: Se requieren al menos 3 columnas (Código, Nombre, Porcentaje)
                 if (row.Count < 3)
                     continue;
 
@@ -48,6 +54,7 @@ namespace OCR
             return list;
         }
 
+        /// Carga y valida datos colorimétricos (L, A, B, Chroma, Hue) desde un archivo Excel.
         public static List<ColorimetricRow> LoadMeasurements(string excelPath)
         {
             var table = LoadTable(excelPath);
@@ -55,7 +62,8 @@ namespace OCR
             var list = new List<ColorimetricRow>();
 
             foreach (var row in table)
-            {
+            { 
+                // Validación: Se requieren al menos 7 columnas para una medición completa
                 if (row.Count < 7) continue;
 
                 double L, A, B, Chroma, Hue;

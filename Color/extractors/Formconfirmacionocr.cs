@@ -1,4 +1,3 @@
-// Formconfirmacionocr.cs
 using Color;
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,6 @@ using SysColor = System.Drawing.Color;
 
 namespace Colorimetria
 {
-
 
     public partial class FormConfirmacionOCR : Form
     {
@@ -119,7 +117,6 @@ namespace Colorimetria
             // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
         }
-
         // =========================================================
         // NUEVO: Load → mostrar delante y minimizar MainForm
         // =========================================================
@@ -197,10 +194,10 @@ namespace Colorimetria
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));  // Mediciones
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));  // CMC
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 28f));  // Receta
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 16f));  // LAB
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 28f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 16f));  
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             // Fila 0: Mediciones

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -6,6 +6,8 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Color.Services;
+using Color.Forms;
 
 namespace Color
 {
@@ -88,6 +90,7 @@ namespace Color
             EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Receta");
 
             btnTolerancias.Click += (s, e) => { using (var f = new Color.Tolerancias.FormConfigTolerancias()) f.ShowDialog(this); };
+            btnBaseDatos.Click += BtnBaseDatos_Click;
             btnSalir.Click += (s, e) => { if (MessageBox.Show("¿Salir?", "Confirme", MessageBoxButtons.YesNo) == DialogResult.Yes) Application.Exit(); };
 
             btnIniciar.Click += BtnIniciar_Click;
@@ -321,6 +324,37 @@ namespace Color
         }
 
         private void PositionExitButtonAtBottom() => btnSalir.Location = new Point(20, Math.Max(210, leftNav.Height - btnSalir.Height - 20));
+
+        private void BtnBaseDatos_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var tabla = HistorialService.ObtenerHistorial();
+
+                if (tabla == null || tabla.Rows.Count == 0)
+                {
+                    MessageBox.Show(
+                        "La base de datos no contiene registros todavía.\n\n" +
+                        "Los registros se generan al guardar los resultados desde el botón 'Historial' dentro de un análisis.",
+                        "Base de datos vacía",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return;
+                }
+
+                var frm = new FormHistorial();
+                frm.CargarHistorial(tabla);
+                frm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Error al abrir la base de datos: " + ex.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
 
         private string BuildResumenReceta(ShadeExtractionResult result)
         {

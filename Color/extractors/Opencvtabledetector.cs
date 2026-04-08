@@ -301,7 +301,7 @@ namespace Color
                 }
                 else
                 {
-                    // Determinar por posición: filas impares = Lot si no hay iluminante
+                    // Determinar por posición: filas impares.
                     if (currentIlluminant != null)
                         rowType = string.IsNullOrEmpty(rowType) ? "Lot" : rowType;
                 }
