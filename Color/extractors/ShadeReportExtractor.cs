@@ -1,9 +1,13 @@
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using OCR;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Tesseract;
 
@@ -85,7 +89,7 @@ namespace Color
 
         // Regex del archivo original
         private static readonly Regex RecipeRegex = new Regex(
-            @"(?mi)[^\d]*(\d{8})\s+([A-Za-z][A-Za-z0-9\s\-\(\)\/\.,_]+?)\s+([0-9OL][0-9OL.,]*)\s*%",
+            @"(?mi)[^\d]*(\d{8})\s+(.+?)\s*([0-9OL\|Ll\s\.,]{2,})\s*%",
             RegexOptions.Compiled);
 
         private static readonly Regex LabHeaderRegex = new Regex(
@@ -262,34 +266,92 @@ namespace Color
             var list = new List<RecipeItem>();
             if (string.IsNullOrWhiteSpace(ocrText)) return list;
 
-            // Normalizar errores OCR comunes antes de aplicar el regex:
-            string normalized = Regex.Replace(ocrText, @"\bL(\d)", "1$1");
-            normalized = Regex.Replace(normalized, @"(\d)L(\d)", "$11$2");
-
-            var matches = RecipeRegex.Matches(normalized);
+            // --- PASO 1: EXTRACCIÓN CRUDA Y DETECCIÓN DE CONTEXTO ---
+            var matches = RecipeRegex.Matches(ocrText);
+            var rawResults = new List<(string code, string name, string pctRaw, string digits)>();
+            var decimalCounts = new List<int>();
 
             foreach (Match m in matches)
             {
                 var code = m.Groups[1].Value.Trim();
                 var name = m.Groups[2].Value.Trim();
-                var pctRaw = m.Groups[3].Value.Trim()
-                    .Replace('O', '0')
-                    .Replace('L', '1')
-                    .Replace(',', '.');
-
-                // Restaurar punto decimal si el OCR lo omitió
-                string pctFixed = pctRaw;
-                // Cambia la línea 253 por esta:
-                if (!pctFixed.Contains(".") && pctFixed.Length >= 2)
+                var pctRaw = m.Groups[3].Value.Trim().Replace(" ", "");
+                
+                // Limpiar dígitos para detectar precisión real capturada
+                string digitsOnly = Regex.Replace(pctRaw, @"[^\d]", "");
+                
+                // Detectar cuántos decimales leyó el OCR originalmente (si hay punto)
+                int decPos = pctRaw.IndexOf('.');
+                if (decPos >= 0)
                 {
-                    // Insertamos el punto después del primer carácter
-                    pctFixed = pctFixed.Insert(1, ".");
+                    decimalCounts.Add(pctRaw.Length - decPos - 1);
                 }
+
+                rawResults.Add((code, name, pctRaw, digitsOnly));
+            }
+
+            // Determinar precisión dominante (Moda)
+            int dominantPrecision = 5; // Por defecto Coats
+            if (decimalCounts.Count > 0)
+            {
+                dominantPrecision = decimalCounts.GroupBy(n => n)
+                                              .OrderByDescending(g => g.Count())
+                                              .First().Key;
+            }
+
+            // --- PASO 2: REPARACIÓN INTELIGENTE BASADA EN CONTEXTO ---
+            foreach (var item in rawResults)
+            {
+                string name = item.name;
+                string pctRaw = item.pctRaw;
+                string digits = item.digits;
+                
+                char lastCharName = name.Length > 0 ? name[name.Length - 1] : ' ';
+                char firstCharPct = pctRaw.Length > 0 ? pctRaw[0] : ' ';
+                bool hasConfusionEvidence = (lastCharName == 'L' || lastCharName == 'I' || lastCharName == '|' ||
+                                           firstCharPct == 'L' || firstCharPct == 'I' || firstCharPct == '|');
+
+                // ¿Faltan dígitos respecto al resto de la tabla?
+                int missingDigits = (dominantPrecision + 1) - digits.Length;
+
+                if (missingDigits > 0 && hasConfusionEvidence)
+                {
+                    // Reparación inteligente: solo si hay evidencia de colapso OCR (L -> 1.1)
+                    if (missingDigits == 1 && digits.StartsWith("1"))
+                    {
+                        // Ej: L7826 -> 1.17826 (en contexto de 5 decimales)
+                        pctRaw = "1.1" + digits.Substring(1);
+                    }
+                    else if (missingDigits == 2)
+                    {
+                        // Ej: L7826 (donde L colapsó "1.1")
+                        pctRaw = "1.1" + digits;
+                    }
+                    
+                    // Limpiar el carácter de confusión del nombre si era una letra pegada
+                    if (char.IsLetter(lastCharName)) name = name.Substring(0, name.Length - 1).Trim();
+                }
+                else if (!pctRaw.Contains(".") && digits.Length >= 4)
+                {
+                    // Inserción de punto automática basada en contexto si el OCR lo omitió
+                    if (digits.Length > dominantPrecision)
+                    {
+                        pctRaw = digits.Insert(digits.Length - dominantPrecision, ".");
+                    }
+                    else
+                    {
+                        pctRaw = "0." + digits.PadLeft(dominantPrecision, '0');
+                    }
+                }
+
+                // Normalización final conservadora
+                pctRaw = pctRaw.Replace('O', '0').Replace('o', '0').Replace('S', '5').Replace('Z', '2').Replace(',', '.').Replace("..", ".");
+                
                 list.Add(new RecipeItem
                 {
-                    Code = code,
+                    Code = item.code,
                     Name = name,
-                    Percentage = pctFixed + "%"
+                    Percentage = pctRaw + (pctRaw.EndsWith("%") ? "" : "%")
                 });
             }
 
@@ -465,45 +527,47 @@ namespace Color
 
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)
         {
-            // Zona de ingredientes en el Shade History Report:
-            int top = (int)(original.Height * 0.24);
-            int bot = (int)(original.Height * 0.50);
-            int h = bot - top;
-
-            if (h <= 0) return null;
-
-            Bitmap crop = new Bitmap(original.Width * 4, h * 4);
-
-            using (var g = Graphics.FromImage(crop))
-            {
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.DrawImage(original,
-                    new Rectangle(0, 0, crop.Width, crop.Height),
-                    new Rectangle(0, top, original.Width, h),
-                    GraphicsUnit.Pixel);
-            }
-
-            string tmp = Path.Combine(Path.GetTempPath(),
-                "recipe_" + Guid.NewGuid().ToString("N") + ".png");
-
-            crop.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
-            crop.Dispose();
-
-            // FIX: ejecutar OCR sobre el recorte y pasar el TEXTO resultante
+            // MEJORA: Uso de OpenCV para pre-procesamiento avanzado (Estilo Dataextraxtor)
             string ocrText = string.Empty;
             try
             {
-                using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
-                using (var pix = Pix.LoadFromFile(tmp))
-                using (var page = engine.Process(pix, PageSegMode.SingleBlock))
+                int top = (int)(original.Height * 0.22);
+                int bot = (int)(original.Height * 0.52);
+                int h = bot - top;
+                if (h <= 0) return null;
+
+                using (var mat = BitmapConverter.ToMat(original))
+                using (var gray = new Mat())
                 {
-                    ocrText = page.GetText() ?? string.Empty;
+                    var roiRect = new OpenCvSharp.Rect(0, top, original.Width, h);
+                    using (var roi = new Mat(mat, roiRect))
+                    {
+                        Cv2.CvtColor(roi, gray, ColorConversionCodes.BGR2GRAY);
+                        
+                        using (var resized = new Mat())
+                        {
+                            // Escala 4x con interpolación cúbica (como Dataextraxtor) para nitidez decimal
+                            Cv2.Resize(gray, resized, new OpenCvSharp.Size(0, 0), 4.0, 4.0, InterpolationFlags.Cubic);
+                            
+                            using (var thresholded = new Mat())
+                            {
+                                // Binarización de Otsu para limpiar el ruido del fondo
+                                Cv2.Threshold(resized, thresholded, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
+                                
+                                using (Bitmap bmpToOcr = BitmapConverter.ToBitmap(thresholded))
+                                {
+                                    using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
+                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleBlock))
+                                    {
+                                        ocrText = page.GetText() ?? string.Empty;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            finally
-            {
-                if (File.Exists(tmp)) File.Delete(tmp);
-            }
+            catch { }
 
             return ExtractRecipe(ocrText);
         }

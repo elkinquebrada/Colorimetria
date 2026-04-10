@@ -22,8 +22,8 @@ namespace Color
         private List<Color.IlluminantCorrectionResult> _recipeResults;
 
         // ======= Controles de la vista =======
-        private TextBox txtReport;
-        private TextBox txtRecomendacion;
+        private RichTextBox txtReport;
+        private RichTextBox txtRecomendacion;
         private SplitContainer splitMedicionesCmc;
         private Button btnExportar;
         private Button btnHistorial;
@@ -46,8 +46,8 @@ namespace Color
             InitializeComponents();
 
             // Poblar vistas
-            txtReport.Text = BuildResumenFromReport(_report);
-            txtRecomendacion.Text = BuildRecomendacionFromReport(_report);
+            SetFormattedText(txtReport, BuildResumenFromReport(_report));
+            SetFormattedText(txtRecomendacion, BuildRecomendacionFromReport(_report));
         }
 
         public FormResultados(string resumen, List<EngineRes> results)
@@ -60,9 +60,13 @@ namespace Color
             string prefix = GetGlobalMetadataPrefix();
 
             // Poblar vistas
-            txtReport.Text = string.IsNullOrEmpty(prefix) ? _resumenLegacy : prefix + _resumenLegacy;
-            txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
-            if (!string.IsNullOrEmpty(prefix)) txtRecomendacion.Text = prefix + txtRecomendacion.Text;
+            SetFormattedText(txtReport, string.IsNullOrEmpty(prefix) ? _resumenLegacy : prefix + _resumenLegacy);
+            SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
+            if (!string.IsNullOrEmpty(prefix)) 
+            {
+                // Re-aplicar con prefijo si existe
+                SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
+            }
         }
 
         // Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.
@@ -85,11 +89,18 @@ namespace Color
                 sbLeft.AppendLine();
                 sbLeft.AppendLine();
                 sbLeft.Append(RecipeCorrector.BuildSummaryText(_recipeResults));
-            }
-            txtReport.Text = sbLeft.ToString();
 
-            txtRecomendacion.Text = BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX);
-            if (!string.IsNullOrEmpty(prefix)) txtRecomendacion.Text = prefix + txtRecomendacion.Text;
+                // Nueva Tabla Consolidada (CÁLCULOS REALIZADOS) - Estilo Excel
+                sbLeft.AppendLine();
+                sbLeft.Append(RecipeCorrector.BuildConsolidatedCalculationTable(_recipeResults));
+            }
+            SetFormattedText(txtReport, sbLeft.ToString());
+
+            SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
+            }
         }
 
         private static string GetGlobalMetadataPrefix()
@@ -203,7 +214,7 @@ namespace Color
 
             btnRegresar = new Button
             {
-                Text = "← Revisar OCR",
+                Text = "← Regresar",
                 Size = new Size(150, 38),
                 BackColor = System.Drawing.Color.FromArgb(180, 100, 0),
                 ForeColor = System.Drawing.Color.White,
@@ -234,7 +245,7 @@ namespace Color
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtReport = BuildTextBox(null); 
+            txtReport = BuildRichControl(null); 
             txtReport.Dock = DockStyle.Fill;
 
             var panelLeft = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
@@ -256,7 +267,7 @@ namespace Color
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204)
             };
 
-            txtRecomendacion = BuildTextBox(System.Drawing.Color.Black);
+            txtRecomendacion = BuildRichControl(null);
             txtRecomendacion.Dock = DockStyle.Fill;
 
             var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
@@ -364,13 +375,13 @@ namespace Color
             }
         }
 
-        // ======= Factory de TextBox monoespaciado (oscuro) =======
-        private static TextBox BuildTextBox(System.Drawing.Color? foreColor)
+        // ======= Factory de RichTextBox monoespaciado =======
+        private static RichTextBox BuildRichControl(System.Drawing.Color? foreColor)
         {
-            return new TextBox
+            return new RichTextBox
             {
                 Multiline = true,
-                ScrollBars = ScrollBars.Both,
+                ScrollBars = RichTextBoxScrollBars.Both,
                 Dock = DockStyle.Fill,
                 Font = new Font("Consolas", 10.0f),
                 BackColor = System.Drawing.Color.White,
@@ -378,8 +389,80 @@ namespace Color
                 ReadOnly = true,
                 WordWrap = false,
                 TabStop = false, 
-                Text = string.Empty
+                BorderStyle = BorderStyle.None
             };
+        }
+
+        private void SetFormattedText(RichTextBox rtb, string text)
+        {
+            if (rtb == null) return;
+            rtb.Clear();
+            if (string.IsNullOrEmpty(text)) return;
+
+            rtb.SuspendLayout();
+            
+            bool highlightingD65 = false;
+            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            
+            System.Drawing.Color highlightBlue = System.Drawing.Color.FromArgb(210, 230, 255); // Azul adecuado para entorno
+
+            foreach (var line in lines)
+            {
+                int startLine = rtb.TextLength;
+                
+                // --- 1. Lógica de Resaltado por Bloque (D65 es principal) ---
+                string trimmed = line.Trim();
+                if (trimmed.Contains("[D65]")) highlightingD65 = true;
+                else if (trimmed.StartsWith("[") && trimmed.EndsWith("]")) highlightingD65 = false;
+
+                bool isVarRow = line.Contains("Variación (Croma %)");
+
+                // --- 2. Procesamiento de Etiquetas Dinámicas « » ---
+                string processedLine = line;
+                List<(int start, int length)> highlightRanges = new List<(int, int)>();
+
+                while (processedLine.Contains("«"))
+                {
+                    int idxStart = processedLine.IndexOf("«");
+                    int idxEnd = processedLine.IndexOf("»", idxStart);
+                    if (idxEnd == -1) break;
+
+                    string content = processedLine.Substring(idxStart + 1, idxEnd - idxStart - 1);
+                    processedLine = processedLine.Remove(idxStart, (idxEnd - idxStart) + 1).Insert(idxStart, content);
+                    
+                    highlightRanges.Add((idxStart, content.Length));
+                }
+
+                rtb.AppendText(processedLine + Environment.NewLine);
+
+                // --- 3. Aplicación de Estilos ---
+                
+                // Fondo Azul y Letra Oscura (Negrita) para D65 o Variación
+                if (highlightingD65 || processedLine.Contains("D65") || isVarRow)
+                {
+                    rtb.Select(startLine, processedLine.Length);
+                    rtb.SelectionBackColor = highlightBlue;
+                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); // Letra más oscura
+                    rtb.SelectionColor = System.Drawing.Color.Black;
+                }
+
+                // Resaltado de celdas importantes (Etiquetadas con « »)
+                foreach (var range in highlightRanges)
+                {
+                    rtb.Select(startLine + range.start, range.length);
+                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); // Letra más oscura
+                    rtb.SelectionColor = System.Drawing.Color.Black;
+                }
+
+                // Restaurar color por defecto para el resto de la línea
+                rtb.SelectionStart = rtb.TextLength;
+                rtb.SelectionColor = rtb.ForeColor;
+            }
+            
+            rtb.SelectionStart = 0;
+            rtb.SelectionLength = 0;
+            rtb.ScrollToCaret();
+            rtb.ResumeLayout();
         }
 
         // =========================================================
@@ -398,46 +481,17 @@ namespace Color
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
 
-            // --- Encabezado de tolerancias (sin imprimir Croma) ---
-            sb.AppendLine("ESTADO L/ΔE (tolerancias):");
-            sb.AppendLine(string.Format(
-                CultureInfo.InvariantCulture,
-                " DL≤{0:0.00} DC≤{1:0.00} DH≤{2:0.00} DE≤{3:0.00}",
-                DL_MAX, DC_MAX, DH_MAX, DE_MAX));
+            // --- Evaluación de tolerancias ---
+            var evaluation = EngineCalc.EvaluateTolerance(results, DE_MAX);
+            sb.AppendLine(evaluation.FormatReport());
             sb.AppendLine();
 
-            bool cumpleTodo = true;
-
-            // % formateado con signo, sin '+'
+            // % formateado como entero (sin decimales) para coincidir con el modelo de decisión
             Func<double, string> FmtPctSigned = v =>
-                double.IsNaN(v) ? "N/D" : (v.ToString("0;-0;0", CultureInfo.InvariantCulture) + "%");
+                double.IsNaN(v) ? "N/D" : (Math.Round(v, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%");
 
-            // ---- 1) ESTADO por iluminante (sin DC impreso) ----
-            foreach (var r in results)
-            {
-                // Lógica de pass: DL, DH y DE (sin DC)
-                bool pass =
-                    Math.Abs(r.DeltaL) <= DL_MAX &&
-                    Math.Abs(r.DeltaChroma) <= DC_MAX &&
-                    Math.Abs(r.DeltaHue) <= DH_MAX &&
-                    r.DeltaE <= DE_MAX;
-
-                if (!pass) cumpleTodo = false;
-
-                // Imprimimos SOLO DE y DL (sin DC)
-                sb.AppendLine(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0,-6} -> {1} (DE={2:0.00} DL={3:+0.00;-0.00})",
-                    r.Illuminant,
-                    pass ? "CUMPLE " : "NO CUMPLE",
-                    r.DeltaE,
-                    r.DeltaL
-                ));
-            }
-
-            // ---- 2) TABLA COMPACTA de % a corregir (L/A/B) ----
-            sb.AppendLine();
-            sb.AppendLine("% a corregir (por iluminante):");
+            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B) ----
+            sb.AppendLine("% de correccion (por iluminante):");
             sb.AppendLine(string.Format(
                 CultureInfo.InvariantCulture,
                 " {0,-8} {1,10} {2,12} {3,12}",
@@ -445,6 +499,10 @@ namespace Color
 
             foreach (var r in results)
             {
+                // Omitir este iluminante si CUMPLE la tolerancia
+                var check = evaluation.Checks.FirstOrDefault(c => string.Equals(c.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
+                if (check != null && check.Passes) continue;
+
                 sb.AppendLine(string.Format(
                     CultureInfo.InvariantCulture,
                     " {0,-8} {1,10} {2,12} {3,12}",
@@ -458,7 +516,7 @@ namespace Color
             sb.AppendLine();
             sb.AppendLine("───────────────────────────────────────────────────────────────────");
 
-            if (cumpleTodo)
+            if (evaluation.AllPass)
             {
                 sb.AppendLine();
                 sb.AppendLine(" Todos los iluminantes cumplen las tolerancias definidas.");
@@ -473,7 +531,12 @@ namespace Color
 
             foreach (var r in results)
             {
-                sb.AppendLine(" [" + r.Illuminant + "]");
+                // Omitir este iluminante si CUMPLE la tolerancia
+                var check = evaluation.Checks.FirstOrDefault(c => string.Equals(c.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
+                if (check != null && check.Passes) continue;
+
+                string mainHeaderTag = string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase) ? " (ILUMINANTE PRINCIPAL)" : "";
+                sb.AppendLine(" [" + r.Illuminant + "]" + mainHeaderTag);
 
                 // 👉 L*, a*, b* con % y acción en el formato que pediste
                 sb.Append(BuildPerAxisPercentAdvice(r));
@@ -495,12 +558,12 @@ namespace Color
         {
             var sb = new StringBuilder();
 
-            // L* → "5 %"
+            // L* → "5%" (Entero)
             Func<double, string> FmtPctL = v =>
             {
-                if (double.IsNaN(v)) return "0 %";
+                if (double.IsNaN(v)) return "0%";
                 double iv = Math.Round(Math.Abs(v), 0, MidpointRounding.AwayFromZero);
-                return iv.ToString("0", CultureInfo.InvariantCulture) + " %";
+                return iv.ToString("0", CultureInfo.InvariantCulture) + "%";
             };
 
             // a*/b* → "6%" / "14%"
@@ -687,10 +750,8 @@ namespace Color
                     rep.Batch.dH = r.DeltaHue;
                     rep.Batch.dE = r.DeltaE;
 
-                    bool pass = Math.Abs(r.DeltaL) <= Properties.Settings.Default.ToleranciaDL &&
-                               Math.Abs(r.DeltaChroma) <= Properties.Settings.Default.ToleranciaDC &&
-                               Math.Abs(r.DeltaHue) <= Properties.Settings.Default.ToleranciaDH &&
-                               r.DeltaE <= Properties.Settings.Default.ToleranciaDE;
+                    var evalSingle = EngineCalc.EvaluateTolerance(new List<EngineRes> { r }, Properties.Settings.Default.ToleranciaDE);
+                    bool pass = evalSingle.AllPass;
                     rep.Batch.PF = pass ? "PASS" : "FAIL";
 
                     // Diagnóstico corto (L*) para el reporte
@@ -1062,7 +1123,14 @@ namespace Color
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagL)}</Data></Cell>");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(corrL)}</Data></Cell>");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagAB.Trim())}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(r.LightnessFlag ?? "")}</Data></Cell>");
+                        List<string> recs = new List<string>();
+                        if (r.DeltaA > 0.01) recs.Add("DISM. ROJO");
+                        else if (r.DeltaA < -0.01) recs.Add("DISM. VERDE");
+                        if (r.DeltaB > 0.01) recs.Add("DISM. AMARILLO");
+                        else if (r.DeltaB < -0.01) recs.Add("DISM. AZUL");
+                        string recFinal = recs.Count > 0 ? string.Join(" / ", recs) : "CURVA OK";
+
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(recFinal)}</Data></Cell>");
                         sb.AppendLine("</Row>");
                         ri++;
                     }

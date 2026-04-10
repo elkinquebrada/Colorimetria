@@ -409,6 +409,12 @@ namespace Color
             }
 
             report.ParseLog.Add(string.Format("[OPENCV] Datos desde fila {0}", dataStartRow));
+            
+            // --- EVOLUCIÓN UNIVERSAL INTELIGENTE (DATOS COLORIMÉTRICOS) ---
+            int dominantPrecision = DetectDominantPrecision(cellTexts, dataStartRow, _rowCount);
+            report.ParseLog.Add(string.Format("[SMART] Precisión dominante detectada: {0} decimales", dominantPrecision));
+            
+            RepairNumericCellsByContext(cellTexts, dataStartRow, _rowCount, dominantPrecision, report.ParseLog);
 
             // 4. Construir OcrReport desde las celdas
             var builtReport = ColrTableParser.BuildReport(cellTexts, dataStartRow, report.ParseLog);
@@ -452,24 +458,24 @@ namespace Color
                 .Replace(',', '.')
                 .Replace('O', '0')
                 .Replace('o', '0')
+                .Replace('L', '1')
                 .Replace('l', '1')
                 .Replace('I', '1')
                 .Replace('|', '1')
                 .Replace('S', '5')
                 .Replace('s', '5')
-                // MEJORA 1: sustituciones OCR adicionales
                 .Replace('Z', '2')
                 .Replace('z', '2')
                 .Replace('`', ' ')
                 .Replace('\'', ' ');
 
-            // MEJORA 1: eliminar cualquier carácter que no sea dígito, punto, signo o espacio
-            text = Regex.Replace(text, @"[^0-9\.\-\s]", "");
+            // Capturar rastro de caracteres de confusión antes de limpiar símbolos especiales
+            bool hadConfusionChar = Regex.IsMatch(text, @"[LIl|SszZ]");
 
-            // Quitar espacios internos
+            text = Regex.Replace(text, @"[^0-9\.\-\s]", "");
             text = Regex.Replace(text, @"\s+", "");
 
-            // normalizar signo negativo — si hay un '-' no al inicio, moverlo al inicio
+            // normalizar signo negativo
             {
                 int midMinus = text.IndexOf('-', 1);
                 if (midMinus > 0)
@@ -485,7 +491,80 @@ namespace Color
                 text = before + after;
             }
 
+            // Guardar marca de confusión si la tenía
+            if (hadConfusionChar && !text.Contains("CONF")) text += "!"; 
+
             return text;
+        }
+
+        private static int DetectDominantPrecision(Dictionary<int, Dictionary<int, string>> cellTexts, int startRow, int totalRows)
+        {
+            var precisionCounts = new List<int>();
+            for (int r = startRow; r < totalRows; r++)
+            {
+                if (!cellTexts.ContainsKey(r)) continue;
+                for (int c = 2; c <= 7; c++) // Columnas numéricas L,A,B,C,H, etc.
+                {
+                    if (!cellTexts[r].ContainsKey(c)) continue;
+                    string val = cellTexts[r][c];
+                    int dotIdx = val.IndexOf('.');
+                    if (dotIdx >= 0)
+                    {
+                        // Contar dígitos después del punto
+                        string decimals = Regex.Replace(val.Substring(dotIdx + 1), @"[^\d]", "");
+                        if (decimals.Length > 0) precisionCounts.Add(decimals.Length);
+                    }
+                }
+            }
+
+            if (precisionCounts.Count == 0) return 2; // Estándar por defecto
+            return precisionCounts.GroupBy(n => n)
+                                 .OrderByDescending(g => g.Count())
+                                 .First().Key;
+        }
+
+        private static void RepairNumericCellsByContext(Dictionary<int, Dictionary<int, string>> cellTexts, int startRow, int totalRows, int precision, List<string> log)
+        {
+            for (int r = startRow; r < totalRows; r++)
+            {
+                if (!cellTexts.ContainsKey(r)) continue;
+                for (int c = 2; c <= 7; c++)
+                {
+                    if (!cellTexts[r].ContainsKey(c)) continue;
+                    string val = cellTexts[r][c];
+                    bool hasConfusion = val.Contains("!");
+                    val = val.Replace("!", "");
+                    
+                    string digits = Regex.Replace(val, @"[^\d]", "");
+                    if (string.IsNullOrEmpty(digits)) continue;
+
+                    // Reparación Inteligente: Si no hay punto, insertar basándose en precision detectada
+                    if (!val.Contains(".") && digits.Length >= 1)
+                    {
+                        string restored;
+                        if (digits.Length <= precision)
+                        {
+                            // Ej: "6" -> "0.06" (si precision es 2)
+                            restored = "0." + digits.PadLeft(precision, '0');
+                        }
+                        else
+                        {
+                            // Ej: "1854" -> "18.54"
+                            restored = digits.Insert(digits.Length - precision, ".");
+                        }
+                        
+                        log.Add(string.Format("[SMART] R{0}C{1}: Restaurando punto '{2}' -> '{3}'", r, c, val, restored));
+                        val = restored;
+                    }
+                    else if (val.StartsWith("."))
+                    {
+                        // Normalizar ".61" -> "0.61"
+                        val = "0" + val;
+                    }
+
+                    cellTexts[r][c] = val;
+                }
+            }
         }
 
         /// Detecta en qué fila empiezan los datos buscando la primera celda con iluminante conocido.

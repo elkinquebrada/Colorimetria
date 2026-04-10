@@ -173,9 +173,10 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="extractors\GUIA_INTEGRACION.md" />
+    <None Include="LogicDocs\App.config" />
     <None Include="LogicDocs\calculos a realizar con el programa.xlsx" />
-    <None Include="packages.config" />
+    <None Include="LogicDocs\GUIA_INTEGRACION.md" />
+    <None Include="LogicDocs\packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -189,9 +190,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="tesdata\eng.traineddata" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
