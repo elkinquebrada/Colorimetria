@@ -86,11 +86,13 @@ namespace Color
             sbLeft.Append(_resumenLegacy);
             if (_recipeResults != null && _recipeResults.Count > 0)
             {
-                sbLeft.AppendLine();
-                sbLeft.AppendLine();
-                sbLeft.Append(RecipeCorrector.BuildSummaryText(_recipeResults));
+                // Solo mostramos las tablas consolidadas (L y C), ocultando el desglose individual por iluminante
+                // sbLeft.Append(RecipeCorrector.BuildSummaryText(_recipeResults)); 
 
-                // Nueva Tabla Consolidada (CÁLCULOS REALIZADOS) - Estilo Excel
+                // Tablas Consolidadas Estilo Excel
+                sbLeft.AppendLine();
+                sbLeft.Append(RecipeCorrector.BuildConsolidatedLightnessTable(_recipeResults));
+
                 sbLeft.AppendLine();
                 sbLeft.Append(RecipeCorrector.BuildConsolidatedCalculationTable(_recipeResults));
             }
@@ -1081,56 +1083,79 @@ namespace Color
                     shadeName = globalRes.ShadeName;
 
                 sb.AppendLine("<Row ss:Height=\"35\">");
-                sb.AppendLine($"<Cell ss:MergeAcross=\"9\" ss:StyleID=\"sTitle\"><Data ss:Type=\"String\">REPORTE COLORIMÉTRICO  •  Shade: {Esc(shadeName)}  •  {DateTime.Now:dd/MM/yyyy HH:mm}</Data></Cell>");
+                sb.AppendLine($"<Cell ss:MergeAcross=\"8\" ss:StyleID=\"sTitle\"><Data ss:Type=\"String\">REPORTE COLORIMÉTRICO  •  Shade: {Esc(shadeName)}  •  {DateTime.Now:dd/MM/yyyy HH:mm}</Data></Cell>");
                 sb.AppendLine("</Row>");
                 sb.AppendLine("<Row ss:Height=\"5\"/>");
 
-                // Encabezados
+                // Encabezados (9 columnas: sin deltas numéricos)
                 sb.AppendLine("<Row ss:Height=\"28\">");
-                foreach (var h in new[] { "Iluminante", "ΔL*", "ΔC*", "ΔH*", "ΔE*", "Estado", "Diagnóstico L*", "Corrección L*", "Diagnóstico a*/b*", "Recomendación" })
+                foreach (var h in new[] {
+                    "Iluminante", "Estado",
+                    "Diagnóstico L*", "Corrección L*",
+                    "Diagnóstico a*", "Corrección a*",
+                    "Diagnóstico b*", "Corrección b*",
+                    "Dominancia Cromática" })
                     sb.AppendLine($"<Cell ss:StyleID=\"sHeader\"><Data ss:Type=\"String\">{Esc(h)}</Data></Cell>");
                 sb.AppendLine("</Row>");
 
                 if (_resultsLegacy != null)
                 {
+                    // Usar el MISMO método de evaluación que el panel CMC 2:1 de la app
+                    var evaluation = EngineCalc.EvaluateTolerance(_resultsLegacy, DE_MAX);
+
                     int ri = 0;
                     foreach (var r in _resultsLegacy)
                     {
-                        // Determinar estado basándose en tolerancias
-                        bool ok = Math.Abs(r.DeltaL) <= DL_MAX && Math.Abs(r.DeltaChroma) <= DC_MAX && r.DeltaE <= DE_MAX;
+                        // Buscar el check del iluminante actual (idéntico al panel CMC 2:1)
+                        var check = evaluation.Checks.FirstOrDefault(c =>
+                            string.Equals(c.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
+                        bool ok = check != null ? check.Passes : true;
+
                         string est = ok ? "CUMPLE" : "NO CUMPLE";
                         string stRow = (ri % 2 == 0) ? "sRow" : "sAlt";
                         string stEst = ok ? "sOk" : "sFail";
 
+                        // Porcentajes (redondeados a 1 decimal, valor absoluto)
                         double pctL = Math.Round(Math.Abs(r.PercentL), 1);
                         double pctA = Math.Round(Math.Abs(r.PercentA), 1);
                         double pctB = Math.Round(Math.Abs(r.PercentB), 1);
+
+                        // ─── L* ───
                         string diagL = r.DeltaL < -0.01 ? "Lote más OSCURO" : r.DeltaL > 0.01 ? "Lote más CLARO" : "Sin desviación";
-                        string corrL = r.DeltaL < -0.01 ? $"ACLARAR {pctL:0.0}%" : r.DeltaL > 0.01 ? $"OSCURECER {pctL:0.0}%" : "N/A";
-                        string diagAB = "";
-                        if (r.DeltaA > 0.01) diagAB += $"MÁS ROJO ({pctA:0.0}%)  ";
-                        else if (r.DeltaA < -0.01) diagAB += $"MÁS VERDE ({pctA:0.0}%)  ";
-                        if (r.DeltaB > 0.01) diagAB += $"MÁS AMARILLO ({pctB:0.0}%)";
-                        else if (r.DeltaB < -0.01) diagAB += $"MÁS AZUL ({pctB:0.0}%)";
+                        string corrL = r.DeltaL < -0.01 ? (pctL.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "% ACLARAR") : r.DeltaL > 0.01 ? (pctL.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "% OSCURECER") : "N/A";
+
+                        // ─── a* ───
+                        string diagA = "";
+                        string corrA = "";
+                        if (r.DeltaA > 0.01)       { diagA = "MÁS ROJO";    corrA = $"{pctA:0.0}% DISMINUIR ROJO o AUMENTAR VERDE"; }
+                        else if (r.DeltaA < -0.01) { diagA = "MÁS VERDE";   corrA = $"{pctA:0.0}% DISMINUIR VERDE o AUMENTAR ROJO"; }
+                        else                       { diagA = "Sin sesgo";    corrA = "N/A"; }
+
+                        // ─── b* ───
+                        string diagB = "";
+                        string corrB = "";
+                        if (r.DeltaB > 0.01)       { diagB = "MÁS AMARILLO"; corrB = $"{pctB:0.0}% DISMINUIR AMARILLO o AUMENTAR AZUL"; }
+                        else if (r.DeltaB < -0.01) { diagB = "MÁS AZUL";     corrB = $"{pctB:0.0}% DISMINUIR AZUL o AUMENTAR AMARILLO"; }
+                        else                       { diagB = "Sin sesgo";     corrB = "N/A"; }
+
+                        // ─── Dominancia cromática ───
+                        double modA = Math.Abs(r.DeltaA), modB = Math.Abs(r.DeltaB);
+                        string dominancia;
+                        if (modA > modB + 0.01)      dominancia = "Eje a* (Rojo↔Verde)";
+                        else if (modB > modA + 0.01) dominancia = "Eje b* (Amarillo↔Azul)";
+                        else if (modA + modB > 0.02) dominancia = "Mixta (a* y b* similares)";
+                        else                         dominancia = "Sin dominancia";
 
                         sb.AppendLine("<Row ss:Height=\"20\">");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(r.Illuminant)}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaL:F3}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaChroma:F3}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaHue:F3}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"Number\">{r.DeltaE:F3}</Data></Cell>");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stEst}\"><Data ss:Type=\"String\">{Esc(est)}</Data></Cell>");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagL)}</Data></Cell>");
                         sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(corrL)}</Data></Cell>");
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagAB.Trim())}</Data></Cell>");
-                        List<string> recs = new List<string>();
-                        if (r.DeltaA > 0.01) recs.Add("DISM. ROJO");
-                        else if (r.DeltaA < -0.01) recs.Add("DISM. VERDE");
-                        if (r.DeltaB > 0.01) recs.Add("DISM. AMARILLO");
-                        else if (r.DeltaB < -0.01) recs.Add("DISM. AZUL");
-                        string recFinal = recs.Count > 0 ? string.Join(" / ", recs) : "CURVA OK";
-
-                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(recFinal)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagA)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(corrA)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(diagB)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(corrB)}</Data></Cell>");
+                        sb.AppendLine($"<Cell ss:StyleID=\"{stRow}\"><Data ss:Type=\"String\">{Esc(dominancia)}</Data></Cell>");
                         sb.AppendLine("</Row>");
                         ri++;
                     }

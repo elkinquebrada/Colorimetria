@@ -62,6 +62,10 @@ namespace Color
         public string ShadeName { get; set; }
         /// DT Main (e.g. "DFC12") extraído del encabezado del Shade History Report.
         public string DtMain { get; set; }
+        // NUEVOS: Valores L* a* b* del Estándar (Std L A B)
+        public string StdL { get; set; }
+        public string StdA { get; set; }
+        public string StdB { get; set; }
         public List<RecipeItem> Recipe { get; set; } = new List<RecipeItem>();
         public LabValues Lab { get; set; }
         public BatchMeasure Batch { get; set; }
@@ -103,6 +107,11 @@ namespace Color
         // Regex para extraer el DT Main del encabezado (ej: "DT Main: DFC12")
         private static readonly Regex DtMainRegex = new Regex(
             @"DT\s*Main[:\s]+([A-Z0-9]+)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Regex para capturar Std L A B (Estándar) - Permite espacios opcionales alrededor del punto/coma
+        private static readonly Regex StdLabRegex = new Regex(
+            @"(?i)Std\s?.*?\s*([-+]?\d+(?:\s?[.,]\s?\d+)?)\s+([-+]?\d+(?:\s?[.,]\s?\d+)?)\s+([-+]?\d+(?:\s?[.,]\s?\d+)?)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // Variable estática para modo de emergencia / compatibilidad cruzada entre ventanas
@@ -165,6 +174,16 @@ namespace Color
                 Lab = ExtractLabValues(ocrText),
                 Batch = ExtractBatchMeasure(ocrText)
             };
+            
+            // Extraer Std L A B del texto crudo (fallback)
+            var std = ExtractStdLab(ocrText);
+            if (std != null)
+            {
+                res.StdL = std.Value.L;
+                res.StdA = std.Value.A;
+                res.StdB = std.Value.B;
+            }
+
             LastResult = res;
             return res;
         }
@@ -175,6 +194,33 @@ namespace Color
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
             var m = DtMainRegex.Match(ocrText);
             return m.Success ? m.Groups[1].Value.Trim() : null;
+        }
+
+        public (string L, string A, string B)? ExtractStdLab(string ocrText)
+        {
+            if (string.IsNullOrWhiteSpace(ocrText)) return null;
+            
+            // 1. Intento con Regex principal (que busca la palabra "Std")
+            var m = StdLabRegex.Match(ocrText);
+            if (m.Success)
+            {
+                return (NormalizeLabValue(m.Groups[1].Value), 
+                        NormalizeLabValue(m.Groups[2].Value), 
+                        NormalizeLabValue(m.Groups[3].Value));
+            }
+            
+            // 2. Fallback: Si no dice "Std", buscar cualquier grupo de 3 números con o sin puntos
+            // Esto ayuda si el OCR se "comió" el texto pero leyó los números
+            var mNum = Regex.Matches(ocrText, @"[-+]?\d+(?:\s?[.,]\s?\d+)?");
+            if (mNum.Count >= 3)
+            {
+                // Buscamos los primeros 3 que parezcan valores LAB (deben estar cerca en el texto)
+                return (NormalizeLabValue(mNum[0].Value), 
+                        NormalizeLabValue(mNum[1].Value), 
+                        NormalizeLabValue(mNum[2].Value));
+            }
+
+            return null;
         }
 
         //-------------------------------------------------------------------
@@ -235,6 +281,19 @@ namespace Color
                 var b2 = ExtractBatchMeasureFromBitmap(bmp);
                 if (b2 != null)
                     result.Batch = b2;
+            }
+            catch { }
+
+            // Intentar extraer Std L A B con recorte dirigido
+            try
+            {
+                var std2 = ExtractStdLabFromBitmap(bmp);
+                if (std2 != null)
+                {
+                    result.StdL = std2.Value.L;
+                    result.StdA = std2.Value.A;
+                    result.StdB = std2.Value.B;
+                }
             }
             catch { }
 
@@ -523,6 +582,69 @@ namespace Color
             }
 
             return null;
+        }
+
+        private (string L, string A, string B)? ExtractStdLabFromBitmap(Bitmap original)
+        {
+            // Localización de la banda Std L A B (mejorada con pre-procesamiento OpenCV)
+            int top = (int)(original.Height * 0.22);
+            int bot = (int)(original.Height * 0.38);
+            int h = bot - top;
+            if (h <= 0) return null;
+
+            string ocrText = string.Empty;
+            try
+            {
+                using (var mat = BitmapConverter.ToMat(original))
+                using (var gray = new Mat())
+                {
+                    var roiRect = new OpenCvSharp.Rect(0, top, original.Width, h);
+                    using (var roi = new Mat(mat, roiRect))
+                    {
+                        Cv2.CvtColor(roi, gray, ColorConversionCodes.BGR2GRAY);
+                        using (var resized = new Mat())
+                        {
+                            // Escala 4x para capturar puntos decimales pequeños
+                            Cv2.Resize(gray, resized, new OpenCvSharp.Size(0, 0), 4.0, 4.0, InterpolationFlags.Cubic);
+                            using (var thresholded = new Mat())
+                            {
+                                // Cambio a AdaptiveThreshold: Mejor para preservar puntos decimales que Otsu
+                                Cv2.AdaptiveThreshold(resized, thresholded, 255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.Binary, 11, 2);
+                                
+                                using (Bitmap bmpToOcr = BitmapConverter.ToBitmap(thresholded))
+                                {
+                                    using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
+                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleLine)) // Modo línea única para mayor precisión
+                                    {
+                                        ocrText = (page.GetText() ?? string.Empty).Replace(',', '.');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            return ExtractStdLab(ocrText);
+        }
+
+        private string NormalizeLabValue(string val)
+        {
+            if (string.IsNullOrWhiteSpace(val)) return "0.00";
+            
+            // Eliminar espacios y limpiar caracteres no numericos (excepto punto y signo)
+            string clean = Regex.Replace(val, @"[^\d.-]", "");
+            
+            // Si tiene 4 dígitos sin punto (ej: 3093), asumimos que el punto va antes de los últimos 2 (30.93)
+            // Si tiene 3 dígitos sin punto (ej: 860), asumimos 8.60
+            if (!clean.Contains(".") && clean.Length >= 3)
+            {
+                int len = clean.Length;
+                clean = clean.Insert(len - 2, ".");
+            }
+            
+            return clean;
         }
 
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)

@@ -119,6 +119,10 @@ namespace Color
 
         public string DiagnosticoL { get; set; }
         public string Recomendacion { get; set; }
+
+        // --- Acceso global al último reporte procesado (para Excel export) ---
+        public static OcrReport LastReport { get; private set; }
+        public static void SetLastReport(OcrReport report) { LastReport = report; }
     }
 
     // RANGOS

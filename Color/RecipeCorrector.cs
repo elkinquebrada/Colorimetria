@@ -172,6 +172,86 @@ namespace Color
             return list;
         }
 
+        public static string BuildConsolidatedLightnessTable(List<IlluminantCorrectionResult> results)
+        {
+            if (results == null || results.Count == 0) return "";
+
+            var d65 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("D65"));
+            var tl84 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("TL84"));
+            var a = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("A") || r.Illuminant.ToUpper().Contains("CWF"));
+
+            if (d65 == null) return ""; // D65 es obligatorio para este resumen
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine("════════════════════════════════════════════════════════════════════════════════════════");
+            sb.AppendLine("  CÁLCULOS REALIZADOS (LIGHTNESS)");
+            sb.AppendLine("════════════════════════════════════════════════════════════════════════════════════════");
+
+            string headTL = tl84 != null ? tl84.Illuminant.ToUpper() : "TL84";
+            string headA = a != null ? a.Illuminant.ToUpper() : "A / CWF";
+
+            // Cabecera compacta tipo Excel
+            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
+                "Ingrediente", "Lightness(D65)", $"Lightn({headTL})", $"Lightn({headA})", "Promedio L."));
+            sb.AppendLine("  " + new string('─', 92));
+
+            int ingCount = d65.Ingredients.Count;
+            for (int i = 0; i < ingCount; i++)
+            {
+                var ingD65 = d65.Ingredients[i];
+                var ingTL = tl84?.Ingredients.ElementAtOrDefault(i);
+                var ingA = a?.Ingredients.ElementAtOrDefault(i);
+
+                double valD65 = ingD65.Calc2;
+                double valTL = ingTL?.Calc2 ?? 0;
+                double valA = ingA?.Calc2 ?? 0;
+
+                int count = 0;
+                double sumVal = valD65; count++;
+                if (ingTL != null) { sumVal += valTL; count++; }
+                if (ingA != null) { sumVal += valA; count++; }
+                double avg = sumVal / count;
+
+                // Solo la columna D65 se etiqueta con « » para aplicar NEGRITA en la UI
+                string fmtD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", valD65, ingD65.Original / d65.TotalOriginal);
+                string fmtTL = ingTL != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", valTL, ingTL.Original / tl84.TotalOriginal) : "---";
+                string fmtA = ingA != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", valA, ingA.Original / a.TotalOriginal) : "---";
+                string fmtAvg = string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", avg); // Ej: 109%
+
+                sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
+                    ingD65.Name, fmtD65, fmtTL, fmtA, fmtAvg));
+
+                if (i < ingCount - 1)
+                    sb.AppendLine("  " + new string('┈', 92));
+            }
+
+            sb.AppendLine("  " + new string('─', 92));
+
+            // Fila de Totales
+            double totalAvg = (d65.SumCalc2 + (tl84?.SumCalc2 ?? d65.SumCalc2) + (a?.SumCalc2 ?? d65.SumCalc2)) / 3.0; // Simplificado
+
+            string totD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4}»", d65.SumCalc2, "100%");
+            string totTL = tl84 != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", tl84.SumCalc2, "100%") : "---";
+            string totA = a != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", a.SumCalc2, "100%") : "---";
+            string totAvgVal = string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", totalAvg);
+
+            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
+                "  [Total]", totD65, totTL, totA, totAvgVal));
+
+            // Fila de Variaciones (ResultadoLightness)
+            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
+                "  Variación (Ligthness %)",
+                string.Format(CultureInfo.InvariantCulture, "«{0,8:F1}%»     ", d65.ResultadoLightness * 100.0),
+                tl84 != null ? string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", tl84.ResultadoLightness * 100.0) : "---",
+                a != null ? string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", a.ResultadoLightness * 100.0) : "---",
+                ""));
+
+            sb.AppendLine("  " + new string('─', 92));
+
+            return sb.ToString();
+        }
+
         public static string BuildSummaryText(List<IlluminantCorrectionResult> results)
         {
             if (results == null || results.Count == 0)

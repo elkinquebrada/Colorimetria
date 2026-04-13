@@ -226,6 +226,8 @@ namespace Color
                     return;
                 }
 
+                OcrReport.SetLastReport(ocrMediciones);
+
                 var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
                 dlgConfirm.MainFormOwner = this;
                 this.Hide();

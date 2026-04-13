@@ -185,40 +185,68 @@ namespace Colorimetria
                 BackColor = SysColor.White
             };
 
-            // Layout pestaña Combinado: 4 grillas apiladas
+            // Layout pestaña Combinado: 6 filas (2 títulos + 4 grillas)
             var tlp = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 4,
+                RowCount = 6,
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));  
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));  
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 28f));  
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 16f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   // Fila 0: Título "DATOS DE MEDICIÓN"
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));    // Fila 1: Mediciones
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    // Fila 2: CMC
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   // Fila 3: Título "DATOS DE RECETA"
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    // Fila 4: Receta
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));    // Fila 5: LAB
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
-            // Fila 0: Mediciones
+            // Fila 0: Título "DATOS DE MEDICIÓN"
+            var lblDatosMedicion = new Label
+            {
+                Text = "DATOS DE MEDICIÓN",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = SysColor.FromArgb(0, 120, 215),
+                BackColor = SysColor.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Padding = new Padding(4, 0, 0, 2)
+            };
+            tlp.Controls.Add(lblDatosMedicion, 0, 0);
+
+            // Fila 1: Mediciones
             dgvData = BuildMeasuresGrid();
             dgvData.Dock = DockStyle.Fill;
-            tlp.Controls.Add(dgvData, 0, 0);
+            tlp.Controls.Add(dgvData, 0, 1);
 
-            // Fila 1: CMC(2:1)
+            // Fila 2: CMC(2:1)
             dgvCmc = BuildCmcGrid();
             dgvCmc.Dock = DockStyle.Fill;
-            tlp.Controls.Add(dgvCmc, 0, 1);
+            tlp.Controls.Add(dgvCmc, 0, 2);
 
-            // Fila 2: Receta (Código / Nombre / %)
+            // Fila 3: Título "DATOS DE RECETA"
+            var lblDatosReceta = new Label
+            {
+                Text = "DATOS DE RECETA",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = SysColor.FromArgb(0, 120, 215),
+                BackColor = SysColor.White,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Padding = new Padding(4, 0, 0, 2)
+            };
+            tlp.Controls.Add(lblDatosReceta, 0, 3);
+
+            // Fila 4: Receta (Código / Nombre / %)
             dgvReceta = BuildRecetaGrid();
             dgvReceta.Dock = DockStyle.Fill;
-            tlp.Controls.Add(dgvReceta, 0, 2);
+            tlp.Controls.Add(dgvReceta, 0, 4);
 
-            // Fila 3: LAB (L / A / B / dL / dC / dH / dE / P/F)
+            // Fila 5: LAB (Resultados Finales)
             dgvLab = BuildLabGrid();
             dgvLab.Dock = DockStyle.Fill;
-            tlp.Controls.Add(dgvLab, 0, 3);
+            tlp.Controls.Add(dgvLab, 0, 5);
 
             tabCombined.Controls.Add(tlp);
             tabControl.TabPages.Add(tabCombined);
@@ -492,6 +520,15 @@ namespace Colorimetria
         {
             dgvData.Rows.Clear();
 
+            // Obtener Std de cabecera como referencia para alertas (L, A, B)
+            double headStdL = 0, headStdA = 0, headStdB = 0;
+            if (_shadeResult != null)
+            {
+                double.TryParse((_shadeResult.StdL ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdL);
+                double.TryParse((_shadeResult.StdA ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdA);
+                double.TryParse((_shadeResult.StdB ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdB);
+            }
+
             for (int i = 0; i < _rows.Count; i++)
             {
                 ColorimetricRow r = _rows[i];
@@ -505,6 +542,24 @@ namespace Colorimetria
 
                 dgvData.Rows[idx].DefaultCellStyle.BackColor = rowColor;
                 dgvData.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
+
+                // ALERTA COMPONENTE A COMPONENTE: Solo para D65 de tipo "Std"
+                if (r.Illuminant == "D65" && r.Type == "Std")
+                {
+                    SysColor warningRed = SysColor.FromArgb(255, 210, 210);
+                    
+                    // Comparar L
+                    if (headStdL > 0 && r.L > headStdL)
+                        dgvData.Rows[idx].Cells["L"].Style.BackColor = warningRed;
+                    
+                    // Comparar A
+                    if (r.A > headStdA)
+                        dgvData.Rows[idx].Cells["A"].Style.BackColor = warningRed;
+
+                    // Comparar B
+                    if (r.B > headStdB)
+                        dgvData.Rows[idx].Cells["B"].Style.BackColor = warningRed;
+                }
             }
 
             lblCount.Text = "Filas detectadas (mediciones): " + _rows.Count;
@@ -813,6 +868,7 @@ namespace Colorimetria
             dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tipo", HeaderText = "Tipo", FillWeight = 60f });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "L", HeaderText = "L", FillWeight = 80f });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "A", HeaderText = "A", FillWeight = 80f });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "B", HeaderText = "B", FillWeight = 80f });
@@ -828,10 +884,23 @@ namespace Colorimetria
         {
             if (dgvLab == null || shade == null) return;
             dgvLab.Rows.Clear();
+
+            // 1. Agregar Estándar (Std L A B) si existe
+            if (!string.IsNullOrWhiteSpace(shade.StdL))
+            {
+                int sIdx = dgvLab.Rows.Add("Std", shade.StdL, shade.StdA, shade.StdB, "", "", "", "", "");
+                dgvLab.Rows[sIdx].DefaultCellStyle.BackColor = SysColor.FromArgb(240, 240, 240);
+                dgvLab.Rows[sIdx].DefaultCellStyle.ForeColor = SysColor.Black;
+                dgvLab.Rows[sIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
+            }
+
+            // 2. Agregar Batch (Medición)
             var b = shade.Batch;
-            if (b == null) return;
-            int idx = dgvLab.Rows.Add(b.L, b.A, b.B, b.dL, b.dC, b.dH, b.dE, b.PF);
-            dgvLab.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
+            if (b != null)
+            {
+                int bIdx = dgvLab.Rows.Add("Batch", b.L, b.A, b.B, b.dL, b.dC, b.dH, b.dE, b.PF);
+                dgvLab.Rows[bIdx].DefaultCellStyle.ForeColor = SysColor.Black;
+            }
         }
 
         private double ParseCellDouble(object val)
