@@ -87,8 +87,6 @@ namespace Color
             if (_recipeResults != null && _recipeResults.Count > 0)
             {
                 // Solo mostramos las tablas consolidadas (L y C), ocultando el desglose individual por iluminante
-                // sbLeft.Append(RecipeCorrector.BuildSummaryText(_recipeResults)); 
-
                 // Tablas Consolidadas Estilo Excel
                 sbLeft.AppendLine();
                 sbLeft.Append(RecipeCorrector.BuildConsolidatedLightnessTable(_recipeResults));
@@ -406,7 +404,7 @@ namespace Color
             bool highlightingD65 = false;
             string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             
-            System.Drawing.Color highlightBlue = System.Drawing.Color.FromArgb(210, 230, 255); // Azul adecuado para entorno
+            System.Drawing.Color highlightBlue = System.Drawing.Color.FromArgb(210, 230, 255); 
 
             foreach (var line in lines)
             {
@@ -444,7 +442,7 @@ namespace Color
                 {
                     rtb.Select(startLine, processedLine.Length);
                     rtb.SelectionBackColor = highlightBlue;
-                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); // Letra más oscura
+                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); 
                     rtb.SelectionColor = System.Drawing.Color.Black;
                 }
 
@@ -452,7 +450,7 @@ namespace Color
                 foreach (var range in highlightRanges)
                 {
                     rtb.Select(startLine + range.start, range.length);
-                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); // Letra más oscura
+                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold);
                     rtb.SelectionColor = System.Drawing.Color.Black;
                 }
 

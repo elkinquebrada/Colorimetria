@@ -194,12 +194,12 @@ namespace Colorimetria
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   // Fila 0: Título "DATOS DE MEDICIÓN"
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));    // Fila 1: Mediciones
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    // Fila 2: CMC
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   // Fila 3: Título "DATOS DE RECETA"
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    // Fila 4: Receta
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));    // Fila 5: LAB
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));    
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));    
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             // Fila 0: Título "DATOS DE MEDICIÓN"
