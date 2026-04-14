@@ -185,7 +185,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="App.config" />
+    <None Include="LogicDocs\App.config" />
     <None Include="LogicDocs\calculos a realizar con el programa.xlsx" />
     <None Include="LogicDocs\GUIA_INTEGRACION.md" />
     <None Include="LogicDocs\packages.config" />
