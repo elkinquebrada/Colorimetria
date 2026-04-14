@@ -426,9 +426,8 @@ namespace Color
         // ------------------------------------------------------------------
         public static ToleranceEvaluationResult EvaluateTolerance(
             List<ColorCorrectionResult> corrections,
-            double deLimitBand)
+            ToleranceResult band)
         {
-            var band       = CalculateTolerance(deLimitBand);
             var evaluation = new ToleranceEvaluationResult { Band = band };
 
             if (corrections == null || corrections.Count == 0)
@@ -464,6 +463,14 @@ namespace Color
             }
 
             return evaluation;
+        }
+
+        public static ToleranceEvaluationResult EvaluateTolerance(
+            List<ColorCorrectionResult> corrections,
+            double deLimitBand)
+        {
+            var band = CalculateTolerance(deLimitBand);
+            return EvaluateTolerance(corrections, band);
         }
 
         /// Evalúa contra múltiples bandas de tolerancia de una sola vez.

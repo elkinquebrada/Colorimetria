@@ -99,14 +99,13 @@ namespace Color
 
                 foreach (var ing in ingredients)
                 {
-                    // Calculo 1: % de participación
+                    
                     double calc1 = ing.Percentage / totalReceta;
                     
                     // Calculo 2: Corrección por Lightness (dL * 10)
                     double calc2 = ing.Percentage * (1.0 + varL / 100.0);
                     
-                    // Calculo 3: Corrección por Croma (dC * 10) sobre Calc2
-                    // REVERSIÓN A ESCALA UNITARIA (Sincronización Espejo)
+                    // Calculo 3: Corrección por Chroma (dC * 10) sobre Calc2
                     double calc3 = calc2 * (1.0 + varC / 100.0);
 
                     sumCalc2 += calc2;
@@ -175,12 +174,8 @@ namespace Color
         public static string BuildConsolidatedLightnessTable(List<IlluminantCorrectionResult> results)
         {
             if (results == null || results.Count == 0) return "";
-
-            var d65 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("D65"));
-            var tl84 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("TL84"));
-            var a = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("A") || r.Illuminant.ToUpper().Contains("CWF"));
-
-            if (d65 == null) return ""; // D65 es obligatorio para este resumen
+            var validResults = results.Where(r => r.Ingredients != null && r.Ingredients.Count > 0).ToList();
+            if (validResults.Count == 0) return "";
 
             var sb = new System.Text.StringBuilder();
             sb.AppendLine();
@@ -188,66 +183,95 @@ namespace Color
             sb.AppendLine("  CÁLCULOS REALIZADOS (LIGHTNESS)");
             sb.AppendLine("════════════════════════════════════════════════════════════════════════════════════════");
 
-            string headTL = tl84 != null ? tl84.Illuminant.ToUpper() : "TL84";
-            string headA = a != null ? a.Illuminant.ToUpper() : "A / CWF";
+            string formatStr = "  {0,-28} |";
+            var args = new List<object> { "Ingrediente" };
+            
+            for (int i = 0; i < validResults.Count; i++)
+            {
+                formatStr += $" {{{i + 1},14}} |";
+                string n = validResults[i].Illuminant.ToUpper();
+                args.Add(i == 0 ? $"Lightness({n})" : $"Lightn({n})");
+            }
+            formatStr += $" {{{validResults.Count + 1},14}}";
+            args.Add("Promedio L.");
 
-            // Cabecera compacta tipo Excel
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "Ingrediente", "Lightness(D65)", $"Lightn({headTL})", $"Lightn({headA})", "Promedio L."));
-            sb.AppendLine("  " + new string('─', 92));
+            sb.AppendLine(string.Format(formatStr, args.ToArray()));
+            int dashCount = 35 + validResults.Count * 17 + 14; 
+            if (dashCount < 92) dashCount = 92;
+            sb.AppendLine("  " + new string('─', dashCount));
 
-            int ingCount = d65.Ingredients.Count;
+            int ingCount = validResults[0].Ingredients.Count;
             for (int i = 0; i < ingCount; i++)
             {
-                var ingD65 = d65.Ingredients[i];
-                var ingTL = tl84?.Ingredients.ElementAtOrDefault(i);
-                var ingA = a?.Ingredients.ElementAtOrDefault(i);
+                var rowArgs = new List<object> { validResults[0].Ingredients[i].Name };
+                var rowFormat = "  {0,-28} |";
+                
+                double sumVal = 0;
+                for (int j = 0; j < validResults.Count; j++)
+                {
+                    double val = validResults[j].Ingredients[i].Calc2;
+                    double orig = validResults[j].Ingredients[i].Original;
+                    double totalOrig = validResults[j].TotalOriginal;
+                    
+                    sumVal += val;
+                    rowFormat += $" {{{j + 1},14}} |";
+                    
+                    if (j == 0)
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", val, orig / totalOrig));
+                    else
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", val, orig / totalOrig));
+                }
+                
+                double avg = sumVal / validResults.Count;
+                rowFormat += $" {{{validResults.Count + 1},14}}";
+                rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", avg));
 
-                double valD65 = ingD65.Calc2;
-                double valTL = ingTL?.Calc2 ?? 0;
-                double valA = ingA?.Calc2 ?? 0;
-
-                int count = 0;
-                double sumVal = valD65; count++;
-                if (ingTL != null) { sumVal += valTL; count++; }
-                if (ingA != null) { sumVal += valA; count++; }
-                double avg = sumVal / count;
-
-                // Solo la columna D65 se etiqueta con « » para aplicar NEGRITA en la UI
-                string fmtD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", valD65, ingD65.Original / d65.TotalOriginal);
-                string fmtTL = ingTL != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", valTL, ingTL.Original / tl84.TotalOriginal) : "---";
-                string fmtA = ingA != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", valA, ingA.Original / a.TotalOriginal) : "---";
-                string fmtAvg = string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", avg); // Ej: 109%
-
-                sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                    ingD65.Name, fmtD65, fmtTL, fmtA, fmtAvg));
-
+                sb.AppendLine(string.Format(rowFormat, rowArgs.ToArray()));
+                
                 if (i < ingCount - 1)
-                    sb.AppendLine("  " + new string('┈', 92));
+                     sb.AppendLine("  " + new string('┈', dashCount));
             }
 
-            sb.AppendLine("  " + new string('─', 92));
+            sb.AppendLine("  " + new string('─', dashCount));
 
             // Fila de Totales
-            double totalAvg = (d65.SumCalc2 + (tl84?.SumCalc2 ?? d65.SumCalc2) + (a?.SumCalc2 ?? d65.SumCalc2)) / 3.0; // Simplificado
+            var totArgs = new List<object> { "  [Total]" };
+            var totFormat = "  {0,-28} |";
+            
+            double sumTotalAvg = 0;
+            for (int j = 0; j < validResults.Count; j++)
+            {
+                double sumCalc2 = validResults[j].SumCalc2;
+                sumTotalAvg += sumCalc2;
+                totFormat += $" {{{j + 1},14}} |";
+                if (j == 0)
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | 100%»", sumCalc2));
+                else
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", sumCalc2));
+            }
+            double totalAvg = sumTotalAvg / validResults.Count;
+            totFormat += $" {{{validResults.Count + 1},14}}";
+            totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", totalAvg));
 
-            string totD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4}»", d65.SumCalc2, "100%");
-            string totTL = tl84 != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", tl84.SumCalc2, "100%") : "---";
-            string totA = a != null ? string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", a.SumCalc2, "100%") : "---";
-            string totAvgVal = string.Format(CultureInfo.InvariantCulture, "{0,6:P0}", totalAvg);
+            sb.AppendLine(string.Format(totFormat, totArgs.ToArray()));
 
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "  [Total]", totD65, totTL, totA, totAvgVal));
+            // Fila de Variaciones
+            var varArgs = new List<object> { "  Variación (Ligthness %)" };
+            var varFormat = "  {0,-28} |";
+            for (int j = 0; j < validResults.Count; j++)
+            {
+                varFormat += $" {{{j + 1},14}} |";
+                double resL = validResults[j].ResultadoLightness * 100.0;
+                if (j == 0)
+                    varArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,8:F1}%»     ", resL));
+                else
+                    varArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", resL));
+            }
+            varFormat += $" {{{validResults.Count + 1},14}}";
+            varArgs.Add(""); 
 
-            // Fila de Variaciones (ResultadoLightness)
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "  Variación (Ligthness %)",
-                string.Format(CultureInfo.InvariantCulture, "«{0,8:F1}%»     ", d65.ResultadoLightness * 100.0),
-                tl84 != null ? string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", tl84.ResultadoLightness * 100.0) : "---",
-                a != null ? string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", a.ResultadoLightness * 100.0) : "---",
-                ""));
-
-            sb.AppendLine("  " + new string('─', 92));
+            sb.AppendLine(string.Format(varFormat, varArgs.ToArray()));
+            sb.AppendLine("  " + new string('─', dashCount));
 
             return sb.ToString();
         }
@@ -314,76 +338,113 @@ namespace Color
         public static string BuildConsolidatedCalculationTable(List<IlluminantCorrectionResult> results)
         {
             if (results == null || results.Count == 0) return "";
-
-            var d65 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("D65"));
-            var tl84 = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("TL84"));
-            var a = results.FirstOrDefault(r => r.Illuminant.ToUpper().Contains("A"));
-
-            if (d65 == null || tl84 == null || a == null) return "";
+            var validResults = results.Where(r => r.Ingredients != null && r.Ingredients.Count > 0).ToList();
+            if (validResults.Count == 0) return "";
 
             var sb = new System.Text.StringBuilder();
             sb.AppendLine();
             sb.AppendLine("════════════════════════════════════════════════════════════════════════════════════════");
-            sb.AppendLine("  RESUMEN DE CÁLCULOS REALIZADOS (CHROMA)");
+            sb.AppendLine("  CÁLCULOS REALIZADOS (CHROMA)");
             sb.AppendLine("════════════════════════════════════════════════════════════════════════════════════════");
             
-            // Cabecera con separadores verticales (Expandida)
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "Ingrediente", "Chroma (D65)", "Chroma (TL84)", "Chroma (A)", "Promedio Ch."));
-            sb.AppendLine("  " + new string('─', 92));
+            string formatStr = "  {0,-28} |";
+            var args = new List<object> { "Ingrediente" };
+            
+            for (int i = 0; i < validResults.Count; i++)
+            {
+                formatStr += $" {{{i + 1},14}} |";
+                string n = validResults[i].Illuminant.ToUpper();
+                args.Add($"Chroma ({n})");
+            }
+            formatStr += $" {{{validResults.Count + 1},14}}";
+            args.Add("Promedio Ch.");
 
-            int ingCount = d65.Ingredients.Count;
-            double sumAvg = 0;
+            sb.AppendLine(string.Format(formatStr, args.ToArray()));
+            int dashCount = 35 + validResults.Count * 17 + 14; 
+            if (dashCount < 92) dashCount = 92;
+            sb.AppendLine("  " + new string('─', dashCount));
+
+            int ingCount = validResults[0].Ingredients.Count;
+            double globalSumAvg = 0;
+            
             for (int i = 0; i < ingCount; i++)
             {
-                var ingD65 = d65.Ingredients[i];
-                var ingTL = tl84.Ingredients[i];
-                var ingA = a.Ingredients[i];
-                sumAvg += (ingD65.Calc3 + ingTL.Calc3 + ingA.Calc3) / 3.0;
+                double sumTemp = 0;
+                for (int j = 0; j < validResults.Count; j++)
+                    sumTemp += validResults[j].Ingredients[i].Calc3;
+                globalSumAvg += sumTemp / validResults.Count;
             }
 
             for (int i = 0; i < ingCount; i++)
             {
-                var ingD65 = d65.Ingredients[i];
-                var ingTL = tl84.Ingredients[i];
-                var ingA = a.Ingredients[i];
-                double avg = (ingD65.Calc3 + ingTL.Calc3 + ingA.Calc3) / 3.0;
+                var rowArgs = new List<object> { validResults[0].Ingredients[i].Name };
+                var rowFormat = "  {0,-28} |";
+                
+                double sumVal = 0;
+                for (int j = 0; j < validResults.Count; j++)
+                {
+                    double val = validResults[j].Ingredients[i].Calc3;
+                    double sumCalc3 = validResults[j].SumCalc3;
+                    
+                    sumVal += val;
+                    rowFormat += $" {{{j + 1},14}} |";
+                    
+                    if (j == 0)
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", val, val / sumCalc3));
+                    else
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", val, val / sumCalc3));
+                }
+                
+                double avg = sumVal / validResults.Count;
+                rowFormat += $" {{{validResults.Count + 1},14}}";
+                rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", avg, avg / globalSumAvg));
 
-                // Solo la columna D65 se etiqueta con « » para aplicar NEGRITA en la UI
-                string fmtD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", ingD65.Calc3, ingD65.Calc3 / d65.SumCalc3);
-                string fmtTL = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", ingTL.Calc3, ingTL.Calc3 / tl84.SumCalc3);
-                string fmtA = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", ingA.Calc3, ingA.Calc3 / a.SumCalc3);
-                string fmtAvg = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", avg, avg / sumAvg);
-
-                sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                    ingD65.Name, fmtD65, fmtTL, fmtA, fmtAvg));
+                sb.AppendLine(string.Format(rowFormat, rowArgs.ToArray()));
                 
                 if (i < ingCount - 1)
-                     sb.AppendLine("  " + new string('┈', 92));
+                     sb.AppendLine("  " + new string('┈', dashCount));
             }
 
-            sb.AppendLine("  " + new string('─', 92));
+            sb.AppendLine("  " + new string('─', dashCount));
 
             // Fila de Totales
-            string totD65 = string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4}»", d65.SumCalc3, "100%");
-            string totTL = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", tl84.SumCalc3, "100%");
-            string totA = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", a.SumCalc3, "100%");
-            string totAvg = string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4}", sumAvg, "100%");
+            var totArgs = new List<object> { "  [Total]" };
+            var totFormat = "  {0,-28} |";
+            
+            for (int j = 0; j < validResults.Count; j++)
+            {
+                double sumCalc3 = validResults[j].SumCalc3;
+                totFormat += $" {{{j + 1},14}} |";
+                if (j == 0)
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | 100%»", sumCalc3));
+                else
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", sumCalc3));
+            }
+            totFormat += $" {{{validResults.Count + 1},14}}";
+            totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", globalSumAvg));
 
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "  [Total]", totD65, totTL, totA, totAvg));
+            sb.AppendLine(string.Format(totFormat, totArgs.ToArray()));
 
             // Fila de Variaciones
-            double varAvg = (d65.ResultadoChroma + tl84.ResultadoChroma + a.ResultadoChroma) / 3.0;
-            
-            sb.AppendLine(string.Format("  {0,-28} | {1,14} | {2,14} | {3,14} | {4,14}",
-                "  Variación (Croma %)", 
-                string.Format(CultureInfo.InvariantCulture, "«{0,8:F1}%»     ", d65.ResultadoChroma * 100.0),
-                string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", tl84.ResultadoChroma * 100.0),
-                string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", a.ResultadoChroma * 100.0),
-                string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", varAvg * 100.0)));
+            var varArgs = new List<object> { "  Variación (Croma %)" };
+            var varFormat = "  {0,-28} |";
+            double sumResC = 0;
+            for (int j = 0; j < validResults.Count; j++)
+            {
+                varFormat += $" {{{j + 1},14}} |";
+                double resC = validResults[j].ResultadoChroma * 100.0;
+                sumResC += resC;
+                if (j == 0)
+                    varArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,8:F1}%»     ", resC));
+                else
+                    varArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", resC));
+            }
+            double varAvg = sumResC / validResults.Count;
+            varFormat += $" {{{validResults.Count + 1},14}}";
+            varArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,8:F1}%      ", varAvg)); 
 
-            sb.AppendLine("  " + new string('─', 92));
+            sb.AppendLine(string.Format(varFormat, varArgs.ToArray()));
+            sb.AppendLine("  " + new string('─', dashCount));
 
             return sb.ToString();
         }

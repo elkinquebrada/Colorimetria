@@ -415,7 +415,7 @@ namespace Color
                 if (trimmed.Contains("[D65]")) highlightingD65 = true;
                 else if (trimmed.StartsWith("[") && trimmed.EndsWith("]")) highlightingD65 = false;
 
-                bool isVarRow = line.Contains("Variación (Croma %)");
+                bool isVarRow = line.Contains("Variación (Croma %)") || line.Contains("Variación (Ligthness %)");
 
                 // --- 2. Procesamiento de Etiquetas Dinámicas « » ---
                 string processedLine = line;
@@ -437,7 +437,6 @@ namespace Color
 
                 // --- 3. Aplicación de Estilos ---
                 
-                // Fondo Azul y Letra Oscura (Negrita) para D65 o Variación
                 if (highlightingD65 || processedLine.Contains("D65") || isVarRow)
                 {
                     rtb.Select(startLine, processedLine.Length);
@@ -466,7 +465,7 @@ namespace Color
         }
 
         // =========================================================
-        // RECOMENDACIÓN — desde lista de resultados (Croma eliminado del texto impreso)
+        // RECOMENDACIÓN — desde lista de resultados (Chroma eliminado del texto impreso)
         // =========================================================
         private static string BuildRecomendacionFromResults(List<EngineRes> results, double DL_MAX = 0.69, double DC_MAX = 0.69, double DH_MAX = 0.69, double DE_MAX = 1.20)
         {
@@ -482,7 +481,14 @@ namespace Color
             sb.AppendLine();
 
             // --- Evaluación de tolerancias ---
-            var evaluation = EngineCalc.EvaluateTolerance(results, DE_MAX);
+            var band = new ToleranceResult
+            {
+                DE = DE_MAX,
+                DL = DL_MAX,
+                DC = DC_MAX,
+                DH = DH_MAX
+            };
+            var evaluation = EngineCalc.EvaluateTolerance(results, band);
             sb.AppendLine(evaluation.FormatReport());
             sb.AppendLine();
 
@@ -538,7 +544,7 @@ namespace Color
                 string mainHeaderTag = string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase) ? " (ILUMINANTE PRINCIPAL)" : "";
                 sb.AppendLine(" [" + r.Illuminant + "]" + mainHeaderTag);
 
-                // 👉 L*, a*, b* con % y acción en el formato que pediste
+                // L*, a*, b* con % y acción en el formato que pediste
                 sb.Append(BuildPerAxisPercentAdvice(r));
 
                 // Plano polar (a*, b*) + dominancia
@@ -750,7 +756,14 @@ namespace Color
                     rep.Batch.dH = r.DeltaHue;
                     rep.Batch.dE = r.DeltaE;
 
-                    var evalSingle = EngineCalc.EvaluateTolerance(new List<EngineRes> { r }, Properties.Settings.Default.ToleranciaDE);
+                    var bandObj = new ToleranceResult
+                    {
+                        DE = Properties.Settings.Default.ToleranciaDE,
+                        DL = Properties.Settings.Default.ToleranciaDL,
+                        DC = Properties.Settings.Default.ToleranciaDC,
+                        DH = Properties.Settings.Default.ToleranciaDH
+                    };
+                    var evalSingle = EngineCalc.EvaluateTolerance(new List<EngineRes> { r }, bandObj);
                     bool pass = evalSingle.AllPass;
                     rep.Batch.PF = pass ? "PASS" : "FAIL";
 

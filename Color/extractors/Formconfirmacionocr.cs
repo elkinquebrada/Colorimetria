@@ -689,7 +689,7 @@ namespace Colorimetria
                ((_report.TolDL != 0) || (_report.TolDC != 0) || (_report.TolDH != 0) || (_report.TolDE != 0)))
             {
                 sb.AppendLine();
-                sb.AppendLine("Tolerances:");
+                sb.AppendLine("Tolerancias:");
                 sb.AppendLine(string.Format(" DL: {0:0.00} DC: {1:0.00} DH: {2:0.00} DE: {3:0.00}",
                     _report.TolDL, _report.TolDC, _report.TolDH, _report.TolDE));
             }

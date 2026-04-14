@@ -1,13 +1,14 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using ClosedXML.Excel;
 using Color;
 
 namespace OCR
 {
-    /// Proporciona métodos estáticos para la lectura y mapeo de datos desde archivos Excel (.xlsx)
+    /// Proporciona métodos estáticos para la lectura y mapeo de datos del archivos Excel (.xlsx)
     public static class ExcelReader
     {
-        /// Lee la primera hoja de un archivo Excel y la convierte en una estructura de listas.
+        /// Lee la primera hoja del archivo Excel y la convierte en una estructura de listas.
         public static List<List<string>> LoadTable(string excelPath)
         {
             var table = new List<List<string>>();
@@ -31,7 +32,7 @@ namespace OCR
             return table;
         }
 
-        /// Carga y mapea los datos de una receta desde un archivo Excel.
+        /// Carga y mapea los datos de una receta desde archivo Excel.
         public static List<RecipeItem> LoadRecipe(string excelPath)
         {
             var table = LoadTable(excelPath);
@@ -54,7 +55,7 @@ namespace OCR
             return list;
         }
 
-        /// Carga y valida datos colorimétricos (L, A, B, Chroma, Hue) desde un archivo Excel.
+        /// Carga y valida datos colorimétricos (L, A, B, Chroma, Hue) 
         public static List<ColorimetricRow> LoadMeasurements(string excelPath)
         {
             var table = LoadTable(excelPath);
@@ -85,6 +86,52 @@ namespace OCR
                         Hue = Hue
                     });
                 }
+            }
+
+            return list;
+        }
+
+        /// Lee los perfiles estáticos de tolerancia de la hoja de cálculo.
+        public static List<ToleranceResult> LoadTolerances(string excelPath)
+        {
+            var list = new List<ToleranceResult>();
+
+            try
+            {
+                using (var wb = new XLWorkbook(excelPath))
+                {
+                    var ws = wb.Worksheet(3);
+
+                    // De acuerdo al esquema detectado, las tolerancias (DE, DL, DC, DH) se encuentran en:
+                    // C(3), F(6), I(9)
+                    int[] cols = { 3, 6, 9 };
+
+                    foreach (var col in cols)
+                    {
+                        var cellDE = ws.Cell(2, col);
+                        if (cellDE.IsEmpty()) continue;
+
+                        if (double.TryParse(cellDE.GetValue<string>().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double de))
+                        {
+                            // Leer los componentes
+                            double dl = ws.Cell(3, col).GetValue<double>();
+                            double dc = ws.Cell(4, col).GetValue<double>();
+                            double dh = ws.Cell(5, col).GetValue<double>();
+
+                            list.Add(new ToleranceResult
+                            {
+                                DE = Math.Round(de, 2),
+                                DL = Math.Round(dl, 3),
+                                DC = Math.Round(dc, 3),
+                                DH = Math.Round(dh, 3)
+                            });
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Devolvemos vacío si falla la lectura
             }
 
             return list;
