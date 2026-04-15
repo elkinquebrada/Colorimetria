@@ -30,6 +30,10 @@ namespace Color
         private Button btnCerrar;
         private Button btnRegresar;
 
+        // ======= Gráfico CIELAB =======
+        private Button btnVerGrafico;
+        private EngineRes _lastMainResult; // Para pasar a la vista ampliada
+
         // ======= Tolerancias (L*, Hue y ΔE) =======
         private double DL_MAX => Properties.Settings.Default.ToleranciaDL;
         private double DC_MAX => Properties.Settings.Default.ToleranciaDC;
@@ -46,8 +50,13 @@ namespace Color
             InitializeComponents();
 
             // Poblar vistas
-            SetFormattedText(txtReport, BuildResumenFromReport(_report));
-            SetFormattedText(txtRecomendacion, BuildRecomendacionFromReport(_report));
+            var resumen = BuildResumenFromReport(_report);
+            var recom = BuildRecomendacionFromReport(_report);
+            SetFormattedText(txtReport, resumen);
+            SetFormattedText(txtRecomendacion, recom);
+            
+            // Actualizar gráfico con D65 del reporte
+            UpdateChartFromReport(_report);
         }
 
         public FormResultados(string resumen, List<EngineRes> results)
@@ -67,6 +76,9 @@ namespace Color
                 // Re-aplicar con prefijo si existe
                 SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
             }
+
+            // Actualizar gráfico
+            UpdateChartFromResults(_resultsLegacy);
         }
 
         // Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.
@@ -101,6 +113,9 @@ namespace Color
             {
                 SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
             }
+
+            // Actualizar gráfico
+            UpdateChartFromResults(_resultsLegacy);
         }
 
         private static string GetGlobalMetadataPrefix()
@@ -270,8 +285,28 @@ namespace Color
             txtRecomendacion = BuildRichControl(null);
             txtRecomendacion.Dock = DockStyle.Fill;
 
+
+            btnVerGrafico = new Button
+            {
+                Text = "🔍 Ver Gráfico Detallado",
+                Size = new Size(180, 34),
+                BackColor = System.Drawing.Color.FromArgb(240, 240, 240),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Visible = false 
+            };
+            btnVerGrafico.FlatAppearance.BorderColor = System.Drawing.Color.DarkGray;
+            btnVerGrafico.Click += BtnVerGrafico_Click;
+
+            // Panel para el botón (encima del diagnóstico)
+            var pnlButtonArea = new Panel { Dock = DockStyle.Bottom, Height = 45, BackColor = System.Drawing.Color.White };
+            pnlButtonArea.Controls.Add(btnVerGrafico);
+            btnVerGrafico.Location = new Point(10, 5);
+
             var panelRight = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
             panelRight.Controls.Add(txtRecomendacion);
+            panelRight.Controls.Add(pnlButtonArea);
             panelRight.Controls.Add(panelRightHeader);
 
             splitMedicionesCmc.Panel2.Controls.Add(panelRight);
@@ -353,6 +388,51 @@ namespace Color
                 btnCerrar.Focus(); 
             };
             this.Resize += (s, e) => ApplySplitRatio();
+        }
+
+        // ======= Actualización del Gráfico =======
+        private void UpdateChartFromReport(OcrReport rep)
+        {
+            if (rep == null || rep.Measures == null) return;
+            var rows = rep.Measures.Select(m => new EngineRow
+            {
+                Illuminant = m.Illuminant,
+                Type = m.Type,
+                L = m.L,
+                A = m.A,
+                B = m.B,
+                Hue = m.Hue
+            }).ToList();
+            var results = EngineCalc.Calculate(rows);
+            UpdateChartFromResults(results);
+        }
+
+        private void UpdateChartFromResults(List<EngineRes> results)
+        {
+            if (results == null || results.Count == 0) return;
+
+            // Buscamos D65 como estándar industrial, sino el primero
+            var res = results.FirstOrDefault(r => string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase)) 
+                      ?? results[0];
+
+            _lastMainResult = res;
+            if (btnVerGrafico != null) btnVerGrafico.Visible = true;
+        }
+
+        private void BtnVerGrafico_Click(object sender, EventArgs e)
+        {
+            if (_lastMainResult == null) return;
+            
+            using (var frm = new FormDetalleCielab(
+                _lastMainResult.DeltaL, 
+                _lastMainResult.DeltaA, 
+                _lastMainResult.DeltaB, 
+                _lastMainResult.DeltaE, 
+                DE_MAX,
+                BuildPlanoPolarAdvice(_lastMainResult)))
+            {
+                frm.ShowDialog();
+            }
         }
 
         // ======= Aplica proporción del Split (55% izquierda / 45% derecha) =======
@@ -547,9 +627,6 @@ namespace Color
                 // L*, a*, b* con % y acción en el formato que pediste
                 sb.Append(BuildPerAxisPercentAdvice(r));
 
-                // Plano polar (a*, b*) + dominancia
-                sb.Append(BuildPlanoPolarAdvice(r));
-
                 sb.AppendLine();
             }
 
@@ -634,7 +711,7 @@ namespace Color
             return sb.ToString();
         }
 
-        // ======= Diagnóstico en plano polar (a*, b*) =======
+        // ======= Diagnóstico en plano polar (a*, b*) con Instrucciones Accionables =======
         private static string BuildPlanoPolarAdvice(EngineRes r)
         {
             var sb = new StringBuilder();
@@ -643,32 +720,57 @@ namespace Color
             double db = r.DeltaB;
             double eps = 0.01;
 
-            // Ángulo polar del vector (Δa, Δb) y módulo en el plano a*-b*
-            double angleRad = Math.Atan2(db, da);
-            double angleDeg = angleRad * 180.0 / Math.PI;
-            if (angleDeg < 0) angleDeg += 360.0;
             double modulo = Math.Sqrt(da * da + db * db);
+            if (modulo <= eps)
+            {
+                sb.AppendLine(" ✓ El color está centrado en el estándar cromático.");
+                return sb.ToString();
+            }
 
-            // Cuadrantes para contexto (pendiente: se usará con la instrucción del plano polar)
-            /*
-            string cuadrante;
-            if (da >= 0 && db >= 0) cuadrante = "rojo‑amarillo (+a,+b)";
-            else if (da < 0 && db >= 0) cuadrante = "verde‑amarillo (−a,+b)";
-            else if (da < 0 && db < 0) cuadrante = "verde‑azul (−a,−b)";
-            else cuadrante = "rojo‑azul (+a,−b)";
-            */
+            // Identificación de Sesgo y Acción Sugerida
+            string sesgo = "";
+            string accion = "";
 
-           /* sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                " Plano polar (a*, b*): módulo={0:0.00}, ángulo={1:0.0}° → cuadrante {2}.",
-                modulo, angleDeg, cuadrante));*/
+            if (da >= eps && db >= eps)
+            {
+                sesgo = "Rojo-Amarillo";
+                accion = "Reducir pigmento Rojo/Amarillo o añadir Verde/Azul.";
+            }
+            else if (da <= -eps && db >= eps)
+            {
+                sesgo = "Verde-Amarillo";
+                accion = "Reducir pigmento Verde/Amarillo o añadir Rojo/Azul.";
+            }
+            else if (da <= -eps && db <= -eps)
+            {
+                sesgo = "Verde-Azul";
+                accion = "Reducir pigmento Verde/Azul o añadir Rojo/Amarillo.";
+            }
+            else if (da >= eps && db <= -eps)
+            {
+                sesgo = "Rojo-Azul";
+                accion = "Reducir pigmento Rojo/Azul o añadir Verde/Amarillo.";
+            }
+            else if (Math.Abs(da) < eps) // Solo eje b
+            {
+                sesgo = db > 0 ? "Amarillo" : "Azul";
+                accion = db > 0 ? "Reducir Amarillo o añadir Azul." : "Reducir Azul o añadir Amarillo.";
+            }
+            else if (Math.Abs(db) < eps) // Solo eje a
+            {
+                sesgo = da > 0 ? "Rojo" : "Verde";
+                accion = da > 0 ? "Reducir Rojo o añadir Verde." : "Reducir Verde o añadir Rojo.";
+            }
 
-            // Dominancia cromática (qué eje pesa más)
-            if (Math.Abs(da) > Math.Abs(db) + eps)
-                sb.AppendLine("   Dominancia cromática: eje a* (Rojo↔Verde). Prioriza la corrección sobre ROJO/VERDE.");
-            else if (Math.Abs(db) > Math.Abs(da) + eps)
-                sb.AppendLine("   Dominancia cromática: eje b* (Amarillo↔Azul). Prioriza la corrección sobre AMARILLO/AZUL.");
-            else if (modulo > eps)
-                sb.AppendLine("   Dominancia cromática: mixta (a* y b* similares). Corrige en ambos ejes.");
+            sb.AppendLine($" ► Sesgo Cromático: {sesgo}.");
+            
+            // Dominancia cromática
+            if (Math.Abs(da) > Math.Abs(db) + 0.1)
+                sb.AppendLine(" ► Dominancia: Eje a* (Rojo ↔ Verde).");
+            else if (Math.Abs(db) > Math.Abs(da) + 0.1)
+                sb.AppendLine(" ► Dominancia: Eje b* (Amarillo ↔ Azul).");
+
+            sb.AppendLine($" 💡 ACCIÓN: {accion}");
 
             return sb.ToString();
         }
