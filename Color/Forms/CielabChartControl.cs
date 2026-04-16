@@ -13,18 +13,26 @@ namespace Color
         private double _dE;
         private double _toleranceDE = 1.2;
 
+        public enum ViewMode { Relative, Absolute }
+
         public double DeltaL { get => _dL; set { _dL = value; InvalidateSafer(); } }
         public double DeltaA { get => _dA; set { _dA = value; InvalidateSafer(); } }
         public double DeltaB { get => _dB; set { _dB = value; InvalidateSafer(); } }
         public double DeltaE { get => _dE; set { _dE = value; InvalidateSafer(); } }
         public double ToleranceDE { get => _toleranceDE; set { _toleranceDE = value; InvalidateSafer(); } }
-        public string Title { get; set; } = "";
+        public string Title { get; set; } = "Análisis CIELAB";
+        public ViewMode Mode { get; set; } = ViewMode.Relative;
+
+        // ---- Propiedades de Coordenadas Absolutas (Inmersión de Datos) ----
+        public double AbsoluteL { get; set; } = 50.0;
+        public double AbsoluteA { get; set; } = 0.0;
+        public double AbsoluteB { get; set; } = 0.0;
 
         public CielabChartControl()
         {
             this.DoubleBuffered = true;
             this.BackColor = System.Drawing.Color.White;
-            this.Size = new Size(300, 250);
+            this.Size = new Size(500, 450);
             this.Font = new Font("Segoe UI", 9f);
         }
 
@@ -39,154 +47,292 @@ namespace Color
             base.OnPaint(e);
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            int margin = 40; // Aumentado para evitar corte de etiquetas
-            int lWidth = 40; // Espacio para el eje L* a la derecha
-            Rectangle chartArea = new Rectangle(margin, margin + 20, this.Width - margin * 2 - lWidth, this.Height - margin * 2 - 20);
-            Point center = new Point(chartArea.Left + chartArea.Width / 2, chartArea.Top + chartArea.Height / 2);
+            // Fondo profesional
+            using (LinearGradientBrush backBrush = new LinearGradientBrush(this.ClientRectangle,
+                System.Drawing.Color.FromArgb(252, 252, 254),
+                System.Drawing.Color.FromArgb(240, 242, 248), 45f))
+            {
+                g.FillRectangle(backBrush, this.ClientRectangle);
+            }
 
-            // ---- Título Opcional ----
+            int margin = 50;
+            int lWidth = 60;
+            Rectangle chartArea = new Rectangle(margin, margin + 25, this.Width - margin * 2 - lWidth, this.Height - margin * 2 - 25);
+            Point center = new Point(chartArea.X + chartArea.Width / 2, chartArea.Y + chartArea.Height / 2);
+
             if (!string.IsNullOrEmpty(Title))
             {
-                using (Font titleFont = new Font(this.Font, FontStyle.Bold))
+                using (Font f = new Font("Segoe UI", 12, FontStyle.Bold))
                 {
-                    g.DrawString(Title, titleFont, Brushes.DarkSlateGray, margin, 5);
+                    g.DrawString(Title, f, Brushes.MidnightBlue, margin, 10);
                 }
             }
 
-            // Determinar escala (unidades CIELAB por pixel)
-            double maxVal = Math.Max(ToleranceDE * 1.5, Math.Max(Math.Abs(DeltaA), Math.Abs(DeltaB))) + 0.5;
+            // 1. DETERMINAR LÓGICA DE ESCALA SEGÚN MODO
+            double plotStdA = 0, plotStdB = 0;
+            double plotLotA = DeltaA, plotLotB = DeltaB;
+
+            if (Mode == ViewMode.Absolute)
+            {
+                plotStdA = AbsoluteA;
+                plotStdB = AbsoluteB;
+                plotLotA = AbsoluteA + DeltaA;
+                plotLotB = AbsoluteB + DeltaB;
+            }
+
+            double maxCoord = Math.Max(
+                Math.Max(Math.Abs(plotStdA), Math.Abs(plotStdB)),
+                Math.Max(Math.Abs(plotLotA), Math.Abs(plotLotB))
+            );
+            double maxVal = Math.Max(ToleranceDE * 2.0, maxCoord) + 1.0;
             float scale = (float)(Math.Min(chartArea.Width, chartArea.Height) / (2.0 * maxVal));
 
-            // ---- Fondo Gradiente a*-b* ----
-            PointF[] gradientPoints = new PointF[]
-            {
-                new PointF(chartArea.Left, chartArea.Top),      
-                new PointF(chartArea.Right, chartArea.Top),     
-                new PointF(chartArea.Right, chartArea.Bottom),  
-                new PointF(chartArea.Left, chartArea.Bottom)    
-            };
+            // Rueda de colores CIELAB (rango fijo ±128 para colores reales)
+            int wheelRadius = (int)(Math.Min(chartArea.Width, chartArea.Height) / 2.0);
+            DrawCielabColorWheel(g, center, wheelRadius);
 
-            using (PathGradientBrush pgb = new PathGradientBrush(gradientPoints))
+            // Ejes (Neutro 0,0) — blancos para contrastar con la rueda
+            using (Pen axisPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.5f))
             {
-                // el centro (a = 0 ; b = 0 ) es neutro/blanco
-                pgb.CenterColor = System.Drawing.Color.White; 
-                pgb.SurroundColors = new System.Drawing.Color[]
+                g.DrawLine(axisPen, chartArea.Left, center.Y, chartArea.Right, center.Y);
+                g.DrawLine(axisPen, center.X, chartArea.Top, center.X, chartArea.Bottom);
+            }
+
+            // Etiquetas de Ejes
+            DrawAxisLabel(g, "Rojo (+a*)", chartArea.Right - 40, center.Y + 6, StringAlignment.Near, System.Drawing.Color.FromArgb(220, 0, 0));
+            DrawAxisLabel(g, "Verde (-a*)", chartArea.Left, center.Y + 6, StringAlignment.Near, System.Drawing.Color.FromArgb(0, 160, 0));
+            DrawAxisLabel(g, "Amarillo (+b*)", center.X + 6, chartArea.Top, StringAlignment.Near, System.Drawing.Color.FromArgb(180, 140, 0));
+            DrawAxisLabel(g, "Azul (-b*)", center.X + 6, chartArea.Bottom - 18, StringAlignment.Near, System.Drawing.Color.FromArgb(30, 30, 200));
+
+            // Tolerancia — círculo blanco para contrastar con la rueda
+            if (Mode == ViewMode.Relative)
+            {
+                float tolRadius = (float)(ToleranceDE * scale);
+                using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(220, 255, 255, 255), 1.8f))
                 {
-                    System.Drawing.Color.FromArgb(80, 150, 255, 150), 
-                    System.Drawing.Color.FromArgb(80, 255, 150, 150), 
-                    System.Drawing.Color.FromArgb(80, 255, 150, 255), 
-                    System.Drawing.Color.FromArgb(80, 150, 255, 255)  
-                };
-                g.FillRectangle(pgb, chartArea);
+                    tolPen.DashStyle = DashStyle.Dash;
+                    g.DrawEllipse(tolPen, center.X - tolRadius, center.Y - tolRadius, tolRadius * 2, tolRadius * 2);
+                }
+                // Etiqueta de tolerancia con fondo semitransparente
+                using (Font tolFont = new Font(this.Font.FontFamily, 8f))
+                {
+                    string tolTxt = $"Tol ΔE: {ToleranceDE:F2}";
+                    SizeF ts = g.MeasureString(tolTxt, tolFont);
+                    float tx = center.X - tolRadius;
+                    float ty = center.Y - tolRadius - 17;
+                    using (Brush bgBrush = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
+                        g.FillRectangle(bgBrush, tx - 2, ty - 1, ts.Width + 4, ts.Height + 2);
+                    g.DrawString(tolTxt, tolFont, Brushes.White, tx, ty);
+                }
             }
 
-            // ---- Dibujar Ejes a*-b* ----
-            using (Pen axisPen = new Pen(System.Drawing.Color.DarkGray, 1f))
+            float sX = (float)(center.X + plotStdA * scale);
+            float sY = (float)(center.Y - plotStdB * scale);
+            float lX = (float)(center.X + plotLotA * scale);
+            float lY = (float)(center.Y - plotLotB * scale);
+
+            // Estándar
+            g.FillEllipse(Brushes.LimeGreen, sX - 5, sY - 5, 10, 10);
+            g.DrawEllipse(Pens.White, sX - 6, sY - 6, 12, 12);
+            if (Mode == ViewMode.Absolute)
             {
-                axisPen.DashStyle = DashStyle.Dash;
-                g.DrawLine(axisPen, chartArea.Left, center.Y, chartArea.Right, center.Y); 
-                g.DrawLine(axisPen, center.X, chartArea.Top, center.X, chartArea.Bottom); 
+                SizeF es = g.MeasureString("Est.", this.Font);
+                using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
+                    g.FillRectangle(bg, sX + 7, sY - 9, es.Width + 2, es.Height);
+                g.DrawString("Est.", this.Font, Brushes.LimeGreen, sX + 8, sY - 8);
             }
 
-            // ---- Etiquetas de los Ejes ----
-            DrawAxisLabel(g, "Rojo (+a*)", chartArea.Right - 40, center.Y + 5, StringAlignment.Near, System.Drawing.Color.DarkRed);
-            DrawAxisLabel(g, "Verde (-a*)", chartArea.Left, center.Y + 5, StringAlignment.Near, System.Drawing.Color.DarkGreen);
-            DrawAxisLabel(g, "Amarillo (+b*)", center.X + 5, chartArea.Top, StringAlignment.Near, System.Drawing.Color.DarkGoldenrod);
-            DrawAxisLabel(g, "Azul (-b*)", center.X + 5, chartArea.Bottom - 15, StringAlignment.Near, System.Drawing.Color.DarkBlue);
-
-            // ---- Círculo de Tolerancia ----
-            float tolRadius = (float)(ToleranceDE * scale);
-            using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(100, 200, 200, 200), 1.5f))
-            {
-                tolPen.DashStyle = DashStyle.Dot;
-                g.DrawEllipse(tolPen, center.X - tolRadius, center.Y - tolRadius, tolRadius * 2, tolRadius * 2);
-                
-                // Texto de tolerancia
-                string tolText = $"Tol ΔE: {ToleranceDE:F2}";
-                g.DrawString(tolText, this.Font, Brushes.Gray, center.X - tolRadius, center.Y - tolRadius - 15);
-            }
-
-            // ---- Dibujar Punto de Medición (Lote) ----
-            float ptX = (float)(center.X + DeltaA * scale);
-            float ptY = (float)(center.Y - DeltaB * scale); 
-
-            // Vector de corrección
-            using (Pen vectorPen = new Pen(System.Drawing.Color.FromArgb(0, 102, 204), 2f))
+            // Vector
+            using (Pen vectorPen = new Pen(System.Drawing.Color.FromArgb(30, 144, 255), 2.5f))
             {
                 vectorPen.EndCap = LineCap.ArrowAnchor;
-                g.DrawLine(vectorPen, center.X, center.Y, ptX, ptY);
+                g.DrawLine(vectorPen, sX, sY, lX, lY);
             }
 
-            // Punto (Standard es el centro)
-            g.FillEllipse(Brushes.LimeGreen, center.X - 4, center.Y - 4, 8, 8); 
-            
-            // Punto (Lote)
-            using (Brush pointBrush = new SolidBrush(System.Drawing.Color.Red))
+            // Lote
+            using (Brush lotB = new SolidBrush(System.Drawing.Color.FromArgb(220, 20, 60)))
             {
-                g.FillEllipse(pointBrush, ptX - 4, ptY - 4, 8, 8);
-                g.DrawEllipse(Pens.White, ptX - 5, ptY - 5, 10, 10);
+                g.FillEllipse(lotB, lX - 5, lY - 5, 10, 10);
+                g.DrawEllipse(Pens.White, lX - 6, lY - 6, 12, 12);
             }
-
-            // Etiqueta del punto
-            string batchText = $"Δa={DeltaA:F2}, Δb={DeltaB:F2}\nΔE={DeltaE:F2}";
-            g.DrawString(batchText, new Font(this.Font, FontStyle.Bold), Brushes.Black, ptX + 8, ptY - 10);
-
-            // ---- Eje L* (Luminosidad) ----
-            int lX = this.Width - lWidth + 5;
-            int lYStart = chartArea.Top;
-            int lYEnd = chartArea.Bottom;
-            int lHeight = lYEnd - lYStart;
-
-            // Gradiente Blanco-Negro
-            using (LinearGradientBrush lBrush = new LinearGradientBrush(new Point(lX, lYStart), new Point(lX, lYEnd), System.Drawing.Color.White, System.Drawing.Color.Black))
+            // Etiqueta "Lote" con fondo
             {
-                g.FillRectangle(lBrush, lX, lYStart, 12, lHeight);
+                SizeF ls = g.MeasureString("Lote", this.Font);
+                using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
+                    g.FillRectangle(bg, lX + 9, lY + 5, ls.Width + 2, ls.Height);
+                g.DrawString("Lote", this.Font, Brushes.White, lX + 10, lY + 6);
             }
-            g.DrawRectangle(Pens.Gray, lX, lYStart, 12, lHeight);
 
-            // Indicadores L*
-            g.DrawString("L+", this.Font, Brushes.Gray, lX + 15, lYStart);
-            g.DrawString("L-", this.Font, Brushes.Gray, lX + 15, lYEnd - 15);
-
-            // Posición de la medición en L*
-            double maxValL = Math.Max(Math.Abs(DeltaL), 2.0) + 0.5;
-            float lCenterY = lYStart + lHeight / 2f;
-            float lPtY = (float)(lCenterY - (DeltaL / maxValL) * (lHeight / 2f));
-            
-            // Limitar a los bordes
-            lPtY = Math.Max(lYStart, Math.Min(lYEnd, lPtY));
-
-            using (Pen markerPen = new Pen(System.Drawing.Color.DarkBlue, 2f))
+            // Datos Δa Δb ΔE con fondo semitransparente
+            string dataTxt = $"Δa: {DeltaA:F2}\nΔb: {DeltaB:F2}\nΔE: {DeltaE:F2}";
+            using (Font boldF = new Font("Segoe UI", 9.5f, FontStyle.Bold))
             {
-                g.DrawLine(markerPen, lX - 5, lPtY, lX + 17, lPtY);
-                g.DrawString($"ΔL={DeltaL:F2}", this.Font, Brushes.DarkBlue, lX - 45, lPtY - 7);
+                SizeF ds = g.MeasureString(dataTxt, boldF);
+                float dx = lX + 12;
+                float dy = lY - 25;
+                using (Brush bgBrush = new SolidBrush(System.Drawing.Color.FromArgb(170, 0, 0, 0)))
+                    g.FillRectangle(bgBrush, dx - 3, dy - 2, ds.Width + 6, ds.Height + 4);
+                g.DrawString(dataTxt, boldF, Brushes.White, dx, dy);
             }
 
-            // ---- Leyenda (Legend) ----
-            int legendY = chartArea.Bottom + 5;
-            int legendX = chartArea.Left;
-            
-            // Punto Referencia
-            g.FillEllipse(Brushes.LimeGreen, legendX, legendY + 5, 8, 8);
-            g.DrawString("Punto referencia", this.Font, Brushes.Black, legendX + 12, legendY + 1);
-            
-            // Punto Resultado
-            using (Brush pointBrush = new SolidBrush(System.Drawing.Color.Red))
-            {
-                g.FillEllipse(pointBrush, legendX + 130, legendY + 5, 8, 8);
-                g.DrawEllipse(Pens.DarkRed, legendX + 130, legendY + 5, 8, 8);
-            }
-            g.DrawString("Punto resultado", this.Font, Brushes.Black, legendX + 142, legendY + 1);
+            // Info final
+            string modeName = Mode == ViewMode.Absolute ? "Vista Real" : "Vista Relativa";
+            string spatialInfo = $"[{modeName}] Std: L={AbsoluteL:F1}, a={AbsoluteA:F1}, b={AbsoluteB:F1}";
+            g.DrawString(spatialInfo, new Font("Segoe UI", 8.5f, FontStyle.Italic), Brushes.DarkSlateGray, margin, this.Height - 30);
+
+            DrawComparisonSamples(g, this.Width - lWidth - 110, 20);
+
+            // lateral
+            DrawLightnessAxis(g, this.Width - lWidth + 10, chartArea.Top, lWidth - 25, chartArea.Height);
         }
 
-        private void DrawAxisLabel(Graphics g, string text, int x, int y, StringAlignment align, System.Drawing.Color color)
+        private void DrawComparisonSamples(Graphics g, int x, int y)
         {
-            using (StringFormat sf = new StringFormat { Alignment = align })
-            using (Brush brush = new SolidBrush(color))
+            int sw = 50, sh = 50;
+            Rectangle rStd = new Rectangle(x, y, sw, sh);
+            Rectangle rLot = new Rectangle(x + sw + 5, y, sw, sh);
+
+            System.Drawing.Color cStd = LabToRgb(AbsoluteL, AbsoluteA, AbsoluteB);
+            System.Drawing.Color cLot = LabToRgb(AbsoluteL + DeltaL, AbsoluteA + DeltaA, AbsoluteB + DeltaB);
+
+            // Sombra
+            using (Brush shadow = new SolidBrush(System.Drawing.Color.FromArgb(40, 0, 0, 0)))
+                g.FillRectangle(shadow, x + 3, y + 3, sw * 2 + 5 + 3, sh);
+
+            // Relleno con gradiente sutil para dar volumen
+            using (LinearGradientBrush bStd = new LinearGradientBrush(rStd,
+                System.Drawing.Color.FromArgb(Math.Min(255, cStd.R + 30), Math.Min(255, cStd.G + 30), Math.Min(255, cStd.B + 30)),
+                cStd, 135f))
+                g.FillRectangle(bStd, rStd);
+
+            using (LinearGradientBrush bLot = new LinearGradientBrush(rLot,
+                System.Drawing.Color.FromArgb(Math.Min(255, cLot.R + 30), Math.Min(255, cLot.G + 30), Math.Min(255, cLot.B + 30)),
+                cLot, 135f))
+                g.FillRectangle(bLot, rLot);
+
+            // Borde blanco para resaltar
+            using (Pen borderPen = new Pen(System.Drawing.Color.White, 2f))
             {
-                g.DrawString(text, this.Font, brush, x, y, sf);
+                g.DrawRectangle(borderPen, rStd);
+                g.DrawRectangle(borderPen, rLot);
             }
+
+            // Etiquetas STD / LOT con fondo oscuro
+            using (Font f = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+            {
+                string[] labels = { "STD", "LOT" };
+                int[] xs = { x, x + sw + 5 };
+                for (int i = 0; i < 2; i++)
+                {
+                    SizeF sz = g.MeasureString(labels[i], f);
+                    float lx = xs[i] + (sw - sz.Width) / 2f;
+                    float ly = y + sh + 3;
+                    using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
+                        g.FillRectangle(bg, lx - 1, ly, sz.Width + 2, sz.Height);
+                    g.DrawString(labels[i], f, Brushes.White, lx, ly);
+                }
+            }
+        }
+
+        private void DrawLightnessAxis(Graphics g, int x, int y, int w, int h)
+        {
+            using (LinearGradientBrush lBrush = new LinearGradientBrush(new Rectangle(x, y, w, h), System.Drawing.Color.White, System.Drawing.Color.Black, 90f))
+            {
+                g.FillRectangle(lBrush, x, y, w, h);
+            }
+            g.DrawRectangle(Pens.Gray, x, y, w, h);
+
+            float stdY = (float)(y + h * (1.0 - AbsoluteL / 100.0));
+            float lotY = (float)(y + h * (1.0 - (AbsoluteL + DeltaL) / 100.0));
+            stdY = Math.Max(y, Math.Min(y + h, stdY));
+            lotY = Math.Max(y, Math.Min(y + h, lotY));
+
+            g.DrawLine(new Pen(System.Drawing.Color.LimeGreen, 2.5f), x - 5, stdY, x + w + 5, stdY);
+            Point[] arrow = { new Point(x - 5, (int)lotY), new Point(x - 15, (int)lotY - 6), new Point(x - 15, (int)lotY + 6) };
+            g.FillPolygon(Brushes.Crimson, arrow);
+            g.DrawString("Lote", new Font(this.Font, FontStyle.Bold), Brushes.Crimson, x - 45, lotY - 7);
+        }
+
+        private void DrawAxisLabel(Graphics g, string text, float x, float y, StringAlignment align, System.Drawing.Color color)
+        {
+            using (Brush b = new SolidBrush(color))
+            using (Font f = new Font("Segoe UI Semibold", 9))
+            {
+                StringFormat sf = new StringFormat { Alignment = align };
+                g.DrawString(text, f, b, x, y, sf);
+            }
+        }
+
+        private void DrawCielabColorWheel(Graphics g, Point center, int radius)
+        {
+            if (radius <= 0) return;
+            int size = radius * 2;
+            const double LAB_RANGE = 128.0;
+            const double L_FIXED = 65.0;
+
+            using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(size, size))
+            {
+                System.Drawing.Imaging.BitmapData bmpData = bmp.LockBits(
+                    new Rectangle(0, 0, size, size),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+                int stride = bmpData.Stride;
+                byte[] pixels = new byte[stride * size];
+
+                for (int py = 0; py < size; py++)
+                {
+                    for (int px = 0; px < size; px++)
+                    {
+                        double dx = px - radius;
+                        double dy = radius - py;
+                        double dist = Math.Sqrt(dx * dx + dy * dy);
+
+                        if (dist <= radius)
+                        {
+                            double aVal = (dx / radius) * LAB_RANGE;
+                            double bVal = (dy / radius) * LAB_RANGE;
+                            double L = L_FIXED + (dist / radius) * 12.0;
+
+                            System.Drawing.Color c = LabToRgb(L, aVal, bVal);
+
+                            int alpha = 255;
+                            if (radius - dist < 2.0)
+                                alpha = (int)((radius - dist) / 2.0 * 255);
+
+                            int idx = py * stride + px * 4;
+                            pixels[idx + 0] = c.B;
+                            pixels[idx + 1] = c.G;
+                            pixels[idx + 2] = c.R;
+                            pixels[idx + 3] = (byte)alpha;
+                        }
+                    }
+                }
+
+                System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
+                bmp.UnlockBits(bmpData);
+                g.DrawImage(bmp, center.X - radius, center.Y - radius, size, size);
+            }
+        }
+
+        private System.Drawing.Color LabToRgb(double L, double a, double b)
+        {
+            double y = (L + 16) / 116.0;
+            double x = a / 500.0 + y;
+            double z = y - b / 200.0;
+            double ToX(double v) => v > 0.206893 ? Math.Pow(v, 3) : (v - 16 / 116.0) / 7.787;
+            x = 0.95047 * ToX(x); y = 1.000 * ToX(y); z = 1.08883 * ToX(z);
+            double r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+            double gr = x * -0.9689 + y * 1.8758 + z * 0.0415;
+            double bl = x * 0.0557 + y * -0.2040 + z * 1.0570;
+            double ToR(double v)
+            {
+                v = v > 0.0031308 ? 1.055 * Math.Pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
+                return Math.Max(0, Math.Min(255, v * 255.0));
+            }
+            return System.Drawing.Color.FromArgb((int)ToR(r), (int)ToR(gr), (int)ToR(bl));
         }
     }
 }

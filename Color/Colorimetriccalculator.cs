@@ -46,6 +46,9 @@ namespace Color
         // Determina la acción para el eje b* (Amarillo/Azul)
         public string CorrectionB { get; set; } = "";
 
+        // ΔE CMC(2:1) - Recomendado para grado comercial (Elipse de tolerancia)
+        public double CmcValue { get; set; }
+
         // Estado de aprobación basado en la tolerancia seleccionada
         public bool Pass { get; set; }
     }
@@ -288,33 +291,66 @@ namespace Color
         // ------------------------------------------------------------------
         //    Fórmulas del Excel (hoja CALCULO RECETA): (CMC 2:1)
         // ------------------------------------------------------------------
-        public static List<CmcResult> CalculateCmc(List<ColorCorrectionResult> corrections)
+        public static List<CmcResult> CalculateCmc(List<ColorCorrectionResult> corrections, List<ColorimetricRow> rows)
         {
-            if (corrections == null || corrections.Count == 0)
-                return new List<CmcResult>();
+            if (corrections == null || rows == null) return new List<CmcResult>();
 
             var results = new List<CmcResult>();
+            double l = 2.0; // CMC(2:1)
+            double c_val = 1.0;
 
-            foreach (var c in corrections)
+            foreach (var cor in corrections)
             {
-                // CMC(2:1): √( (ΔL/lightnessTerm)² + (ΔC/chromaTerm)² + (ΔH/hueTerm)² )
-                double convL = Math.Round(Math.Abs(c.DeltaL * 10.0), 4);
-                double convC = Math.Round(Math.Abs(c.DeltaChroma * 10.0), 4);
+                var std = rows.FirstOrDefault(r => 
+                    string.Equals(r.Illuminant, cor.Illuminant, StringComparison.OrdinalIgnoreCase) && 
+                    string.Equals(r.Type, "Std", StringComparison.OrdinalIgnoreCase));
+                
+                if (std == null) continue;
+
+                double L1 = std.L;
+                double C1 = std.Chroma;
+                double h1 = std.Hue;
+
+                double dL = cor.DeltaL;
+                double dC = cor.DeltaChroma;
+                double dH = cor.DeltaHue;
+
+                // --- Pesos CMC ---
+                double f = Math.Sqrt(Math.Pow(C1, 4) / (Math.Pow(C1, 4) + 1900.0));
+                
+                double T;
+                if (h1 >= 164.0 && h1 <= 345.0)
+                    T = 0.56 + Math.Abs(0.2 * Math.Cos(DegreeToRadian(h1 + 168.0)));
+                else
+                    T = 0.36 + Math.Abs(0.4 * Math.Cos(DegreeToRadian(h1 + 35.0)));
+
+                double sl = L1 < 16.0 ? 0.511 : (0.040975 * L1) / (1.0 + 0.01765 * L1);
+                double sc = (0.0638 * C1) / (1.0 + 0.0131 * C1) + 0.638;
+                double sh = sc * (f * T + 1.0 - f);
+
+                // --- Diferencia CMC final ---
+                double deCmc = Math.Sqrt(
+                    Math.Pow(dL / (l * sl), 2) + 
+                    Math.Pow(dC / (c_val * sc), 2) + 
+                    Math.Pow(dH / sh, 2)
+                );
 
                 results.Add(new CmcResult
                 {
-                    Illuminant = c.Illuminant,
-                    Lightness = c.DeltaL,
-                    Chroma = c.DeltaChroma,
-                    Hue = c.DeltaHue,
-                    CmcValue = c.DeltaE,
-                    ConversionLightness = convL,
-                    ConversionChroma = convC
+                    Illuminant = cor.Illuminant,
+                    Lightness = cor.DeltaL,
+                    Chroma = cor.DeltaChroma,
+                    Hue = cor.DeltaHue,
+                    CmcValue = Math.Round(deCmc, 4),
+                    ConversionLightness = Math.Round(Math.Abs(cor.DeltaL * 10.0), 4),
+                    ConversionChroma = Math.Round(Math.Abs(cor.DeltaChroma * 10.0), 4)
                 });
             }
 
             return results;
         }
+
+        private static double DegreeToRadian(double angle) => (Math.PI / 180.0) * angle;
 
         // Sobrecarga: recibe valores CMC directamente del espectrofotómetro
         public static CmcResult BuildCmcResult(
@@ -443,6 +479,12 @@ namespace Color
                 if (absDL > band.DL) failing.Add("DL");
                 if (absDC > band.DC) failing.Add("DC");
                 if (absDH > band.DH) failing.Add("DH");
+
+                // --- PRECISIÓN CMC (ELIPSE) ---
+                if (c.CmcValue > 0 && c.CmcValue > band.DE)
+                {
+                    if (!failing.Contains("CMC")) failing.Add("CMC");
+                }
 
                 bool passes = failing.Count == 0;
 
