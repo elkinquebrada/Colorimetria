@@ -60,8 +60,9 @@ namespace Color
     public class ShadeExtractionResult
     {
         public string ShadeName { get; set; }
-        /// DT Main (e.g. "DFC12") extraído del encabezado del Shade History Report.
+        
         public string DtMain { get; set; }
+
         // NUEVOS: Valores L* a* b* del Estándar (Std L A B)
         public string StdL { get; set; }
         public string StdA { get; set; }
@@ -126,7 +127,7 @@ namespace Color
         }
 
         //-------------------------------------------------------------------
-        // OCR desde archivo — NO BORRAR PNG AQUÍ
+        //                OCR desde archivo 
         //-------------------------------------------------------------------
         public string ExtractTextFromFile(string imagePath)
         {
@@ -139,7 +140,7 @@ namespace Color
         }
 
         //-------------------------------------------------------------------
-        // OCR desde BITMAP — AQUÍ ES DONDE TUS PNG SE ESTABAN BORRANDO
+        //                  OCR desde BITMAP 
         //-------------------------------------------------------------------
         public string ExtractTextFromBitmap(Bitmap bmp)
         {
@@ -148,11 +149,11 @@ namespace Color
 
             bmp.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
 
-            // ❗ PROTECCIÓN — asegurarse de que el archivo existe
+            //  asegurarse de que el archivo existe
             if (!File.Exists(tmp))
                 throw new Exception("Archivo temporario no existe: " + tmp);
 
-            // NUNCA BORRAR AQUÍ → Form1.cs lo borrará al final
+            //  Form1.cs lo borrará al final
             using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
             using (var pix = Pix.LoadFromFile(tmp))
             using (var page = engine.Process(pix))
@@ -188,7 +189,7 @@ namespace Color
             return res;
         }
 
-        /// Extrae el DT Main del texto OCR completo (ej: "DFC12").
+        /// Extrae el DT Main del texto OCR completo 
         public string ExtractDtMain(string ocrText)
         {
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
@@ -210,7 +211,6 @@ namespace Color
             }
             
             // 2. Fallback: Si no dice "Std", buscar cualquier grupo de 3 números con o sin puntos
-            // Esto ayuda si el OCR se "comió" el texto pero leyó los números
             var mNum = Regex.Matches(ocrText, @"[-+]?\d+(?:\s?[.,]\s?\d+)?");
             if (mNum.Count >= 3)
             {
@@ -232,8 +232,8 @@ namespace Color
 
             var result = ExtractAll(text);
 
-            // DIAGNÓSTICO: guardar log en Desktop para identificar por qué falla la receta
-            try
+            // DIAGNÓSTICO: guardar log en Desktop para identificar por qué falla la receta (en caso de necesitar verificacion de texto crudo activar)
+            /*try
             {
                 var dbg = new System.Text.StringBuilder();
                 dbg.AppendLine("=== ShadeReportExtractor DEBUG ===");
@@ -247,7 +247,7 @@ namespace Color
                         "debug_shade_ocr.txt"),
                     dbg.ToString());
             }
-            catch { }
+            catch { }*/
 
             // Intentar mejorar la receta con OCR dirigido sobre el recorte de la zona de ingredientes.
             try
@@ -350,7 +350,7 @@ namespace Color
             }
 
             // Determinar precisión dominante (Moda)
-            int dominantPrecision = 5; // Por defecto Coats
+            int dominantPrecision = 5; 
             if (decimalCounts.Count > 0)
             {
                 dominantPrecision = decimalCounts.GroupBy(n => n)
@@ -489,7 +489,6 @@ namespace Color
         //-------------------------------------------------------------------
         // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
-        /// Extrae el DT Main usando un recorte dirigido sobre la banda central del encabezado
         private string ExtractDtMainFromBitmap(Bitmap original)
         {
             // La línea "DT Main:" está en el encabezado medio, aprox entre 20% y 38% de la altura
@@ -541,7 +540,7 @@ namespace Color
 
             if (h <= 0 || w <= 0) return null;
 
-            // Escalar 3x mejora consistentemente las lecturas alfanuméricas complejas (e.g. SYLB8792 vs sesm2)
+            // Escalar 3x mejora consistentemente las lecturas alfanuméricas complejas 
             Bitmap crop = new Bitmap(w * 3, h * 3);
             using (var g = Graphics.FromImage(crop))
             {
@@ -608,13 +607,13 @@ namespace Color
                             Cv2.Resize(gray, resized, new OpenCvSharp.Size(0, 0), 4.0, 4.0, InterpolationFlags.Cubic);
                             using (var thresholded = new Mat())
                             {
-                                // Cambio a AdaptiveThreshold: Mejor para preservar puntos decimales que Otsu
+                                // Cambio a AdaptiveThreshold: 
                                 Cv2.AdaptiveThreshold(resized, thresholded, 255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.Binary, 11, 2);
                                 
                                 using (Bitmap bmpToOcr = BitmapConverter.ToBitmap(thresholded))
                                 {
                                     using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
-                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleLine)) // Modo línea única para mayor precisión
+                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleLine)) 
                                     {
                                         ocrText = (page.GetText() ?? string.Empty).Replace(',', '.');
                                     }
@@ -703,7 +702,7 @@ namespace Color
 
             if (h <= 0 || top + h > original.Height) return null;
 
-            // Recortar y escalar 3x para mejorar calidad OCR numérico (igual que Recipe)
+            // Recortar y escalar 3x para mejorar calidad OCR numérico 
             Bitmap crop = new Bitmap(original.Width * 3, h * 3);
 
             using (var g = Graphics.FromImage(crop))

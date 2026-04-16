@@ -93,7 +93,7 @@ namespace Color.Tolerancias
                     Text = $"DE {profile.DE.ToString("0.00", CultureInfo.InvariantCulture)}",
                     Dock = DockStyle.Top,
                     Height = 35,
-                    BackColor = System.Drawing.Color.FromArgb(43, 142, 227), // Azul vibrante
+                    BackColor = System.Drawing.Color.FromArgb(43, 142, 227), 
                     ForeColor = System.Drawing.Color.White,
                     Font = new Font("Segoe UI", 11F, FontStyle.Regular),
                     TextAlign = ContentAlignment.MiddleCenter
@@ -126,8 +126,7 @@ namespace Color.Tolerancias
                 }
             }
 
-            // Si por alguna razón el usuario no tiene ninguna un perfil válido almacenado,
-            // asignamos por defecto el escenario con DE 1.20 (o el primero que exista)
+            // asignacion por defecto del escenario DE 1.20 
             if (_selectedProfile == null && _profiles.Count > 0)
             {
                 var defaultProfile = _profiles.FirstOrDefault(p => Math.Abs(p.DE - 1.20) < 0.01) ?? _profiles.FirstOrDefault();
@@ -178,7 +177,7 @@ namespace Color.Tolerancias
         {
             if (_selectedProfile == null)
             {
-                // Si el usuario da "Guardar" sin haber logrado seleccionar (por ejemplo, perfiles vacíos)
+
                 // forzamos la búsqueda de DE 1.20
                 _selectedProfile = _profiles.FirstOrDefault(p => Math.Abs(p.DE - 1.20) < 0.01) ?? _profiles.FirstOrDefault();
                 if (_selectedProfile == null)

@@ -35,21 +35,19 @@ namespace Color
         public double PercentA { get; set; }
         public double PercentB { get; set; }
 
-        // Indicadores de calidad
-        public string LightnessFlag { get; set; } = "";
+        // --- INSTRUCCIONES DE CORRECCIÓN PROFESIONAL ---
 
-        // dA > 0 → "Rojo (aumentar) o Verde (disminuir)";  dA < 0 → "Rojo (disminuir) o Verde (aumentar)"
-        public string ChromaAFlag { get; set; } = "";
+        // Determina la acción sobre la claridad
+        public string LightnessInstruction { get; set; } = "";
 
-        // dB > 0 → "Amarillo (aumentar) o Azul (disminuir)"; dB < 0 → "Azul (disminuir) o Amarillo (aumentar)"
-        public string ChromaBFlag { get; set; } = "";
+        // Determina la acción para el eje a* (Rojo/Verde)
+        public string CorrectionA { get; set; } = "";
 
-        // Alias de compatibilidad (mantiene el campo original apuntando al flag de L)
-        public string ChromaFlag
-        {
-            get => LightnessFlag;
-            set => LightnessFlag = value;
-        }
+        // Determina la acción para el eje b* (Amarillo/Azul)
+        public string CorrectionB { get; set; } = "";
+
+        // Estado de aprobación basado en la tolerancia seleccionada
+        public bool Pass { get; set; }
     }
 
     // ================================
@@ -60,14 +58,14 @@ namespace Color
         public string Illuminant { get; set; } = "";
 
         // Componentes CMC(2:1) calculadas desde ΔL, ΔChroma, ΔHue
-        public double Lightness    { get; set; }   
-        public double Chroma       { get; set; }   
-        public double Hue          { get; set; }   
-        public double CmcValue     { get; set; }   
+        public double Lightness { get; set; }
+        public double Chroma { get; set; }
+        public double Hue { get; set; }
+        public double CmcValue { get; set; }
 
         // Conversiones: valor absoluto × 10  (para uso en receta)
         public double ConversionLightness { get; set; }
-        public double ConversionChroma    { get; set; }
+        public double ConversionChroma { get; set; }
     }
 
     // ================================
@@ -75,13 +73,13 @@ namespace Color
     // ================================
     public sealed class RecipeDyeResult
     {
-        public string DyeName         { get; set; } = "";
-        public double OriginalAmount  { get; set; }   
-        public double Calc1Normalized { get; set; }   
-        public double Calc2Amount     { get; set; }   
-        public double Calc2Normalized { get; set; }   
-        public double Calc3Amount     { get; set; }   
-        public double Calc3Normalized { get; set; }   
+        public string DyeName { get; set; } = "";
+        public double OriginalAmount { get; set; }
+        public double Calc1Normalized { get; set; }
+        public double Calc2Amount { get; set; }
+        public double Calc2Normalized { get; set; }
+        public double Calc3Amount { get; set; }
+        public double Calc3Normalized { get; set; }
     }
 
     public sealed class RecipeResult
@@ -89,12 +87,12 @@ namespace Color
         public string Illuminant { get; set; } = "";
         public List<RecipeDyeResult> Dyes { get; set; } = new List<RecipeDyeResult>();
 
-        public double TotalOriginal    { get; set; }
-        public double TotalCalc2       { get; set; }
-        public double TotalCalc3       { get; set; }
+        public double TotalOriginal { get; set; }
+        public double TotalCalc2 { get; set; }
+        public double TotalCalc3 { get; set; }
 
-        public double VariationLightness { get; set; }  
-        public double VariationChroma    { get; set; }  
+        public double VariationLightness { get; set; }
+        public double VariationChroma { get; set; }
     }
 
     // ================================
@@ -103,9 +101,9 @@ namespace Color
     public sealed class ToleranceResult
     {
         public double DE { get; set; }
-        public double DL { get; set; }  
-        public double DC { get; set; }   
-        public double DH { get; set; }   
+        public double DL { get; set; }
+        public double DC { get; set; }
+        public double DH { get; set; }
     }
 
     // ================================
@@ -114,7 +112,7 @@ namespace Color
     /// Resultado de evaluar un iluminante contra los límites de una banda de tolerancia.
     public sealed class IlluminantToleranceCheck
     {
-        /// Nombre del iluminante (p. ej. "D65", "TL84", "CWF")
+ 
         public string Illuminant { get; set; } = "";
 
         ///true si TODOS los componentes están dentro del límite.
@@ -122,9 +120,9 @@ namespace Color
 
         // Valores medidos
         public double MeasuredDE { get; set; }
-        public double MeasuredDL { get; set; }   
-        public double MeasuredDC { get; set; }   
-        public double MeasuredDH { get; set; }   
+        public double MeasuredDL { get; set; }
+        public double MeasuredDC { get; set; }
+        public double MeasuredDH { get; set; }
 
         // Límites aplicados
         public double LimitDE { get; set; }
@@ -163,7 +161,7 @@ namespace Color
     /// Resumen de evaluación de todos los iluminantes contra una banda de tolerancia.
     public sealed class ToleranceEvaluationResult
     {
-        ///Banda de tolerancia usada (DE límite, p. ej. 1.20).
+        ///Banda de tolerancia usada.
         public ToleranceResult Band { get; set; } = new ToleranceResult();
 
         ///Evaluación de cada iluminante.
@@ -204,7 +202,7 @@ namespace Color
                 .Select(r => r.Illuminant)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => 
+                .OrderBy(x =>
                 {
                     int index = standardOrder.FindIndex(s => string.Equals(s, x, StringComparison.OrdinalIgnoreCase));
                     return index == -1 ? int.MaxValue : index;
@@ -235,50 +233,52 @@ namespace Color
                 // ΔC (croma)
                 double chromaStd = Math.Sqrt(std.A * std.A + std.B * std.B);
                 double chromaLot = Math.Sqrt(lot.A * lot.A + lot.B * lot.B);
-                double dChroma   = chromaLot - chromaStd;
+                double dChroma = chromaLot - chromaStd;
 
                 // Δh angular ±180°
                 double dHue = lot.Hue - std.Hue;
                 if (Math.Abs(dHue) > 180.0)
                     dHue = dHue > 0 ? dHue - 360.0 : dHue + 360.0;
 
-                // % a corregir = Δ / Std  (fórmula de la hoja: =+E3/B3, es decir |Δ|/Std)
-                // El Excel usa =ABS(Δ)/Std, lo que con Std negativo da un % negativo.
+                // El Excel usa =ABS(Δ)/Std, 
                 double pctL = (std.L != 0) ? (Math.Abs(dL) / std.L) * 100.0 : double.NaN;
                 double pctA = (std.A != 0) ? (Math.Abs(dA) / std.A) * 100.0 : double.NaN;
                 double pctB = (std.B != 0) ? (Math.Abs(dB) / std.B) * 100.0 : double.NaN;
 
-                // Flags de calidad
-                string lightnessFlag = dL < 0 ? "Oscuro" : dL > 0 ? "Claro" : "";
-                string chromaAFlag   = dA > 0
-                    ? "Rojo (aumentar) o Verde (disminuir)"
-                    : dA < 0
-                        ? "Rojo (disminuir) o Verde (aumentar)"
-                        : "";
-                string chromaBFlag   = dB < 0
-                    ? "Azul (disminuir) o Amarillo (aumentar)"
-                    : dB > 0
-                        ? "Amarillo (aumentar) o Azul (disminuir)"
-                        : "";
+                // --- LÓGICA DE CORRECCIÓN PROFESIONAL (INVERSA AL DELTA) ---
+
+                // Corrección L: Si dL < 0 el lote es oscuro -> Aclarar
+                string lightnessInst = dL < 0 ? "ACLARAR" : dL > 0 ? "OSCURECER" : "CORRECTO";
+
+                // Corrección A: Si dA > 0 el lote está muy Rojo -> Quitar Rojo/Poner Verde
+                string correctionA = dA > 0
+                    ? "DISMINUIR ROJO / AUMENTAR VERDE"
+                    : dA < 0 ? "AUMENTAR ROJO / DISMINUIR VERDE" : "TONO A* OK";
+
+                // Corrección B: Si dB > 0 el lote está muy Amarillo -> Quitar Amarillo/Poner Azul
+                string correctionB = dB > 0
+                    ? "DISMINUIR AMARILLO / AUMENTAR AZUL"
+                    : dB < 0 ? "AUMENTAR AMARILLO / DISMINUIR AZUL" : "TONO B* OK";
 
                 results.Add(new ColorCorrectionResult
                 {
-                    Illuminant  = illuminant,
-                    DeltaL      = Math.Round(dL,  4),
-                    DeltaA      = Math.Round(dA,  4),
-                    DeltaB      = Math.Round(dB,  4),
-                    AbsDeltaL   = Math.Round(Math.Abs(dL), 4),
-                    AbsDeltaA   = Math.Round(Math.Abs(dA), 4),
-                    AbsDeltaB   = Math.Round(Math.Abs(dB), 4),
+                    Illuminant = illuminant,
+                    DeltaL = Math.Round(dL, 4),
+                    DeltaA = Math.Round(dA, 4),
+                    DeltaB = Math.Round(dB, 4),
+                    AbsDeltaL = Math.Round(Math.Abs(dL), 4),
+                    AbsDeltaA = Math.Round(Math.Abs(dA), 4),
+                    AbsDeltaB = Math.Round(Math.Abs(dB), 4),
                     DeltaChroma = Math.Round(dChroma, 4),
-                    DeltaHue    = Math.Round(dHue,    4),
-                    DeltaE      = Math.Round(dE,      4),
-                    PercentL    = double.IsNaN(pctL) ? double.NaN : Math.Round(pctL, 6),
-                    PercentA    = double.IsNaN(pctA) ? double.NaN : Math.Round(pctA, 6),
-                    PercentB    = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
-                    LightnessFlag = lightnessFlag,
-                    ChromaAFlag   = chromaAFlag,
-                    ChromaBFlag   = chromaBFlag
+                    DeltaHue = Math.Round(dHue, 4),
+                    DeltaE = Math.Round(dE, 4),
+                    PercentL = double.IsNaN(pctL) ? double.NaN : Math.Round(pctL, 6),
+                    PercentA = double.IsNaN(pctA) ? double.NaN : Math.Round(pctA, 6),
+                    PercentB = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
+                    LightnessInstruction = lightnessInst,
+                    CorrectionA = correctionA,
+                    CorrectionB = correctionB,
+                    Pass = false   
                 });
             }
 
@@ -286,8 +286,7 @@ namespace Color
         }
 
         // ------------------------------------------------------------------
-        // 2. CMC(2:1)
-        //    Fórmulas del Excel (hoja CALCULO RECETA):
+        //    Fórmulas del Excel (hoja CALCULO RECETA): (CMC 2:1)
         // ------------------------------------------------------------------
         public static List<CmcResult> CalculateCmc(List<ColorCorrectionResult> corrections)
         {
@@ -304,13 +303,13 @@ namespace Color
 
                 results.Add(new CmcResult
                 {
-                    Illuminant          = c.Illuminant,
-                    Lightness           = c.DeltaL,
-                    Chroma              = c.DeltaChroma,
-                    Hue                 = c.DeltaHue,
-                    CmcValue            = c.DeltaE,   
+                    Illuminant = c.Illuminant,
+                    Lightness = c.DeltaL,
+                    Chroma = c.DeltaChroma,
+                    Hue = c.DeltaHue,
+                    CmcValue = c.DeltaE,
                     ConversionLightness = convL,
-                    ConversionChroma    = convC
+                    ConversionChroma = convC
                 });
             }
 
@@ -327,13 +326,13 @@ namespace Color
         {
             return new CmcResult
             {
-                Illuminant          = illuminant,
-                Lightness           = cmcLightness,
-                Chroma              = cmcChroma,
-                Hue                 = cmcHue,
-                CmcValue            = cmcValue,
+                Illuminant = illuminant,
+                Lightness = cmcLightness,
+                Chroma = cmcChroma,
+                Hue = cmcHue,
+                CmcValue = cmcValue,
                 ConversionLightness = Math.Round(Math.Abs(cmcLightness * 10.0), 4),
-                ConversionChroma    = Math.Round(Math.Abs(cmcChroma    * 10.0), 4)
+                ConversionChroma = Math.Round(Math.Abs(cmcChroma * 10.0), 4)
             };
         }
 
@@ -368,14 +367,14 @@ namespace Color
             {
                 dyeResults.Add(new RecipeDyeResult
                 {
-                    DyeName         = dyes[i].name,
-                    OriginalAmount  = dyes[i].amount,
+                    DyeName = dyes[i].name,
+                    OriginalAmount = dyes[i].amount,
                     Calc1Normalized = totalOriginal > 0
                         ? Math.Round(dyes[i].amount / totalOriginal, 6) : double.NaN,
-                    Calc2Amount     = Math.Round(calc2[i], 6),
+                    Calc2Amount = Math.Round(calc2[i], 6),
                     Calc2Normalized = totalCalc2 > 0
                         ? Math.Round(calc2[i] / totalCalc2, 6) : double.NaN,
-                    Calc3Amount     = Math.Round(calc3[i], 6),
+                    Calc3Amount = Math.Round(calc3[i], 6),
                     Calc3Normalized = totalCalc3 > 0
                         ? Math.Round(calc3[i] / totalCalc3, 6) : double.NaN
                 });
@@ -388,18 +387,17 @@ namespace Color
 
             return new RecipeResult
             {
-                Illuminant        = illuminant,
-                Dyes              = dyeResults,
-                TotalOriginal     = Math.Round(totalOriginal, 6),
-                TotalCalc2        = Math.Round(totalCalc2,    6),
-                TotalCalc3        = Math.Round(totalCalc3,    6),
+                Illuminant = illuminant,
+                Dyes = dyeResults,
+                TotalOriginal = Math.Round(totalOriginal, 6),
+                TotalCalc2 = Math.Round(totalCalc2, 6),
+                TotalCalc3 = Math.Round(totalCalc3, 6),
                 VariationLightness = varLightness,
-                VariationChroma    = varChroma
+                VariationChroma = varChroma
             };
         }
 
         // ------------------------------------------------------------------
-        // 4. TOLERANCIA
         //    Fórmula del Excel (hoja TOLERANCIA):
         // ------------------------------------------------------------------
         public static ToleranceResult CalculateTolerance(double de)
@@ -407,7 +405,7 @@ namespace Color
             double component = Math.Sqrt((de * de) / 3.0);
             return new ToleranceResult
             {
-                DE = Math.Round(de,        5),
+                DE = Math.Round(de, 5),
                 DL = Math.Round(component, 5),
                 DC = Math.Round(component, 5),
                 DH = Math.Round(component, 5)
@@ -446,18 +444,23 @@ namespace Color
                 if (absDC > band.DC) failing.Add("DC");
                 if (absDH > band.DH) failing.Add("DH");
 
+                bool passes = failing.Count == 0;
+
+                // Propagar el estado de aprobación al resultado de corrección
+                c.Pass = passes;
+
                 evaluation.Checks.Add(new IlluminantToleranceCheck
                 {
-                    Illuminant        = c.Illuminant,
-                    Passes            = failing.Count == 0,
-                    MeasuredDE        = Math.Round(absDE,         2),
-                    MeasuredDL        = Math.Round(c.DeltaL,      2),
-                    MeasuredDC        = Math.Round(c.DeltaChroma, 2),
-                    MeasuredDH        = Math.Round(c.DeltaHue,    2),
-                    LimitDE           = band.DE,
-                    LimitDL           = band.DL,
-                    LimitDC           = band.DC,
-                    LimitDH           = band.DH,
+                    Illuminant = c.Illuminant,
+                    Passes = passes,
+                    MeasuredDE = Math.Round(absDE, 2),
+                    MeasuredDL = Math.Round(c.DeltaL, 2),
+                    MeasuredDC = Math.Round(c.DeltaChroma, 2),
+                    MeasuredDH = Math.Round(c.DeltaHue, 2),
+                    LimitDE = band.DE,
+                    LimitDL = band.DL,
+                    LimitDC = band.DC,
+                    LimitDH = band.DH,
                     FailingComponents = failing
                 });
             }
@@ -474,7 +477,6 @@ namespace Color
         }
 
         /// Evalúa contra múltiples bandas de tolerancia de una sola vez.
-        /// Útil para mostrar el estado en las tres bandas (0.6 / 1.2 / 1.8) simultáneamente.
         public static List<ToleranceEvaluationResult> EvaluateToleranceBands(
             List<ColorCorrectionResult> corrections,
             IEnumerable<double> deLimitBands)

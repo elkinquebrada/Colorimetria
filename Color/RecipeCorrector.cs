@@ -124,6 +124,7 @@ namespace Color
                 result.SumCalc2 = sumCalc2;
                 result.SumCalc3 = sumCalc3;
                 result.ResultadoLightness = (sumCalc2 / totalReceta) - 1.0;
+
                 // VAR CHROMÁTICA ESPEJO: Exceso sobre la unidad (ej: 1.633 -> 63.3%)
                 result.ResultadoChroma = (sumCalc3 - 1.0);
 

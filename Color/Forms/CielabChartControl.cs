@@ -61,21 +61,22 @@ namespace Color
             // ---- Fondo Gradiente a*-b* ----
             PointF[] gradientPoints = new PointF[]
             {
-                new PointF(chartArea.Left, chartArea.Top),      // TopLeft: -a (Verde), +b (Amarillo)
-                new PointF(chartArea.Right, chartArea.Top),     // TopRight: +a (Rojo), +b (Amarillo)
-                new PointF(chartArea.Right, chartArea.Bottom),  // BottomRight: +a (Rojo), -b (Azul)
-                new PointF(chartArea.Left, chartArea.Bottom)    // BottomLeft: -a (Verde), -b (Azul)
+                new PointF(chartArea.Left, chartArea.Top),      
+                new PointF(chartArea.Right, chartArea.Top),     
+                new PointF(chartArea.Right, chartArea.Bottom),  
+                new PointF(chartArea.Left, chartArea.Bottom)    
             };
 
             using (PathGradientBrush pgb = new PathGradientBrush(gradientPoints))
             {
-                pgb.CenterColor = System.Drawing.Color.White; // El centro (a=0, b=0) es neutro/blanco
+                // el centro (a = 0 ; b = 0 ) es neutro/blanco
+                pgb.CenterColor = System.Drawing.Color.White; 
                 pgb.SurroundColors = new System.Drawing.Color[]
                 {
-                    System.Drawing.Color.FromArgb(80, 150, 255, 150), // Verde-Amarillento suave
-                    System.Drawing.Color.FromArgb(80, 255, 150, 150), // Rojo suave
-                    System.Drawing.Color.FromArgb(80, 255, 150, 255), // Magenta suave
-                    System.Drawing.Color.FromArgb(80, 150, 255, 255)  // Cyan suave
+                    System.Drawing.Color.FromArgb(80, 150, 255, 150), 
+                    System.Drawing.Color.FromArgb(80, 255, 150, 150), 
+                    System.Drawing.Color.FromArgb(80, 255, 150, 255), 
+                    System.Drawing.Color.FromArgb(80, 150, 255, 255)  
                 };
                 g.FillRectangle(pgb, chartArea);
             }
@@ -118,10 +119,9 @@ namespace Color
             }
 
             // Punto (Standard es el centro)
-            g.FillEllipse(Brushes.LimeGreen, center.X - 4, center.Y - 4, 8, 8); // Standard (0,0) en Verde
+            g.FillEllipse(Brushes.LimeGreen, center.X - 4, center.Y - 4, 8, 8); 
             
             // Punto (Lote)
-            // Según propuesta técnica, el lote es siempre Rojo
             using (Brush pointBrush = new SolidBrush(System.Drawing.Color.Red))
             {
                 g.FillEllipse(pointBrush, ptX - 4, ptY - 4, 8, 8);

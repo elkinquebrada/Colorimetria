@@ -368,7 +368,7 @@ namespace Color
                 "[OPENCV] Tabla detectada: {0} filas × {1} cols, {2} celdas",
                 detection.RowCount, detection.ColCount, detection.Cells.Count));
 
-            // 2. OCR por celda — usar ScaledImage si está disponible (mayor resolución)
+            // 2. OCR por celda — usar ScaledImage (mayor resolución)
             var cellTexts = new Dictionary<int, Dictionary<int, string>>();
             Bitmap ocrSource = (detection.ScaledImage != null) ? detection.ScaledImage : original;
 
@@ -507,7 +507,7 @@ namespace Color
             for (int r = startRow; r < totalRows; r++)
             {
                 if (!cellTexts.ContainsKey(r)) continue;
-                for (int c = 2; c <= 7; c++) // Columnas numéricas L,A,B,C,H, etc.
+                for (int c = 2; c <= 7; c++) 
                 {
                     if (!cellTexts[r].ContainsKey(c)) continue;
                     string val = cellTexts[r][c];
@@ -521,7 +521,7 @@ namespace Color
                 }
             }
 
-            if (precisionCounts.Count == 0) return 2; // Estándar por defecto
+            if (precisionCounts.Count == 0) return 2; 
             return precisionCounts.GroupBy(n => n)
                                  .OrderByDescending(g => g.Count())
                                  .First().Key;
@@ -1015,7 +1015,7 @@ namespace Color
                 }
             }
 
-            if (count == 0) return 50f; // valor neutro si no hay píxeles
+            if (count == 0) return 50f; 
             double mean = sum / count;
             double variance = (sumSq / count) - (mean * mean);
             return (float)Math.Max(0, variance);
@@ -1169,9 +1169,11 @@ namespace Color
                     if (stdRow != null) report.Measures.Add(stdRow);
 
                     var lotRow = ParseMeasureLine(lotR2, illuminant, "Lot", report.ParseLog);
+
                     // Corregir signo de a*/b* del Lot usando Std como referencia
                     if (stdRow != null && lotRow != null)
                         FixSignByStd(stdRow, lotRow);
+
                     // Corregir L* del Lot si es outlier respecto a mediciones ya parseadas
                     if (lotRow != null)
                     {
@@ -1213,6 +1215,7 @@ namespace Color
 
             report.Measures = DedupAndSort(report.Measures);
             report.CmcDifferences = DedupCmc(report.CmcDifferences);
+
             // CAMBIO 3 — Resumen de extracción al final del log para diagnóstico rápido
             int totalMeasures = report.Measures.Count;
             int needsReview = 0;
@@ -1350,8 +1353,10 @@ namespace Color
                     }
                 }
             }
+
             // Corregir b* via coherencia con Chroma 
             vB = FixBviaChroma(vB, tokens[base_ + 2], vA, vC);
+
             // FIX: Corregir a* también via coherencia con Chroma 
             vA = FixAviaChroma(vA, tokens[base_ + 1], vB, vC);
             double vH = ParseHueDouble(tokens[base_ + 4]);
@@ -1404,10 +1409,11 @@ namespace Color
             {
                 double chromaCalc = Math.Sqrt(vA * vA + vB * vB);
                 double chromaErr = Math.Abs(chromaCalc - vC);
+
                 // Tolerancia: mayor entre 5% de Chroma y 1.5 unidades
                 double chromaTol = Math.Max(vC * 0.05, 1.5);
 
-                // MEJORA 4: cuando la coherencia interna es excelente (err < 0.3),
+                // MEJORA 4: cuando la coherencia interna es excelente 
                 if (chromaErr < 0.3)
                 {
                     vC = Math.Round(chromaCalc, 2);
@@ -1545,8 +1551,10 @@ namespace Color
             if (token.Contains("."))
             {
                 double vDirect = SafeParse(token);
+
                 // Si ya está en rango LAB razonable, confiar directamente
                 if (Math.Abs(vDirect) <= 100) return vDirect;
+
                 // Fuera de rango: OCR puso el punto en posición incorrecta
                 int dotIdx2 = d.IndexOf('.');
                 if (dotIdx2 > 0)
@@ -1571,7 +1579,7 @@ namespace Color
             if (!Regex.IsMatch(d, @"^\d+$")) return SafeParse(token);
             if (d.Length <= 2) return SafeParse(token);
 
-            // Sin punto decimal y más de 2 caracteres: asumir 2 decimales fijos (ej. 189 -> 1.89)
+            // Sin punto decimal y más de 2 caracteres: asumir 2 decimales fijos 
             return SafeParse((neg ? "-" : "") + d.Substring(0, d.Length - 2) + "." + d.Substring(d.Length - 2));
         }
 
@@ -1587,6 +1595,7 @@ namespace Color
             // Recalcular Hue del Lot desde a*/b* corregidos
             double newHue = Math.Atan2(lot.B, lot.A) * 180.0 / Math.PI;
             if (newHue < 0) newHue += 360.0;
+
             // Solo actualizar Hue si el cambio es significativo (>5°)
             double diff = Math.Abs(newHue - lot.Hue);
             if (diff > 180) diff = 360 - diff;
@@ -1906,7 +1915,7 @@ namespace Color
 
             return bestVal;
         }
-        // Corrige L* usando coherencia entre iluminantes: si difiere >2 del promedio, prueba 6↔8
+        // Corrige L* usando coherencia entre iluminantes.
         private static double FixLviaNeighbors(double lVal, string lToken, List<ColorimetricRow> existing)
         {
             const double OUTLIER_THRESHOLD = 2.0;
@@ -2004,6 +2013,7 @@ namespace Color
             if (v > 360)
             {
                 string digits = s.TrimStart('-');
+
                 // Probar quitar primer dígito: 
                 if (digits.Length >= 3)
                 {
@@ -2107,7 +2117,7 @@ namespace Color
             double e = Math.Abs(h - refH);
             return e > 180 ? 360 - e : e;
         }
-        // Autocorrección de un dígito (8↔3/5/6, 6↔0, 1↔7, etc.)
+        // Autocorrección de un dígito 
         private static void TryFixOneDigit(string originalText, double current, Func<double, double> scorer, out bool ok, out double fixedVal)
         {
             string s = (originalText ?? "").Trim();
@@ -2151,8 +2161,10 @@ namespace Color
             {
                 string digits = s.TrimStart('-');
                 bool isNeg = s.StartsWith("-");
+
                 // Quitar primer dígito
                 set.Add((isNeg ? "-" : "") + digits.Substring(1));
+
                 // Quitar último dígito
                 set.Add((isNeg ? "-" : "") + digits.Substring(0, digits.Length - 1));
             }
@@ -2374,7 +2386,7 @@ namespace Color
         {
             if (row == null) return;
 
-            // Según el formato del reporte: (Lightness) lleva el texto de Croma,// (Chroma) el de Lightness, (Hue) el de Hue.
+            // Según el formato del reporte: (Lightness),// (Chroma) 
             if (Regex.IsMatch(normLine, @"\bFULLER\b")) row.LightnessFlagOcr = "Fuller";
             else if (Regex.IsMatch(normLine, @"\bFULL\b")) row.LightnessFlagOcr = "Full";
             else if (Regex.IsMatch(normLine, @"\bDULLER\b")) row.LightnessFlagOcr = "Duller";
@@ -3064,6 +3076,7 @@ namespace Color
                         corrB.Type = row.Type;
                         ApplyToRow(row, corrB);
                         results.Add(corrB);
+
                         // Recalcular error tras corrección de b*
                         chromaCalc = Math.Sqrt(row.A * row.A + row.B * row.B);
                         chromaErr = Math.Abs(chromaCalc - row.Chroma);

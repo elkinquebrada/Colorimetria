@@ -32,7 +32,7 @@ namespace Color
 
         // ======= Gráfico CIELAB =======
         private Button btnVerGrafico;
-        private EngineRes _lastMainResult; // Para pasar a la vista ampliada
+        private EngineRes _lastMainResult; 
 
         // ======= Tolerancias (L*, Hue y ΔE) =======
         private double DL_MAX => Properties.Settings.Default.ToleranciaDL;
@@ -98,7 +98,7 @@ namespace Color
             sbLeft.Append(_resumenLegacy);
             if (_recipeResults != null && _recipeResults.Count > 0)
             {
-                // Solo mostramos las tablas consolidadas (L y C), ocultando el desglose individual por iluminante
+    
                 // Tablas Consolidadas Estilo Excel
                 sbLeft.AppendLine();
                 sbLeft.Append(RecipeCorrector.BuildConsolidatedLightnessTable(_recipeResults));
@@ -331,7 +331,7 @@ namespace Color
             // Fila 1: Split
             panelRoot.Controls.Add(splitMedicionesCmc, 0, 1);
 
-            // Fila 2: Revisar (izquierda) | Exportar + Cerrar (derecha)
+            // Fila 2: Regresar (izquierda) | Exportar + Cerrar (derecha)
             var panelButtons = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -343,7 +343,7 @@ namespace Color
             panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             panelButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-            // Izquierda: Revisar OCR
+            // Izquierda: Regresar
             var panelBtnLeft = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -545,7 +545,7 @@ namespace Color
         }
 
         // =========================================================
-        // RECOMENDACIÓN — desde lista de resultados (Chroma eliminado del texto impreso)
+        // RECOMENDACIÓN — desde lista de resultados 
         // =========================================================
         private static string BuildRecomendacionFromResults(List<EngineRes> results, double DL_MAX = 0.69, double DC_MAX = 0.69, double DH_MAX = 0.69, double DE_MAX = 1.20)
         {
@@ -610,7 +610,7 @@ namespace Color
                 return sb.ToString();
             }
 
-            // ---- 3) DIAGNÓSTICO por iluminante (formato solicitado) ----
+            // ---- 3) DIAGNÓSTICO por iluminante  ----
             sb.AppendLine();
             sb.AppendLine("DIAGNOSTICO POR ILUMINANTE (Lot vs Std):");
             sb.AppendLine();
@@ -624,7 +624,7 @@ namespace Color
                 string mainHeaderTag = string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase) ? " (ILUMINANTE PRINCIPAL)" : "";
                 sb.AppendLine(" [" + r.Illuminant + "]" + mainHeaderTag);
 
-                // L*, a*, b* con % y acción en el formato que pediste
+                // L*, a*, b* con % 
                 sb.Append(BuildPerAxisPercentAdvice(r));
 
                 sb.AppendLine();
@@ -751,12 +751,12 @@ namespace Color
                 sesgo = "Rojo-Azul";
                 accion = "Reducir pigmento Rojo/Azul o añadir Verde/Amarillo.";
             }
-            else if (Math.Abs(da) < eps) // Solo eje b
+            else if (Math.Abs(da) < eps) 
             {
                 sesgo = db > 0 ? "Amarillo" : "Azul";
                 accion = db > 0 ? "Reducir Amarillo o añadir Azul." : "Reducir Azul o añadir Amarillo.";
             }
-            else if (Math.Abs(db) < eps) // Solo eje a
+            else if (Math.Abs(db) < eps) 
             {
                 sesgo = da > 0 ? "Rojo" : "Verde";
                 accion = da > 0 ? "Reducir Rojo o añadir Verde." : "Reducir Verde o añadir Rojo.";

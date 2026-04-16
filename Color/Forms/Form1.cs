@@ -136,11 +136,11 @@ namespace Color
                 // 1. Extraer datos
                 var validacion = _shadeExtractor.ExtractFromBitmap(tempBmp);
 
-                // 2. VERIFICACIÓN DE CABECERA (Requisito indispensable según imagen cargada)
+                // 2. VERIFICACIÓN DE CABECERA 
                 bool esFormatoValido = false;
                 if (validacion != null)
                 {
-                    // El extractor debe detectar "Shade History Report" o al menos tener ingredientes y LAB coherentes
+                    // El extractor debe detectar "Shade History Report"
                     if (validacion.Recipe.Count > 0 || validacion.Lab != null)
                     {
                         esFormatoValido = true;

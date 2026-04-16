@@ -70,11 +70,13 @@ namespace Color.Services
                 if (File.Exists(rutaArchivo))
                 {
                     string[] lineas = File.ReadAllLines(rutaArchivo, Encoding.UTF8);
+
                     // Empezamos en i = 1 para omitir la fila de encabezados
                     for (int i = 1; i < lineas.Length; i++) 
                     {
                         if (string.IsNullOrWhiteSpace(lineas[i])) continue;
                         string[] celdas = lineas[i].Split(';');
+
                         // Validación de integridad: la fila debe tener exactamente 11 columnas
                         if (celdas.Length == 11) dt.Rows.Add(celdas);
                     }

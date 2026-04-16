@@ -74,7 +74,7 @@ namespace Color
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
                 FixedPanel = FixedPanel.None,
-                SplitterDistance = 750, // Reservar espacio generoso para el gráfico
+                SplitterDistance = 750, 
                 IsSplitterFixed = false,
                 BorderStyle = BorderStyle.None
             };
@@ -101,9 +101,9 @@ namespace Color
             split.Panel2.Padding = new Padding(10);
 
             // Agregar al formulario cuidando el orden de Dock
-            this.Controls.Add(split);      // Fill
-            this.Controls.Add(lblTitle);    // Top
-            this.Controls.Add(pnlBottom);   // Bottom
+            this.Controls.Add(split);      
+            this.Controls.Add(lblTitle);    
+            this.Controls.Add(pnlBottom);   
 
             // Forzar z-order correcto
             split.BringToFront();
