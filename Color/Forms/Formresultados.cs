@@ -423,13 +423,31 @@ namespace Color
         {
             if (_lastMainResult == null) return;
             
+            // --- Inmersión de Datos: Buscar valores absolutos del Estándar (Std) ---
+            double absL = 50, absA = 0, absB = 0;
+            if (_report != null && _report.Measures != null)
+            {
+                // Buscamos el registro 'Std' que coincida con el iluminante del gráfico actual
+                var stdRow = _report.Measures.FirstOrDefault(m => 
+                    m.Type == "Std" && 
+                    string.Equals(m.Illuminant, _lastMainResult.Illuminant, StringComparison.OrdinalIgnoreCase));
+                
+                if (stdRow != null)
+                {
+                    absL = stdRow.L;
+                    absA = stdRow.A;
+                    absB = stdRow.B;
+                }
+            }
+
             using (var frm = new FormDetalleCielab(
                 _lastMainResult.DeltaL, 
                 _lastMainResult.DeltaA, 
                 _lastMainResult.DeltaB, 
                 _lastMainResult.DeltaE, 
                 DE_MAX,
-                BuildPlanoPolarAdvice(_lastMainResult)))
+                BuildPlanoPolarAdvice(_lastMainResult),
+                absL, absA, absB))
             {
                 frm.ShowDialog();
             }
@@ -576,12 +594,12 @@ namespace Color
             Func<double, string> FmtPctSigned = v =>
                 double.IsNaN(v) ? "N/D" : (Math.Round(v, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%");
 
-            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B) ----
-            sb.AppendLine("% de correccion (por iluminante):");
+            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B/CMC) ----
+            sb.AppendLine("% de correccion y Desviación (por iluminante):");
             sb.AppendLine(string.Format(
                 CultureInfo.InvariantCulture,
-                " {0,-8} {1,10} {2,12} {3,12}",
-                "Illum", "%L", "%A", "%B"));
+                " {0,-8} {1,10} {2,12} {3,12} {4,12}",
+                "Illum", "%L", "%A", "%B", "ΔE CMC"));
 
             foreach (var r in results)
             {
@@ -591,11 +609,12 @@ namespace Color
 
                 sb.AppendLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    " {0,-8} {1,10} {2,12} {3,12}",
+                    " {0,-8} {1,10} {2,12} {3,12} {4,12:F4}",
                     r.Illuminant,
                     FmtPctSigned(r.PercentL),
                     FmtPctSigned(r.PercentA),
-                    FmtPctSigned(r.PercentB)
+                    FmtPctSigned(r.PercentB),
+                    r.CmcValue
                 ));
             }
 
@@ -662,46 +681,46 @@ namespace Color
             if (r.DeltaL < -0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * L*: Lote más OSCURO  -> {0} Corrección: ACLARAR", pctL));
+                    " * L*: Lote más OSCURO  → {0,4} Corrección: ACLARAR", pctL));
             }
             else if (r.DeltaL > 0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * L*: Lote más CLARO  -> {0} Corrección: OSCURECER", pctL));
+                    " * L*: Lote más CLARO   → {0,4} Corrección: OSCURECER", pctL));
             }
             else
             {
                 sb.AppendLine(" * L*: Sin desviación (DL ≈ 0)");
             }
 
-            // --- a* (rojo/verde) con % y acción (usa "a*=")
+            // --- a* (rojo/verde) con % y acción (unificado a "a*:")
             string pctA = FmtPctNoSpace(r.PercentA);
             if (r.DeltaA > 0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * a*= MÁS ROJO   → Corrección: {0} DISMINUIR ROJO o AUMENTAR VERDE.", pctA));
+                    " * a*: MÁS ROJO         → {0,4} Corrección: DISMINUIR ROJO o AUMENTAR VERDE.", pctA));
             }
             else if (r.DeltaA < -0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * a*= MÁS VERDE  → Corrección: {0} DISMINUIR VERDE o AUMENTAR ROJO.", pctA));
+                    " * a*: MÁS VERDE        → {0,4} Corrección: DISMINUIR VERDE o AUMENTAR ROJO.", pctA));
             }
             else
             {
                 sb.AppendLine(" * a*: Sin sesgo (Δa ≈ 0).");
             }
 
-            // --- b* (amarillo/azul) con % y acción (usa "b*:")
+            // --- b* (amarillo/azul) con % y acción
             string pctB = FmtPctNoSpace(r.PercentB);
             if (r.DeltaB > 0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * b*: MÁS AMARILLO  → Corrección: {0} DISMINUIR AMARILLO o AUMENTAR AZUL.", pctB));
+                    " * b*: MÁS AMARILLO     → {0,4} Corrección: DISMINUIR AMARILLO o AUMENTAR AZUL.", pctB));
             }
             else if (r.DeltaB < -0.01)
             {
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * b*: MÁS AZUL  → Corrección: {0} DISMINUIR AZUL o AUMENTAR AMARILLO.", pctB));
+                    " * b*: MÁS AZUL         → {0,4} Corrección: DISMINUIR AZUL o AUMENTAR AMARILLO.", pctB));
             }
             else
             {
@@ -797,6 +816,17 @@ namespace Color
 
             // 3) Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)
             List<EngineRes> calcResults = EngineCalc.Calculate(rowsForEngine);
+            
+            // --- CUMPLIMIENTO PROPUESTA TÉCNICA: CÁLCULO CMC (ELIPSE) ---
+            var cmcResults = EngineCalc.CalculateCmc(calcResults, rowsForEngine);
+            if (cmcResults != null)
+            {
+                foreach (var r in calcResults)
+                {
+                    var cmcRes = cmcResults.FirstOrDefault(x => string.Equals(x.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
+                    if (cmcRes != null) r.CmcValue = cmcRes.CmcValue;
+                }
+            }
 
             // 4) Prefijo con Shade Name y DT Main de manera segura
             string shadeName = string.Empty;
