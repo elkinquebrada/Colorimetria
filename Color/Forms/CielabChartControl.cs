@@ -22,6 +22,7 @@ namespace Color
         public double ToleranceDE { get => _toleranceDE; set { _toleranceDE = value; InvalidateSafer(); } }
         public string Title { get; set; } = "Análisis CIELAB";
         public ViewMode Mode { get; set; } = ViewMode.Relative;
+        public string InstructionMessage { get; set; } = "";
 
         // ---- Propiedades de Coordenadas Absolutas (Inmersión de Datos) ----
         public double AbsoluteL { get; set; } = 50.0;
@@ -177,10 +178,27 @@ namespace Color
                 g.DrawString(dataTxt, boldF, Brushes.White, dx, dy);
             }
 
-            // Info final
+            // Info final y Mensaje de Instrucción
             string modeName = Mode == ViewMode.Absolute ? "Vista Real" : "Vista Relativa";
             string spatialInfo = $"[{modeName}] Std: L={AbsoluteL:F1}, a={AbsoluteA:F1}, b={AbsoluteB:F1}";
             g.DrawString(spatialInfo, new Font("Segoe UI", 8.5f, FontStyle.Italic), Brushes.DarkSlateGray, margin, this.Height - 30);
+
+            if (!string.IsNullOrWhiteSpace(InstructionMessage))
+            {
+                using (Font instFont = new Font("Segoe UI Semibold", 10f))
+                {
+                    string msg = "💡 " + InstructionMessage;
+                    SizeF ms = g.MeasureString(msg, instFont);
+                    float mx = this.Width - ms.Width - margin;
+                    float my = this.Height - ms.Height - 10;
+                    
+                    using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(230, 240, 255)))
+                        g.FillRectangle(bg, mx - 4, my - 2, ms.Width + 8, ms.Height + 4);
+                    
+                    g.DrawRectangle(new Pen(System.Drawing.Color.FromArgb(0, 102, 204), 1f), mx - 4, my - 2, ms.Width + 8, ms.Height + 4);
+                    g.DrawString(msg, instFont, Brushes.MidnightBlue, mx, my);
+                }
+            }
 
             DrawComparisonSamples(g, this.Width - lWidth - 110, 20);
 

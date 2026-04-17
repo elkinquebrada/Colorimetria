@@ -440,13 +440,17 @@ namespace Color
                 }
             }
 
+            // Combinar instrucciones profesionales para el gráfico
+            string combinedInstructions = $"{_lastMainResult.LightnessInstruction} | {_lastMainResult.CorrectionA} | {_lastMainResult.CorrectionB}";
+
             using (var frm = new FormDetalleCielab(
                 _lastMainResult.DeltaL, 
                 _lastMainResult.DeltaA, 
                 _lastMainResult.DeltaB, 
                 _lastMainResult.DeltaE, 
+                _lastMainResult.CmcValue,
                 DE_MAX,
-                BuildPlanoPolarAdvice(_lastMainResult),
+                combinedInstructions,
                 absL, absA, absB))
             {
                 frm.ShowDialog();
@@ -590,16 +594,16 @@ namespace Color
             sb.AppendLine(evaluation.FormatReport());
             sb.AppendLine();
 
-            // % formateado como entero (sin decimales) para coincidir con el modelo de decisión
+            // % formateado con un decimal para mayor precisión técnica
             Func<double, string> FmtPctSigned = v =>
-                double.IsNaN(v) ? "N/D" : (Math.Round(v, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%");
+                double.IsNaN(v) ? "N/D" : (Math.Round(v, 1, MidpointRounding.AwayFromZero).ToString("0.0", CultureInfo.InvariantCulture) + "%");
 
-            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B/CMC) ----
+            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B) ----
             sb.AppendLine("% de correccion y Desviación (por iluminante):");
             sb.AppendLine(string.Format(
                 CultureInfo.InvariantCulture,
-                " {0,-8} {1,10} {2,12} {3,12} {4,12}",
-                "Illum", "%L", "%A", "%B", "ΔE CMC"));
+                " {0,-8} {1,10} {2,12} {3,12}",
+                "Illum", "%L", "%A", "%B"));
 
             foreach (var r in results)
             {
@@ -609,7 +613,7 @@ namespace Color
 
                 sb.AppendLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    " {0,-8} {1,10} {2,12} {3,12} {4,12:F4}",
+                    " {0,-8} {1,10} {2,12} {3,12}",
                     r.Illuminant,
                     FmtPctSigned(r.PercentL),
                     FmtPctSigned(r.PercentA),
@@ -660,136 +664,17 @@ namespace Color
         {
             var sb = new StringBuilder();
 
-            // L* → "5%" (Entero)
-            Func<double, string> FmtPctL = v =>
-            {
-                if (double.IsNaN(v)) return "0%";
-                double iv = Math.Round(Math.Abs(v), 0, MidpointRounding.AwayFromZero);
-                return iv.ToString("0", CultureInfo.InvariantCulture) + "%";
-            };
+            // Lote L* (Ligthness)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                " * Ligthness : {0}", r.LightnessInstruction));
 
-            // a*/b* → "6%" / "14%"
-            Func<double, string> FmtPctNoSpace = v =>
-            {
-                if (double.IsNaN(v)) return "0%";
-                double iv = Math.Round(Math.Abs(v), 0, MidpointRounding.AwayFromZero);
-                return iv.ToString("0", CultureInfo.InvariantCulture) + "%";
-            };
+            // Eje a* (Rojo/Verde)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                " * Eje a*    : {0}", r.CorrectionA));
 
-            // --- L* (claro/oscuro) con % y acción
-            string pctL = FmtPctL(r.PercentL);
-            if (r.DeltaL < -0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * L*: Lote más OSCURO  → {0,4} Corrección: ACLARAR", pctL));
-            }
-            else if (r.DeltaL > 0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * L*: Lote más CLARO   → {0,4} Corrección: OSCURECER", pctL));
-            }
-            else
-            {
-                sb.AppendLine(" * L*: Sin desviación (DL ≈ 0)");
-            }
-
-            // --- a* (rojo/verde) con % y acción (unificado a "a*:")
-            string pctA = FmtPctNoSpace(r.PercentA);
-            if (r.DeltaA > 0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * a*: MÁS ROJO         → {0,4} Corrección: DISMINUIR ROJO o AUMENTAR VERDE.", pctA));
-            }
-            else if (r.DeltaA < -0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * a*: MÁS VERDE        → {0,4} Corrección: DISMINUIR VERDE o AUMENTAR ROJO.", pctA));
-            }
-            else
-            {
-                sb.AppendLine(" * a*: Sin sesgo (Δa ≈ 0).");
-            }
-
-            // --- b* (amarillo/azul) con % y acción
-            string pctB = FmtPctNoSpace(r.PercentB);
-            if (r.DeltaB > 0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * b*: MÁS AMARILLO     → {0,4} Corrección: DISMINUIR AMARILLO o AUMENTAR AZUL.", pctB));
-            }
-            else if (r.DeltaB < -0.01)
-            {
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    " * b*: MÁS AZUL         → {0,4} Corrección: DISMINUIR AZUL o AUMENTAR AMARILLO.", pctB));
-            }
-            else
-            {
-                sb.AppendLine(" * b*: Sin sesgo (Δb ≈ 0).");
-            }
-
-            return sb.ToString();
-        }
-
-        // ======= Diagnóstico en plano polar (a*, b*) con Instrucciones Accionables =======
-        private static string BuildPlanoPolarAdvice(EngineRes r)
-        {
-            var sb = new StringBuilder();
-
-            double da = r.DeltaA;
-            double db = r.DeltaB;
-            double eps = 0.01;
-
-            double modulo = Math.Sqrt(da * da + db * db);
-            if (modulo <= eps)
-            {
-                sb.AppendLine(" ✓ El color está centrado en el estándar cromático.");
-                return sb.ToString();
-            }
-
-            // Identificación de Sesgo y Acción Sugerida
-            string sesgo = "";
-            string accion = "";
-
-            if (da >= eps && db >= eps)
-            {
-                sesgo = "Rojo-Amarillo";
-                accion = "Reducir pigmento Rojo/Amarillo o añadir Verde/Azul.";
-            }
-            else if (da <= -eps && db >= eps)
-            {
-                sesgo = "Verde-Amarillo";
-                accion = "Reducir pigmento Verde/Amarillo o añadir Rojo/Azul.";
-            }
-            else if (da <= -eps && db <= -eps)
-            {
-                sesgo = "Verde-Azul";
-                accion = "Reducir pigmento Verde/Azul o añadir Rojo/Amarillo.";
-            }
-            else if (da >= eps && db <= -eps)
-            {
-                sesgo = "Rojo-Azul";
-                accion = "Reducir pigmento Rojo/Azul o añadir Verde/Amarillo.";
-            }
-            else if (Math.Abs(da) < eps) 
-            {
-                sesgo = db > 0 ? "Amarillo" : "Azul";
-                accion = db > 0 ? "Reducir Amarillo o añadir Azul." : "Reducir Azul o añadir Amarillo.";
-            }
-            else if (Math.Abs(db) < eps) 
-            {
-                sesgo = da > 0 ? "Rojo" : "Verde";
-                accion = da > 0 ? "Reducir Rojo o añadir Verde." : "Reducir Verde o añadir Rojo.";
-            }
-
-            sb.AppendLine($" ► Sesgo Cromático: {sesgo}.");
-            
-            // Dominancia cromática
-            if (Math.Abs(da) > Math.Abs(db) + 0.1)
-                sb.AppendLine(" ► Dominancia: Eje a* (Rojo ↔ Verde).");
-            else if (Math.Abs(db) > Math.Abs(da) + 0.1)
-                sb.AppendLine(" ► Dominancia: Eje b* (Amarillo ↔ Azul).");
-
-            sb.AppendLine($" 💡 ACCIÓN: {accion}");
+            // Eje b* (Amarillo/Azul)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                " * Eje b*    : {0}", r.CorrectionB));
 
             return sb.ToString();
         }
@@ -804,14 +689,27 @@ namespace Color
                 return "No hay datos en el reporte para generar recomendación.";
 
             // 2) Convertir a filas para el motor (Std/Lot por iluminante)
-            List<EngineRow> rowsForEngine = rep.Measures.Select(m => new EngineRow
-            {
-                Illuminant = m.Illuminant,
-                Type = m.Type,
-                L = m.L,
-                A = m.A,
-                B = m.B,
-                Hue = m.Hue
+            List<EngineRow> rowsForEngine = rep.Measures.Select(m => {
+                // Asegurar que C* y h° estén calculados (requeridos para el cálculo de elipses CMC)
+                double chroma = m.Chroma;
+                if (chroma <= 0) chroma = Math.Sqrt(m.A * m.A + m.B * m.B);
+
+                double hue = m.Hue;
+                if (hue <= 0) {
+                    hue = Math.Atan2(m.B, m.A) * 180.0 / Math.PI;
+                    if (hue < 0) hue += 360.0;
+                }
+
+                return new EngineRow
+                {
+                    Illuminant = m.Illuminant,
+                    Type = m.Type,
+                    L = m.L,
+                    A = m.A,
+                    B = m.B,
+                    Chroma = chroma,
+                    Hue = hue
+                };
             }).ToList();
 
             // 3) Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)

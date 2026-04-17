@@ -234,7 +234,17 @@ namespace Color
 
                 if (dlgConfirm.ShowDialog() == DialogResult.OK)
                 {
+                    // 1. Calcular correcciones estándar (CIE76)
                     var correcciones = ColorimetricCalculator.Calculate(dlgConfirm.RowsConfirmed);
+                    
+                    // 2. Calcular CMC(2:1) y sincronizar (¡NUEVO!)
+                    var cmcRes = ColorimetricCalculator.CalculateCmc(correcciones, dlgConfirm.RowsConfirmed);
+                    foreach (var c in correcciones)
+                    {
+                        var m = cmcRes.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
+                        if (m != null) c.CmcValue = m.CmcValue;
+                    }
+
                     var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
                     var deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
                     var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
@@ -255,8 +265,16 @@ namespace Color
                         // Si el usuario regresó al OCR y volvió a confirmar
                         if (!dlgOcr.IsDisposed && dlgOcr.RowsConfirmed != null && dlgOcr.RowsConfirmed.Count > 0)
                         {
-                            // Recalcular con los nuevos datos
+                            // Recalcular con los nuevos datos (Incluyendo CMC)
                             correcciones = ColorimetricCalculator.Calculate(dlgOcr.RowsConfirmed);
+                            
+                            var cmcResLoop = ColorimetricCalculator.CalculateCmc(correcciones, dlgOcr.RowsConfirmed);
+                            foreach (var c in correcciones)
+                            {
+                                var m = cmcResLoop.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
+                                if (m != null) c.CmcValue = m.CmcValue;
+                            }
+
                             ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
                             deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
                             corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);

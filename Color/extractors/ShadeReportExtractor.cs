@@ -210,11 +210,10 @@ namespace Color
                         NormalizeLabValue(m.Groups[3].Value));
             }
             
-            // 2. Fallback: Si no dice "Std", buscar cualquier grupo de 3 números con o sin puntos
+            // 2. Fallback: Buscar los primeros 3 números en la parte superior del reporte (donde suele estar el estándar)
             var mNum = Regex.Matches(ocrText, @"[-+]?\d+(?:\s?[.,]\s?\d+)?");
             if (mNum.Count >= 3)
             {
-                // Buscamos los primeros 3 que parezcan valores LAB (deben estar cerca en el texto)
                 return (NormalizeLabValue(mNum[0].Value), 
                         NormalizeLabValue(mNum[1].Value), 
                         NormalizeLabValue(mNum[2].Value));

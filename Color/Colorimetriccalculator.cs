@@ -107,6 +107,15 @@ namespace Color
         public double DL { get; set; }
         public double DC { get; set; }
         public double DH { get; set; }
+
+        // --- CONSTANTES DE INSTRUCCIÓN PROFESIONAL ---
+        public const string MSG_DECREASE_RED = "DISMINUIR ROJO / AUMENTAR VERDE";
+        public const string MSG_INCREASE_RED = "AUMENTAR ROJO / DISMINUIR VERDE";
+        public const string MSG_DECREASE_YELLOW = "DISMINUIR AMARILLO / AUMENTAR AZUL";
+        public const string MSG_INCREASE_YELLOW = "AUMENTAR AMARILLO / DISMINUIR AZUL";
+        public const string MSG_DARKEN = "OSCURECER";
+        public const string MSG_LIGHTEN = "ACLARAR";
+        public const string MSG_OK = "OK / DENTRO DE NORMA";
     }
 
     // ================================
@@ -248,20 +257,28 @@ namespace Color
                 double pctA = (std.A != 0) ? (Math.Abs(dA) / std.A) * 100.0 : double.NaN;
                 double pctB = (std.B != 0) ? (Math.Abs(dB) / std.B) * 100.0 : double.NaN;
 
+                // --- FACTOR ACCIONABLE (Sincronizado con Cálculos de Receta) ---
+                // Generalmente Δ * 10 = % de cambio de concentración sugerido
+                double actPctL = Math.Abs(dL) * 10.0;
+                double actPctA = Math.Abs(dA) * 10.0;
+                double actPctB = Math.Abs(dB) * 10.0;
+
                 // --- LÓGICA DE CORRECCIÓN PROFESIONAL (INVERSA AL DELTA) ---
 
                 // Corrección L: Si dL < 0 el lote es oscuro -> Aclarar
-                string lightnessInst = dL < 0 ? "ACLARAR" : dL > 0 ? "OSCURECER" : "CORRECTO";
+                string lightnessInst = dL < 0 ? $"{ToleranceResult.MSG_LIGHTEN} «({actPctL:F1}%)»" 
+                                     : dL > 0 ? $"{ToleranceResult.MSG_DARKEN} «({actPctL:F1}%)»" 
+                                     : ToleranceResult.MSG_OK;
 
                 // Corrección A: Si dA > 0 el lote está muy Rojo -> Quitar Rojo/Poner Verde
-                string correctionA = dA > 0
-                    ? "DISMINUIR ROJO / AUMENTAR VERDE"
-                    : dA < 0 ? "AUMENTAR ROJO / DISMINUIR VERDE" : "TONO A* OK";
+                string correctionA = dA > 0 ? $"{ToleranceResult.MSG_DECREASE_RED} «({actPctA:F1}%)»"
+                                   : dA < 0 ? $"{ToleranceResult.MSG_INCREASE_RED} «({actPctA:F1}%)»" 
+                                   : ToleranceResult.MSG_OK;
 
                 // Corrección B: Si dB > 0 el lote está muy Amarillo -> Quitar Amarillo/Poner Azul
-                string correctionB = dB > 0
-                    ? "DISMINUIR AMARILLO / AUMENTAR AZUL"
-                    : dB < 0 ? "AUMENTAR AMARILLO / DISMINUIR AZUL" : "TONO B* OK";
+                string correctionB = dB > 0 ? $"{ToleranceResult.MSG_DECREASE_YELLOW} «({actPctB:F1}%)»"
+                                   : dB < 0 ? $"{ToleranceResult.MSG_INCREASE_YELLOW} «({actPctB:F1}%)»" 
+                                   : ToleranceResult.MSG_OK;
 
                 results.Add(new ColorCorrectionResult
                 {
@@ -475,16 +492,22 @@ namespace Color
                 double absDH = Math.Abs(c.DeltaHue);
 
                 var failing = new List<string>();
-                if (absDE > band.DE) failing.Add("DE");
+                // --- PRECISIÓN CMC (ELIPSE) ---
+                // Prioridad Profesional: Si hay valor CMC, este es el factor determinante para Pass/Fail
+                if (c.CmcValue > 0)
+                {
+                    if (c.CmcValue > band.DE) 
+                        failing.Add("CMC");
+                }
+                else
+                {
+                    // Fallback a Delta E estándar si no hay CMC disponible
+                    if (absDE > band.DE) failing.Add("DE");
+                }
+
                 if (absDL > band.DL) failing.Add("DL");
                 if (absDC > band.DC) failing.Add("DC");
                 if (absDH > band.DH) failing.Add("DH");
-
-                // --- PRECISIÓN CMC (ELIPSE) ---
-                if (c.CmcValue > 0 && c.CmcValue > band.DE)
-                {
-                    if (!failing.Contains("CMC")) failing.Add("CMC");
-                }
 
                 bool passes = failing.Count == 0;
 

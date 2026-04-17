@@ -12,7 +12,7 @@ namespace Color
         private RichTextBox txtAdvice;
         private Button btnClose;
 
-        public FormDetalleCielab(double dL, double dA, double dB, double dE, double tolerance, string advice, 
+        public FormDetalleCielab(double dL, double dA, double dB, double dE, double cmc, double tolerance, string advice, 
             double absL = 50, double absA = 0, double absB = 0)
         {
             InitializeComponents();
@@ -24,12 +24,13 @@ namespace Color
             chartFull.DeltaE = dE;
             chartFull.ToleranceDE = tolerance;
 
+            chartFull.Title = "Proyección Espacial CIELAB (Motor de Inmersión)";
+            chartFull.InstructionMessage = advice;
+
             // Inmersión de Datos (Valores Absolutos)
             chartFull.AbsoluteL = absL;
             chartFull.AbsoluteA = absA;
             chartFull.AbsoluteB = absB;
-
-            chartFull.Title = "Proyección Espacial CIELAB (Motor de Inmersión)";
             
             txtAdvice.Text = advice;
             lblTitle.Text = $"Análisis de Colorimetría Avanzada — Lote vs Estándar";
