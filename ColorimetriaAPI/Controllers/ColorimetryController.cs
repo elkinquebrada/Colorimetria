@@ -10,10 +10,10 @@ namespace ColorimetriaAPI.Controllers
     [Produces("application/json")]
     public class ColorimetryController : ControllerBase
     {
-        private readonly ClaudeService _claude;
+        private readonly apiservices _claude;
         private readonly ILogger<ColorimetryController> _logger;
 
-        public ColorimetryController(ClaudeService claude, ILogger<ColorimetryController> logger)
+        public ColorimetryController(apiservices claude, ILogger<ColorimetryController> logger)
         {
             _claude = claude;
             _logger = logger;

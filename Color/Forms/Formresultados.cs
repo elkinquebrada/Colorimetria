@@ -599,7 +599,7 @@ namespace Color
                 double.IsNaN(v) ? "N/D" : (Math.Round(v, 1, MidpointRounding.AwayFromZero).ToString("0.0", CultureInfo.InvariantCulture) + "%");
 
             // ---- 1) TABLA COMPACTA de % a corregir (L/A/B) ----
-            sb.AppendLine("% de correccion y Desviación (por iluminante):");
+            sb.AppendLine(" % Desviación (por iluminante):");
             sb.AppendLine(string.Format(
                 CultureInfo.InvariantCulture,
                 " {0,-8} {1,10} {2,12} {3,12}",
@@ -680,7 +680,7 @@ namespace Color
         }
 
         // =========================================================
-        // RECOMENDACIÓN — desde OcrReport (usa el motor y reusa arriba)
+        // RECOMENDACIÓN — desde OcrReport 
         // =========================================================
         private static string BuildRecomendacionFromReport(OcrReport rep)
         {
@@ -715,7 +715,7 @@ namespace Color
             // 3) Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)
             List<EngineRes> calcResults = EngineCalc.Calculate(rowsForEngine);
             
-            // --- CUMPLIMIENTO PROPUESTA TÉCNICA: CÁLCULO CMC (ELIPSE) ---
+            // --- CÁLCULO CMC (ELIPSE) ---
             var cmcResults = EngineCalc.CalculateCmc(calcResults, rowsForEngine);
             if (cmcResults != null)
             {
@@ -826,7 +826,7 @@ namespace Color
             sb.AppendLine(" Fecha: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture));
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
 
-            // ---- Shade Name y DT Main (Usando variable global estática o Reflection como Fallback) ----
+            // ---- Shade Name y DT Main ----
             string shadeName = string.Empty;
             string dtMain = string.Empty;
 

@@ -166,7 +166,9 @@
     <Compile Include="Forms\Formresultados.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormGraficoCielab.cs" />
+    <Compile Include="Forms\FormGraficoCielab.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\CielabChartControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

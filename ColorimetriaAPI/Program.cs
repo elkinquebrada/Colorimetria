@@ -1,43 +1,81 @@
+using ColorimetriaAPI.Middleware;
 using ColorimetriaAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Servicios ──────────────────────────────────────────────────────────────
+
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+
+// Servicio colorimétrico 100% local — sin llamadas externas
+builder.Services.AddScoped<ColorimetryService>();
+
+// Swagger solo en desarrollo (nunca exponer en producción)
+if (builder.Environment.IsDevelopment())
 {
-    c.SwaggerDoc("v1", new()
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
     {
-        Title = "Colorimetría Token Corrector API",
-        Version = "v1",
-        Description = "API para corrección de tokens colorimétricos erróneos. " +
-                      "Corrección 100% local — sin llamadas externas."
+        c.SwaggerDoc("v1", new() { Title = "ColorimetríaAPI", Version = "v1" });
+
+        // Añadir campo de API Key en Swagger para pruebas locales
+        c.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Name = "X-Api-Key",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+            Description = "Clave de autenticación. Header: X-Api-Key"
+        });
+        c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id   = "ApiKey"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
     });
-});
+}
 
-builder.Services.AddScoped<ClaudeService>();
+// ── Seguridad: HTTPS y HSTS ────────────────────────────────────────────────
 
-builder.Services.AddCors(options =>
+builder.Services.AddHsts(options =>
 {
-    options.AddPolicy("LocalApp", policy =>
-        policy.WithOrigins("http://localhost", "https://localhost")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
 });
+
+// ── Construir app ──────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
+// Forzar HTTPS en todos los entornos
+app.UseHttpsRedirection();
+
+// HSTS solo en producción
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+
+// Swagger solo en desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Colorimetría API v1");
-        c.RoutePrefix = string.Empty;
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ColorimetríaAPI v1");
+        c.RoutePrefix = string.Empty; // Swagger en la raíz http://localhost:5000
     });
 }
 
-app.UseCors("LocalApp");
+// Autenticación por API Key (antes de los controllers)
+app.UseMiddleware<ApiKeyMiddleware>();
+
 app.UseAuthorization();
 app.MapControllers();
 
