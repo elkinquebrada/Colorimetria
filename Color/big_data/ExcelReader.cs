@@ -128,9 +128,13 @@ namespace OCR
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Devolvemos vacío si falla la lectura
+                System.Windows.Forms.MessageBox.Show(
+                    "Error al leer tolerancias del Excel:\n" + ex.Message,
+                    "Error de Lectura",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
             }
 
             return list;
