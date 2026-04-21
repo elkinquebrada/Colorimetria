@@ -46,6 +46,9 @@ namespace Color
         // Determina la acción para el eje b* (Amarillo/Azul)
         public string CorrectionB { get; set; } = "";
 
+        // Determina la acción para Chroma
+        public string ChromaInstruction { get; set; } = "";
+
         // ΔE CMC(2:1) - Recomendado para grado comercial (Elipse de tolerancia)
         public double CmcValue { get; set; }
 
@@ -280,6 +283,8 @@ namespace Color
                                    : dB < 0 ? $"{ToleranceResult.MSG_INCREASE_YELLOW} «({actPctB:F1}%)»" 
                                    : ToleranceResult.MSG_OK;
 
+                string chromaInst = RecipeCorrector.ObtenerDiagnosticoChroma(dChroma, chromaStd);
+
                 results.Add(new ColorCorrectionResult
                 {
                     Illuminant = illuminant,
@@ -296,6 +301,7 @@ namespace Color
                     PercentA = double.IsNaN(pctA) ? double.NaN : Math.Round(pctA, 6),
                     PercentB = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
                     LightnessInstruction = lightnessInst,
+                    ChromaInstruction = chromaInst,
                     CorrectionA = correctionA,
                     CorrectionB = correctionB,
                     Pass = false   
@@ -303,6 +309,22 @@ namespace Color
             }
 
             return results;
+        }
+
+        // Retorna (sl, sc, sh)
+        public static (double sl, double sc, double sh) CalculateCmcSemiAxes(double L1, double C1, double h1)
+        {
+            double f = Math.Sqrt(Math.Pow(C1, 4) / (Math.Pow(C1, 4) + 1900.0));
+            double T;
+            if (h1 >= 164.0 && h1 <= 345.0)
+                T = 0.56 + Math.Abs(0.2 * Math.Cos(DegreeToRadian(h1 + 168.0)));
+            else
+                T = 0.36 + Math.Abs(0.4 * Math.Cos(DegreeToRadian(h1 + 35.0)));
+
+            double sl = L1 < 16.0 ? 0.511 : (0.040975 * L1) / (1.0 + 0.01765 * L1);
+            double sc = (0.0638 * C1) / (1.0 + 0.0131 * C1) + 0.638;
+            double sh = sc * (f * T + 1.0 - f);
+            return (sl, sc, sh);
         }
 
         // ------------------------------------------------------------------
@@ -333,17 +355,10 @@ namespace Color
                 double dH = cor.DeltaHue;
 
                 // --- Pesos CMC ---
-                double f = Math.Sqrt(Math.Pow(C1, 4) / (Math.Pow(C1, 4) + 1900.0));
-                
-                double T;
-                if (h1 >= 164.0 && h1 <= 345.0)
-                    T = 0.56 + Math.Abs(0.2 * Math.Cos(DegreeToRadian(h1 + 168.0)));
-                else
-                    T = 0.36 + Math.Abs(0.4 * Math.Cos(DegreeToRadian(h1 + 35.0)));
-
-                double sl = L1 < 16.0 ? 0.511 : (0.040975 * L1) / (1.0 + 0.01765 * L1);
-                double sc = (0.0638 * C1) / (1.0 + 0.0131 * C1) + 0.638;
-                double sh = sc * (f * T + 1.0 - f);
+                var axes = CalculateCmcSemiAxes(L1, C1, h1);
+                double sl = axes.sl;
+                double sc = axes.sc;
+                double sh = axes.sh;
 
                 // --- Diferencia CMC final ---
                 double deCmc = Math.Sqrt(

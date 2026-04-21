@@ -66,6 +66,17 @@ namespace Color
 
     public static class RecipeCorrector
     {
+        public static string ObtenerDiagnosticoChroma(double deltaC, double valorEstandarC)
+        {
+            // Evitar división por cero si el estándar es un gris puro
+            if (valorEstandarC == 0) return "ESTABLE (0%)";
+            
+            double porcentaje = (deltaC / valorEstandarC) * 100;
+            string instruccion = deltaC < 0 ? "AUMENTAR FUERZA / CONCENTRACIÓN" : "REDUCIR CARGA / DILUIR";
+            
+            return $"{instruccion} «({Math.Abs(porcentaje):F1}%)»";
+        }
+
         /// Calcula la corrección de la receta para cada iluminante usando la fómula secuencial de Excel.
         public static List<IlluminantCorrectionResult> Calculate(
             List<RecipeIngredientInput> ingredients,

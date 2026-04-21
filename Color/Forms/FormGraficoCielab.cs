@@ -32,6 +32,11 @@ namespace Color
             chartFull.AbsoluteA = absA;
             chartFull.AbsoluteB = absB;
             
+            // Inmersión de Datos Lote (Requerido por nueva UI)
+            chartFull.LotL = absL + dL;
+            chartFull.LotA = absA + dA;
+            chartFull.LotB = absB + dB;
+            
             txtAdvice.Text = advice;
             lblTitle.Text = $"Análisis de Colorimetría Avanzada — Lote vs Estándar";
         }

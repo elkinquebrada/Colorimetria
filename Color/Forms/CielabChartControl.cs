@@ -24,23 +24,28 @@ namespace Color
         public ViewMode Mode { get; set; } = ViewMode.Relative;
         public string InstructionMessage { get; set; } = "";
 
-        // ---- Propiedades de Coordenadas Absolutas (Inmersión de Datos) ----
         public double AbsoluteL { get; set; } = 50.0;
         public double AbsoluteA { get; set; } = 0.0;
         public double AbsoluteB { get; set; } = 0.0;
 
+        public double LotL { get; set; } = 50.0;
+        public double LotA { get; set; } = 0.0;
+        public double LotB { get; set; } = 0.0;
+
         public CielabChartControl()
         {
+            // CORRECCIÓN 1: DoubleBuffered y ResizeRedraw para evitar duplicidad visual
             this.DoubleBuffered = true;
-            this.BackColor = System.Drawing.Color.White;
-            this.Size = new Size(500, 450);
-            this.Font = new Font("Segoe UI", 9f);
+            this.ResizeRedraw = true;
+            this.Size = new Size(400, 400);
         }
 
         private void InvalidateSafer()
         {
-            if (this.InvokeRequired) this.Invoke(new Action(() => this.Invalidate()));
-            else this.Invalidate();
+            if (this.IsHandleCreated)
+            {
+                this.BeginInvoke(new Action(() => this.Invalidate()));
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -50,7 +55,7 @@ namespace Color
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Fondo profesional
+            // Fondo con degradado profesional
             using (LinearGradientBrush backBrush = new LinearGradientBrush(this.ClientRectangle,
                 System.Drawing.Color.FromArgb(252, 252, 254),
                 System.Drawing.Color.FromArgb(240, 242, 248), 45f))
@@ -58,9 +63,18 @@ namespace Color
                 g.FillRectangle(backBrush, this.ClientRectangle);
             }
 
+            // CORRECCIÓN 2: Cálculo de área dinámico para Pantalla Completa
             int margin = 50;
-            int lWidth = 60;
-            Rectangle chartArea = new Rectangle(margin, margin + 25, this.Width - margin * 2 - lWidth, this.Height - margin * 2 - 25);
+            // Calculamos un tamaño cuadrado basado en el lado más corto disponible
+            int size = Math.Min(this.Width - (margin * 2), this.Height - (margin * 2) - 20);
+            
+            Rectangle chartArea = new Rectangle(
+                (this.Width - size) / 2,
+                (this.Height - size) / 2 + 10,
+                size,
+                size
+            );
+
             Point center = new Point(chartArea.X + chartArea.Width / 2, chartArea.Y + chartArea.Height / 2);
 
             if (!string.IsNullOrEmpty(Title))
@@ -71,232 +85,116 @@ namespace Color
                 }
             }
 
-            // 1. DETERMINAR LÓGICA DE ESCALA SEGÚN MODO
-            double plotStdA = 0, plotStdB = 0;
-            double plotLotA = DeltaA, plotLotB = DeltaB;
-
-            if (Mode == ViewMode.Absolute)
+            // --- Determinar Escala y Rango Dinámico ---
+            double maxLabValue = 120.0; // Rango visual completo
+            if (Mode == ViewMode.Relative)
             {
-                plotStdA = AbsoluteA;
-                plotStdB = AbsoluteB;
-                plotLotA = AbsoluteA + DeltaA;
-                plotLotB = AbsoluteB + DeltaB;
+                double maxD = Math.Max(Math.Abs(DeltaA), Math.Abs(DeltaB));
+                maxLabValue = Math.Max(ToleranceDE * 2.5, maxD * 1.5);
+                if (maxLabValue < 3) maxLabValue = 3; 
             }
+            float scale = (chartArea.Width / 2f) / (float)maxLabValue; 
 
-            double maxCoord = Math.Max(
-                Math.Max(Math.Abs(plotStdA), Math.Abs(plotStdB)),
-                Math.Max(Math.Abs(plotLotA), Math.Abs(plotLotB))
-            );
-            double maxVal = Math.Max(ToleranceDE * 2.0, maxCoord) + 1.0;
-            float scale = (float)(Math.Min(chartArea.Width, chartArea.Height) / (2.0 * maxVal));
+            // Dibujar Círculo Cromático de fondo
+            DrawChromaticCircle(g, center, chartArea.Width / 2, maxLabValue);
 
-            // Rueda de colores CIELAB (rango fijo ±128 para colores reales)
-            int wheelRadius = (int)(Math.Min(chartArea.Width, chartArea.Height) / 2.0);
-            DrawCielabColorWheel(g, center, wheelRadius);
-
-            // Ejes (Neutro 0,0) — blancos para contrastar con la rueda
-            using (Pen axisPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.5f))
+            // Dibujar Ejes
+            using (Pen axisPen = new Pen(System.Drawing.Color.FromArgb(100, System.Drawing.Color.White), 2))
             {
                 g.DrawLine(axisPen, chartArea.Left, center.Y, chartArea.Right, center.Y);
                 g.DrawLine(axisPen, center.X, chartArea.Top, center.X, chartArea.Bottom);
             }
 
-            // Etiquetas de Ejes
-            DrawAxisLabel(g, "Rojo (+a*)", chartArea.Right - 40, center.Y + 6, StringAlignment.Near, System.Drawing.Color.FromArgb(220, 0, 0));
-            DrawAxisLabel(g, "Verde (-a*)", chartArea.Left, center.Y + 6, StringAlignment.Near, System.Drawing.Color.FromArgb(0, 160, 0));
-            DrawAxisLabel(g, "Amarillo (+b*)", center.X + 6, chartArea.Top, StringAlignment.Near, System.Drawing.Color.FromArgb(180, 140, 0));
-            DrawAxisLabel(g, "Azul (-b*)", center.X + 6, chartArea.Bottom - 18, StringAlignment.Near, System.Drawing.Color.FromArgb(30, 30, 200));
+            // Etiquetas de los Ejes
+            using (Font axisFont = new Font("Segoe UI", 9, FontStyle.Bold))
+            {
+                g.DrawString("Amarillo (+b*)", axisFont, Brushes.Gold, center.X - 40, chartArea.Top - 20);
+                g.DrawString("Azul (-b*)", axisFont, Brushes.RoyalBlue, center.X - 30, chartArea.Bottom + 5);
+                g.DrawString("Verde (-a*)", axisFont, Brushes.ForestGreen, chartArea.Left - 80, center.Y - 10);
+                g.DrawString("Rojo (+a*)", axisFont, Brushes.Crimson, chartArea.Right + 5, center.Y - 10);
+            }
 
-            // Tolerancia — círculo blanco para contrastar con la rueda
+            // --- Lógica de Dibujo de Puntos (Inmersión) ---
+            double plotStdA = Mode == ViewMode.Absolute ? AbsoluteA : 0;
+            double plotStdB = Mode == ViewMode.Absolute ? AbsoluteB : 0;
+            double plotLotA = Mode == ViewMode.Absolute ? LotA : DeltaA;
+            double plotLotB = Mode == ViewMode.Absolute ? LotB : DeltaB;
+
+            // Punto Estándar (Verde)
+            PointF pStd = new PointF(
+                center.X + (float)plotStdA * scale,
+                center.Y - (float)plotStdB * scale
+            );
+
+            // Punto Lote (Rojo)
+            PointF pLot = new PointF(
+                center.X + (float)plotLotA * scale,
+                center.Y - (float)plotLotB * scale
+            );
+
+            // Tolerancia — CMC 2:1 Elipse Rotada
             if (Mode == ViewMode.Relative)
             {
-                float tolRadius = (float)(ToleranceDE * scale);
-                using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(220, 255, 255, 255), 1.8f))
+                double C1 = Math.Sqrt(AbsoluteA * AbsoluteA + AbsoluteB * AbsoluteB);
+                double h1_rad = Math.Atan2(AbsoluteB, AbsoluteA);
+                double h1_deg = h1_rad * 180.0 / Math.PI;
+                if (h1_deg < 0) h1_deg += 360.0;
+
+                var axes = Color.ColorimetricCalculator.CalculateCmcSemiAxes(AbsoluteL, C1, h1_deg);
+                float wC = (float)(axes.sc * ToleranceDE * scale);
+                float hH = (float)(axes.sh * ToleranceDE * scale);
+
+                using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.8f))
                 {
                     tolPen.DashStyle = DashStyle.Dash;
-                    g.DrawEllipse(tolPen, center.X - tolRadius, center.Y - tolRadius, tolRadius * 2, tolRadius * 2);
-                }
-                // Etiqueta de tolerancia con fondo semitransparente
-                using (Font tolFont = new Font(this.Font.FontFamily, 8f))
-                {
-                    string tolTxt = $"Tol ΔE: {ToleranceDE:F2}";
-                    SizeF ts = g.MeasureString(tolTxt, tolFont);
-                    float tx = center.X - tolRadius;
-                    float ty = center.Y - tolRadius - 17;
-                    using (Brush bgBrush = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
-                        g.FillRectangle(bgBrush, tx - 2, ty - 1, ts.Width + 4, ts.Height + 2);
-                    g.DrawString(tolTxt, tolFont, Brushes.White, tx, ty);
+                    
+                    GraphicsState state = g.Save();
+                    g.TranslateTransform(center.X, center.Y);
+                    g.RotateTransform((float)(-h1_deg));
+                    g.DrawEllipse(tolPen, -wC, -hH, wC * 2, hH * 2);
+                    g.Restore(state);
                 }
             }
 
-            float sX = (float)(center.X + plotStdA * scale);
-            float sY = (float)(center.Y - plotStdB * scale);
-            float lX = (float)(center.X + plotLotA * scale);
-            float lY = (float)(center.Y - plotLotB * scale);
-
-            // Estándar
-            g.FillEllipse(Brushes.LimeGreen, sX - 5, sY - 5, 10, 10);
-            g.DrawEllipse(Pens.White, sX - 6, sY - 6, 12, 12);
-            if (Mode == ViewMode.Absolute)
-            {
-                SizeF es = g.MeasureString("Est.", this.Font);
-                using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
-                    g.FillRectangle(bg, sX + 7, sY - 9, es.Width + 2, es.Height);
-                g.DrawString("Est.", this.Font, Brushes.LimeGreen, sX + 8, sY - 8);
-            }
-
-            // Vector
-            using (Pen vectorPen = new Pen(System.Drawing.Color.FromArgb(30, 144, 255), 2.5f))
+            // Vector Tendencial
+            using (Pen vectorPen = new Pen(System.Drawing.Color.FromArgb(60, 255, 255, 255), 2.5f))
             {
                 vectorPen.EndCap = LineCap.ArrowAnchor;
-                g.DrawLine(vectorPen, sX, sY, lX, lY);
+                g.DrawLine(vectorPen, pStd, pLot);
             }
 
-            // Lote
-            using (Brush lotB = new SolidBrush(System.Drawing.Color.FromArgb(220, 20, 60)))
-            {
-                g.FillEllipse(lotB, lX - 5, lY - 5, 10, 10);
-                g.DrawEllipse(Pens.White, lX - 6, lY - 6, 12, 12);
-            }
-            // Etiqueta "Lote" con fondo
-            {
-                SizeF ls = g.MeasureString("Lote", this.Font);
-                using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
-                    g.FillRectangle(bg, lX + 9, lY + 5, ls.Width + 2, ls.Height);
-                g.DrawString("Lote", this.Font, Brushes.White, lX + 10, lY + 6);
-            }
+            // Dibujar Puntos (Diseño anidado para evitar ocultamientos cuando se superponen)
+            // Estándar es más grande y traslúcido
+            g.FillEllipse(Brushes.LimeGreen, pStd.X - 7, pStd.Y - 7, 14, 14);
+            g.DrawEllipse(Pens.White, pStd.X - 7, pStd.Y - 7, 14, 14);
+            g.DrawString("Est.", new Font("Segoe UI", 7, FontStyle.Bold), Brushes.DarkGreen, pStd.X + 8, pStd.Y - 6);
 
-            // Datos Δa Δb ΔE con fondo semitransparente
-            string dataTxt = $"Δa: {DeltaA:F2}\nΔb: {DeltaB:F2}\nΔE: {DeltaE:F2}";
-            using (Font boldF = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-            {
-                SizeF ds = g.MeasureString(dataTxt, boldF);
-                float dx = lX + 12;
-                float dy = lY - 25;
-                using (Brush bgBrush = new SolidBrush(System.Drawing.Color.FromArgb(170, 0, 0, 0)))
-                    g.FillRectangle(bgBrush, dx - 3, dy - 2, ds.Width + 6, ds.Height + 4);
-                g.DrawString(dataTxt, boldF, Brushes.White, dx, dy);
-            }
+            // Lote es más pequeño y concéntrico
+            g.FillEllipse(Brushes.Red, pLot.X - 4, pLot.Y - 4, 8, 8);
+            g.DrawEllipse(Pens.White, pLot.X - 4, pLot.Y - 4, 8, 8);
+            
+            // Tooltip flotante de datos
+            string info = Mode == ViewMode.Relative 
+                ? $"Δa: {DeltaA:F2}\nΔb: {DeltaB:F2}\nΔE: {DeltaE:F2}"
+                : $"Lote: a*={LotA:F1}, b*={LotB:F1}";
+            Size box = TextRenderer.MeasureText(info, this.Font);
+            Rectangle rectInfo = new Rectangle((int)pLot.X + 10, (int)pLot.Y - 20, box.Width + 10, box.Height + 5);
+            
+            g.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(200, 0, 0, 0)), rectInfo);
+            g.DrawString(info, this.Font, Brushes.White, rectInfo.X + 5, rectInfo.Y + 2);
 
-            // Info final y Mensaje de Instrucción
-            string modeName = Mode == ViewMode.Absolute ? "Vista Real" : "Vista Relativa";
-            string spatialInfo = $"[{modeName}] Std: L={AbsoluteL:F1}, a={AbsoluteA:F1}, b={AbsoluteB:F1}";
-            g.DrawString(spatialInfo, new Font("Segoe UI", 8.5f, FontStyle.Italic), Brushes.DarkSlateGray, margin, this.Height - 30);
-
-            if (!string.IsNullOrWhiteSpace(InstructionMessage))
-            {
-                using (Font instFont = new Font("Segoe UI Semibold", 10f))
-                {
-                    string msg = "💡 " + InstructionMessage;
-                    SizeF ms = g.MeasureString(msg, instFont);
-                    float mx = this.Width - ms.Width - margin;
-                    float my = this.Height - ms.Height - 10;
-                    
-                    using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(230, 240, 255)))
-                        g.FillRectangle(bg, mx - 4, my - 2, ms.Width + 8, ms.Height + 4);
-                    
-                    g.DrawRectangle(new Pen(System.Drawing.Color.FromArgb(0, 102, 204), 1f), mx - 4, my - 2, ms.Width + 8, ms.Height + 4);
-                    g.DrawString(msg, instFont, Brushes.MidnightBlue, mx, my);
-                }
-            }
-
-            DrawComparisonSamples(g, this.Width - lWidth - 110, 20);
-
-            // lateral
-            DrawLightnessAxis(g, this.Width - lWidth + 10, chartArea.Top, lWidth - 25, chartArea.Height);
+            // Renderizar componentes adicionales perdidos
+            int lWidth = 60;
+            DrawComparisonSamples(g, this.Width - lWidth - 140, margin);
+            DrawLightnessAxis(g, this.Width - lWidth + 10, chartArea.Top, lWidth - 30, chartArea.Height);
         }
 
-        private void DrawComparisonSamples(Graphics g, int x, int y)
+        private void DrawChromaticCircle(Graphics g, Point center, int radius, double maxLabValue)
         {
-            int sw = 50, sh = 50;
-            Rectangle rStd = new Rectangle(x, y, sw, sh);
-            Rectangle rLot = new Rectangle(x + sw + 5, y, sw, sh);
-
-            System.Drawing.Color cStd = LabToRgb(AbsoluteL, AbsoluteA, AbsoluteB);
-            System.Drawing.Color cLot = LabToRgb(AbsoluteL + DeltaL, AbsoluteA + DeltaA, AbsoluteB + DeltaB);
-
-            // Sombra
-            using (Brush shadow = new SolidBrush(System.Drawing.Color.FromArgb(40, 0, 0, 0)))
-                g.FillRectangle(shadow, x + 3, y + 3, sw * 2 + 5 + 3, sh);
-
-            // Relleno con gradiente sutil para dar volumen
-            using (LinearGradientBrush bStd = new LinearGradientBrush(rStd,
-                System.Drawing.Color.FromArgb(Math.Min(255, cStd.R + 30), Math.Min(255, cStd.G + 30), Math.Min(255, cStd.B + 30)),
-                cStd, 135f))
-                g.FillRectangle(bStd, rStd);
-
-            using (LinearGradientBrush bLot = new LinearGradientBrush(rLot,
-                System.Drawing.Color.FromArgb(Math.Min(255, cLot.R + 30), Math.Min(255, cLot.G + 30), Math.Min(255, cLot.B + 30)),
-                cLot, 135f))
-                g.FillRectangle(bLot, rLot);
-
-            // Borde blanco para resaltar
-            using (Pen borderPen = new Pen(System.Drawing.Color.White, 2f))
-            {
-                g.DrawRectangle(borderPen, rStd);
-                g.DrawRectangle(borderPen, rLot);
-            }
-
-            // Etiquetas STD / LOT con fondo oscuro
-            using (Font f = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-            {
-                string[] labels = { "STD", "LOT" };
-                int[] xs = { x, x + sw + 5 };
-                for (int i = 0; i < 2; i++)
-                {
-                    SizeF sz = g.MeasureString(labels[i], f);
-                    float lx = xs[i] + (sw - sz.Width) / 2f;
-                    float ly = y + sh + 3;
-                    using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
-                        g.FillRectangle(bg, lx - 1, ly, sz.Width + 2, sz.Height);
-                    g.DrawString(labels[i], f, Brushes.White, lx, ly);
-                }
-            }
-        }
-
-        private void DrawLightnessAxis(Graphics g, int x, int y, int w, int h)
-        {
-            using (LinearGradientBrush lBrush = new LinearGradientBrush(new Rectangle(x, y, w, h), System.Drawing.Color.White, System.Drawing.Color.Black, 90f))
-            {
-                g.FillRectangle(lBrush, x, y, w, h);
-            }
-            g.DrawRectangle(Pens.Gray, x, y, w, h);
-
-            float stdY = (float)(y + h * (1.0 - AbsoluteL / 100.0));
-            float lotY = (float)(y + h * (1.0 - (AbsoluteL + DeltaL) / 100.0));
-            stdY = Math.Max(y, Math.Min(y + h, stdY));
-            lotY = Math.Max(y, Math.Min(y + h, lotY));
-
-            g.DrawLine(new Pen(System.Drawing.Color.LimeGreen, 2.5f), x - 5, stdY, x + w + 5, stdY);
-            Point[] arrow = { new Point(x - 5, (int)lotY), new Point(x - 15, (int)lotY - 6), new Point(x - 15, (int)lotY + 6) };
-            g.FillPolygon(Brushes.Crimson, arrow);
-            g.DrawString("Lote", new Font(this.Font, FontStyle.Bold), Brushes.Crimson, x - 45, lotY - 7);
-        }
-
-        private void DrawAxisLabel(Graphics g, string text, float x, float y, StringAlignment align, System.Drawing.Color color)
-        {
-            using (Brush b = new SolidBrush(color))
-            using (Font f = new Font("Segoe UI Semibold", 9))
-            {
-                StringFormat sf = new StringFormat { Alignment = align };
-                g.DrawString(text, f, b, x, y, sf);
-            }
-        }
-
-        private void DrawCielabColorWheel(Graphics g, Point center, int radius)
-        {
-            if (radius <= 0) return;
             int size = radius * 2;
-            const double LAB_RANGE = 128.0;
-            const double L_FIXED = 65.0;
-
-            using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(size, size))
+            using (Bitmap bmp = new Bitmap(size, size))
             {
-                System.Drawing.Imaging.BitmapData bmpData = bmp.LockBits(
-                    new Rectangle(0, 0, size, size),
-                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
+                var bmpData = bmp.LockBits(new Rectangle(0, 0, size, size), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 int stride = bmpData.Stride;
                 byte[] pixels = new byte[stride * size];
 
@@ -305,20 +203,18 @@ namespace Color
                     for (int px = 0; px < size; px++)
                     {
                         double dx = px - radius;
-                        double dy = radius - py;
+                        double dy = py - radius;
                         double dist = Math.Sqrt(dx * dx + dy * dy);
 
                         if (dist <= radius)
                         {
-                            double aVal = (dx / radius) * LAB_RANGE;
-                            double bVal = (dy / radius) * LAB_RANGE;
-                            double L = L_FIXED + (dist / radius) * 12.0;
-
-                            System.Drawing.Color c = LabToRgb(L, aVal, bVal);
-
-                            int alpha = 255;
-                            if (radius - dist < 2.0)
-                                alpha = (int)((radius - dist) / 2.0 * 255);
+                            // La rueda cromática siempre mostrará el espectro completo (independiente del zoom)
+                            double a = (dx / radius) * 128.0;
+                            double b = (-dy / radius) * 128.0;
+                            
+                            System.Drawing.Color c = LabToRgb(70, a, b);
+                            double alpha = 255;
+                            if (dist > radius - 3) alpha = 255 * (radius - dist) / 3.0;
 
                             int idx = py * stride + px * 4;
                             pixels[idx + 0] = c.B;
@@ -328,7 +224,6 @@ namespace Color
                         }
                     }
                 }
-
                 System.Runtime.InteropServices.Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
                 bmp.UnlockBits(bmpData);
                 g.DrawImage(bmp, center.X - radius, center.Y - radius, size, size);
@@ -343,14 +238,73 @@ namespace Color
             double ToX(double v) => v > 0.206893 ? Math.Pow(v, 3) : (v - 16 / 116.0) / 7.787;
             x = 0.95047 * ToX(x); y = 1.000 * ToX(y); z = 1.08883 * ToX(z);
             double r = x * 3.2406 + y * -1.5372 + z * -0.4986;
-            double gr = x * -0.9689 + y * 1.8758 + z * 0.0415;
+            double g = x * -0.9689 + y * 1.8758 + z * 0.0415;
             double bl = x * 0.0557 + y * -0.2040 + z * 1.0570;
-            double ToR(double v)
+            double FromR(double v) => v <= 0.0031308 ? 12.92 * v : 1.055 * Math.Pow(v, 1 / 2.4) - 0.055;
+            return System.Drawing.Color.FromArgb(
+                (int)Math.Max(0, Math.Min(255, FromR(r) * 255)),
+                (int)Math.Max(0, Math.Min(255, FromR(g) * 255)),
+                (int)Math.Max(0, Math.Min(255, FromR(bl) * 255)));
+        }
+
+        private void DrawComparisonSamples(Graphics g, int x, int y)
+        {
+            int sw = 60, sh = 60;
+            Rectangle rStd = new Rectangle(x, y, sw, sh);
+            Rectangle rLot = new Rectangle(x + sw + 10, y, sw, sh);
+
+            System.Drawing.Color cStd = LabToRgb(AbsoluteL, AbsoluteA, AbsoluteB);
+            System.Drawing.Color cLot = LabToRgb(LotL, LotA, LotB);
+
+            // Sombra
+            using (Brush shadow = new SolidBrush(System.Drawing.Color.FromArgb(40, 0, 0, 0)))
+                g.FillRectangle(shadow, x + 3, y + 3, (sw * 2) + 10 + 3, sh);
+
+            using (SolidBrush bStd = new SolidBrush(cStd)) g.FillRectangle(bStd, rStd);
+            using (SolidBrush bLot = new SolidBrush(cLot)) g.FillRectangle(bLot, rLot);
+
+            using (Pen borderPen = new Pen(System.Drawing.Color.White, 2f))
             {
-                v = v > 0.0031308 ? 1.055 * Math.Pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
-                return Math.Max(0, Math.Min(255, v * 255.0));
+                g.DrawRectangle(borderPen, rStd);
+                g.DrawRectangle(borderPen, rLot);
             }
-            return System.Drawing.Color.FromArgb((int)ToR(r), (int)ToR(gr), (int)ToR(bl));
+
+            using (Font f = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+            {
+                string[] labels = { "STD", "LOT" };
+                int[] xs = { x, x + sw + 10 };
+                for (int i = 0; i < 2; i++)
+                {
+                    SizeF sz = g.MeasureString(labels[i], f);
+                    float lx = xs[i] + (sw - sz.Width) / 2f;
+                    float ly = y + sh + 5;
+                    using (Brush bg = new SolidBrush(System.Drawing.Color.FromArgb(160, 0, 0, 0)))
+                        g.FillRectangle(bg, lx - 2, ly, sz.Width + 4, sz.Height + 2);
+                    g.DrawString(labels[i], f, Brushes.White, lx, ly);
+                }
+            }
+        }
+
+        private void DrawLightnessAxis(Graphics g, int x, int y, int w, int h)
+        {
+            using (LinearGradientBrush lBrush = new LinearGradientBrush(new Rectangle(x, y, w, h), System.Drawing.Color.White, System.Drawing.Color.Black, 90f))
+            {
+                g.FillRectangle(lBrush, x, y, w, h);
+            }
+            g.DrawRectangle(Pens.Gray, x, y, w, h);
+
+            float stdY = (float)(y + h * (1.0 - AbsoluteL / 100.0));
+            float lotY = (float)(y + h * (1.0 - LotL / 100.0));
+            stdY = Math.Max(y, Math.Min(y + h, stdY));
+            lotY = Math.Max(y, Math.Min(y + h, lotY));
+
+            g.DrawLine(new Pen(System.Drawing.Color.LimeGreen, 3f), x - 5, stdY, x + w + 5, stdY);
+            
+            Point[] arrow = { new Point(x - 5, (int)lotY), new Point(x - 15, (int)lotY - 6), new Point(x - 15, (int)lotY + 6) };
+            g.FillPolygon(Brushes.Crimson, arrow);
+            
+            using (Font bf = new Font(this.Font, FontStyle.Bold))
+                g.DrawString("Lote", bf, Brushes.Crimson, x - 45, lotY - 7);
         }
     }
 }

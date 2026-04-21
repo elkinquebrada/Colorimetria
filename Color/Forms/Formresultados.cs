@@ -668,6 +668,10 @@ namespace Color
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 " * Ligthness : {0}", r.LightnessInstruction));
 
+            // Croma
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                " * Chroma    : {0}", r.ChromaInstruction));
+
             // Eje a* (Rojo/Verde)
             sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 " * Eje a*    : {0}", r.CorrectionA));

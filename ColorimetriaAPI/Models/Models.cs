@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 
-namespace Color
+namespace ColorimetriaAPI.Models
 {
     public class ColorimetricRow
     {
