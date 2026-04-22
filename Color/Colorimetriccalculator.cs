@@ -124,7 +124,6 @@ namespace Color
     // ================================
     // EVALUACIÓN DE TOLERANCIA POR ILUMINANTE
     // ================================
-    /// Resultado de evaluar un iluminante contra los límites de una banda de tolerancia.
     public sealed class IlluminantToleranceCheck
     {
  
@@ -261,14 +260,11 @@ namespace Color
                 double pctB = (std.B != 0) ? (Math.Abs(dB) / std.B) * 100.0 : double.NaN;
 
                 // --- FACTOR ACCIONABLE (Sincronizado con Cálculos de Receta) ---
-                // Generalmente Δ * 10 = % de cambio de concentración sugerido
                 double actPctL = Math.Abs(dL) * 10.0;
                 double actPctA = Math.Abs(dA) * 10.0;
                 double actPctB = Math.Abs(dB) * 10.0;
 
                 // --- LÓGICA DE CORRECCIÓN PROFESIONAL (INVERSA AL DELTA) ---
-
-                // Corrección L: Si dL < 0 el lote es oscuro -> Aclarar
                 string lightnessInst = dL < 0 ? $"{ToleranceResult.MSG_LIGHTEN} «({actPctL:F1}%)»" 
                                      : dL > 0 ? $"{ToleranceResult.MSG_DARKEN} «({actPctL:F1}%)»" 
                                      : ToleranceResult.MSG_OK;
@@ -507,8 +503,8 @@ namespace Color
                 double absDH = Math.Abs(c.DeltaHue);
 
                 var failing = new List<string>();
+
                 // --- PRECISIÓN CMC (ELIPSE) ---
-                // Prioridad Profesional: Si hay valor CMC, este es el factor determinante para Pass/Fail
                 if (c.CmcValue > 0)
                 {
                     if (c.CmcValue > band.DE) 

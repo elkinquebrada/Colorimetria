@@ -89,8 +89,8 @@ namespace Color
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 70, BackColor = System.Drawing.Color.FromArgb(230, 230, 235) };
             btnClose = new Button
             {
-                Text = "Finalizar Diagnóstico",
-                Size = new Size(240, 40),
+                Text = "Regresar a Resultados",
+                Size = new Size(200, 40),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = System.Drawing.Color.FromArgb(180, 50, 50),
                 ForeColor = System.Drawing.Color.White,
@@ -99,10 +99,30 @@ namespace Color
             };
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.Click += (s, e) => this.Close();
+
+            Button btnSave = new Button
+            {
+                Text = "Guardar Imagen",
+                Size = new Size(200, 40),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = System.Drawing.Color.FromArgb(40, 120, 80),
+                ForeColor = System.Drawing.Color.White,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.Click += BtnSave_Click;
+
             pnlBottom.Controls.Add(btnClose);
+            pnlBottom.Controls.Add(btnSave);
+            
             pnlBottom.Resize += (s, e) => {
-                btnClose.Left = (pnlBottom.Width - btnClose.Width) / 2;
+                int totalWidth = btnClose.Width + btnSave.Width + 20;
+                int startX = (pnlBottom.Width - totalWidth) / 2;
+                btnClose.Left = startX;
                 btnClose.Top = (pnlBottom.Height - btnClose.Height) / 2;
+                btnSave.Left = startX + btnClose.Width + 20;
+                btnSave.Top = (pnlBottom.Height - btnSave.Height) / 2;
             };
 
             // 3. Área Central con SplitContainer
@@ -148,6 +168,39 @@ namespace Color
             pnlControls.SendToBack();
             lblTitle.SendToBack();
             pnlBottom.SendToBack();
+        }
+
+        private void BtnSave_Click(object sender, EventArgs e)
+        {
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Imagen PNG (*.png)|*.png|Imagen JPEG (*.jpg)|*.jpg";
+                sfd.Title = "Guardar Diagnóstico CIELAB";
+                sfd.FileName = "Diagnostico_CIELAB.png";
+
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        using (Bitmap bmp = new Bitmap(this.Width, this.Height))
+                        {
+                            // Captura toda la ventana con la gráfica completa e información.
+                            this.DrawToBitmap(bmp, new Rectangle(0, 0, this.Width, this.Height));
+                            
+                            var format = sfd.FileName.EndsWith(".jpg") ? 
+                                System.Drawing.Imaging.ImageFormat.Jpeg : 
+                                System.Drawing.Imaging.ImageFormat.Png;
+                                
+                            bmp.Save(sfd.FileName, format);
+                        }
+                        MessageBox.Show("Imagen guardada exitosamente.", "Guardado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error al guardar la imagen:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
         }
     }
 }

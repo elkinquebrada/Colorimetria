@@ -1,6 +1,5 @@
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
-using OCR;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -34,10 +33,10 @@ namespace Color
         public string L { get; set; }
         public string A { get; set; }
         public string B { get; set; }
-        public string dL { get; set; }
-        public string da { get; set; }
-        public string dB { get; set; }
-        public string cde { get; set; }
+        public string DL { get; set; }
+        public string DA { get; set; }
+        public string DB { get; set; }
+        public string CDE { get; set; }
         public string PF { get; set; }
     }
 
@@ -46,11 +45,12 @@ namespace Color
         public string L { get; set; }
         public string A { get; set; }
         public string B { get; set; }
-        public string dL { get; set; }
-        public string dC { get; set; }
-        public string dH { get; set; }
-        public string dE { get; set; }
+        public string DL { get; set; }
+        public string DC { get; set; }
+        public string DH { get; set; }
+        public string DE { get; set; }
         public string PF { get; set; }
+        public string LotNo { get; set; }
     }
 
     //-----------------------------------------------------------------------
@@ -60,7 +60,7 @@ namespace Color
     public class ShadeExtractionResult
     {
         public string ShadeName { get; set; }
-        
+        public string LotNo { get; set; }
         public string DtMain { get; set; }
 
         // NUEVOS: Valores L* a* b* del Estándar (Std L A B)
@@ -94,11 +94,11 @@ namespace Color
 
         // Regex del archivo original
         private static readonly Regex RecipeRegex = new Regex(
-            @"(?mi)[^\d]*(\d{8})\s+(.+?)\s*([0-9OL\|Ll\s\.,]{2,})\s*%",
+            @"(?mi)[^\d]*(\d{8})\s+(.+?)\s+([0-9OL\|Ll\s\.,]{2,})(?:\s*%)?",
             RegexOptions.Compiled);
 
         private static readonly Regex LabHeaderRegex = new Regex(
-            @"L\s+A\s+B\s+dL\s+da\s+dB\s+cde\s+P\/F",
+            @"L\s+A\s+B\s+dL\s+(?:da|dC)\s+(?:dB|dH)\s+(?:cde|dE)\s+P\/F",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex LabValuesRegex = new Regex(
@@ -147,18 +147,35 @@ namespace Color
             string tmp = Path.Combine(Path.GetTempPath(),
                                       "ocr_" + Guid.NewGuid().ToString("N") + ".png");
 
-            bmp.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+            // MEJORA: Si la imagen es pequeña, escalar 2x antes de procesar para mejorar OCR
+            if (bmp.Width < 1200 || bmp.Height < 1000)
+            {
+                int newW = bmp.Width * 2;
+                int newH = bmp.Height * 2;
+                using (Bitmap scaled = new Bitmap(newW, newH))
+                using (Graphics g = Graphics.FromImage(scaled))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(bmp, 0, 0, newW, newH);
+                    scaled.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+            else
+            {
+                bmp.Save(tmp, System.Drawing.Imaging.ImageFormat.Png);
+            }
 
             //  asegurarse de que el archivo existe
             if (!File.Exists(tmp))
                 throw new Exception("Archivo temporario no existe: " + tmp);
 
-            //  Form1.cs lo borrará al final
             using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
             using (var pix = Pix.LoadFromFile(tmp))
             using (var page = engine.Process(pix))
             {
-                return page.GetText() ?? string.Empty;
+                var text = page.GetText() ?? string.Empty;
+                if (File.Exists(tmp)) try { File.Delete(tmp); } catch { }
+                return text;
             }
         }
 
@@ -231,23 +248,6 @@ namespace Color
 
             var result = ExtractAll(text);
 
-            // DIAGNÓSTICO: guardar log en Desktop para identificar por qué falla la receta (en caso de necesitar verificacion de texto crudo activar)
-            /*try
-            {
-                var dbg = new System.Text.StringBuilder();
-                dbg.AppendLine("=== ShadeReportExtractor DEBUG ===");
-                dbg.AppendLine(string.Format("OCR texto completo ({0} chars)", text.Length));
-                dbg.AppendLine(string.Format("Recipe desde OCR completo: {0} items", result.Recipe != null ? result.Recipe.Count : 0));
-                dbg.AppendLine("--- Primeras 800 chars del OCR ---");
-                dbg.AppendLine(text.Length > 800 ? text.Substring(0, 800) : text);
-                System.IO.File.WriteAllText(
-                    System.IO.Path.Combine(
-                        System.Environment.GetFolderPath(System.Environment.SpecialFolder.Desktop),
-                        "debug_shade_ocr.txt"),
-                    dbg.ToString());
-            }
-            catch { }*/
-
             // Intentar mejorar la receta con OCR dirigido sobre el recorte de la zona de ingredientes.
             try
             {
@@ -279,11 +279,14 @@ namespace Color
             {
                 var b2 = ExtractBatchMeasureFromBitmap(bmp);
                 if (b2 != null)
+                {
                     result.Batch = b2;
+                    if (!string.IsNullOrWhiteSpace(b2.LotNo))
+                        result.LotNo = b2.LotNo;
+                }
             }
             catch { }
 
-            // Intentar extraer Std L A B con recorte dirigido
             try
             {
                 var std2 = ExtractStdLabFromBitmap(bmp);
@@ -296,36 +299,38 @@ namespace Color
             }
             catch { }
 
+            if (result.Batch != null)
+            {
+                result.LotNo = result.Batch.LotNo;
+            }
+
             LastResult = result;
             return result;
-        }
-
-        //-------------------------------------------------------------------
-        // EXTRACCIÓN DESDE EXCEL (NUEVO MÉTODO)
-        //-------------------------------------------------------------------
-        public ShadeExtractionResult ExtractFromExcel(string excelPath)
-        {
-            var recipe = ExcelReader.LoadRecipe(excelPath);
-
-            var res = new ShadeExtractionResult
-            {
-                ShadeName = "[Desde EXCEL]",
-                Recipe = recipe,
-                Lab = new LabValues(),
-                Batch = new BatchMeasure(),
-                RawText = "[EXCEL importado]"
-            };
-            LastResult = res;
-            return res;
         }
 
         public List<RecipeItem> ExtractRecipe(string ocrText)
         {
             var list = new List<RecipeItem>();
-            if (string.IsNullOrWhiteSpace(ocrText)) return list;
+            // --- PASO 0: ANCLAJE DE BLOQUE (Para evitar capturar datos de la tabla Batch) ---
+            string recipeArea = ocrText;
+            int startIdx = ocrText.IndexOf("Recipe Version", StringComparison.OrdinalIgnoreCase);
+            if (startIdx < 0) startIdx = ocrText.IndexOf("Recipe Number", StringComparison.OrdinalIgnoreCase); // fallback
+            
+            int endIdx = ocrText.IndexOf("Dyelots for Recipe", StringComparison.OrdinalIgnoreCase);
+            if (endIdx < 0) endIdx = ocrText.IndexOf("Prescreening", StringComparison.OrdinalIgnoreCase); // fallback
+
+            if (startIdx >= 0 && endIdx > startIdx)
+            {
+                recipeArea = ocrText.Substring(startIdx, endIdx - startIdx);
+            }
+            else if (startIdx >= 0)
+            {
+                // Si no hay fin claro, tomamos un bloque razonable después del inicio
+                recipeArea = ocrText.Substring(startIdx, Math.Min(ocrText.Length - startIdx, 2000));
+            }
 
             // --- PASO 1: EXTRACCIÓN CRUDA Y DETECCIÓN DE CONTEXTO ---
-            var matches = RecipeRegex.Matches(ocrText);
+            var matches = RecipeRegex.Matches(recipeArea);
             var rawResults = new List<(string code, string name, string pctRaw, string digits)>();
             var decimalCounts = new List<int>();
 
@@ -344,6 +349,9 @@ namespace Color
                 {
                     decimalCounts.Add(pctRaw.Length - decPos - 1);
                 }
+
+                // --- FILTRO DE DATOS BASURA ---
+                if (IsGarbageRecipe(name)) continue;
 
                 rawResults.Add((code, name, pctRaw, digitsOnly));
             }
@@ -416,6 +424,28 @@ namespace Color
             return list;
         }
 
+        private bool IsGarbageRecipe(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return true;
+
+            string n = name.ToLower();
+            // Palabras clave de encabezado o etiquetas de reporte que NO son ingredientes
+            if (n.Contains("to:") || n.Contains("de:") || n.Contains("d e:") || n.Contains("period:") ||
+                n.Contains("dyehouse") || n.Contains("database") || n.Contains("server") ||
+                n.Contains("standard type") || n.Contains("main:") || n.Contains("version") ||
+                n.Contains("accuracy") || n.Contains("thread") || n.Contains("lot no"))
+                return true;
+
+            // Si el nombre contiene patrones de hilos (ej: "133x2", "G000")
+            if (n.Contains("x") && Regex.IsMatch(n, @"\d+x\d+")) return true;
+            if (n.Contains("g000")) return true;
+
+            // Si el nombre es muy corto y contiene dos puntos (ej: "To:", "To :")
+            if (name.Length <= 4 && name.Contains(":")) return true;
+
+            return false;
+        }
+
         public LabValues ExtractLabValues(string ocrText)
         {
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
@@ -424,23 +454,39 @@ namespace Color
             if (!header.Success) return null;
 
             var after = ocrText.Substring(header.Index + header.Length);
-            var values = LabValuesRegex.Match(after);
+            string[] lines = after.Split('\n');
 
-            if (!values.Success) return null;
-
-            string G(int i) => values.Groups[i].Value.Replace(',', '.');
-
-            return new LabValues
+            foreach (string raw in lines)
             {
-                L = G(1),
-                A = G(2),
-                B = G(3),
-                dL = G(4),
-                da = G(5),
-                dB = G(6),
-                cde = G(7),
-                PF = values.Groups[8].Value
-            };
+                var line = raw.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                // Buscamos P o F al final
+                var pfMatch = Regex.Match(line, @"\b([FfPp])\b\s*$");
+                if (!pfMatch.Success) continue;
+
+                // Extraemos números
+                var nums = new List<string>();
+                foreach (Match m in Regex.Matches(line, @"-?\d+(?:\.\d+)?"))
+                    nums.Add(m.Value.Replace(',', '.'));
+
+                if (nums.Count < 7) continue;
+
+                int start = nums.Count - 7;
+                return new LabValues
+                {
+                    L = nums[start + 0],
+                    A = nums[start + 1],
+                    B = nums[start + 2],
+                    DL = nums[start + 3],
+                    DA = nums[start + 4],
+                    DB = nums[start + 5],
+                    CDE = nums[start + 6],
+                    PF = pfMatch.Groups[1].Value.ToUpper()
+                };
+            }
+
+            return null;
         }
 
         public BatchMeasure ExtractBatchMeasure(string ocrText)
@@ -469,17 +515,31 @@ namespace Color
 
                 int start = nums.Count - 7;
 
-                return new BatchMeasure
+                var res = new BatchMeasure
                 {
                     L = nums[start + 0].ToString(),
                     A = nums[start + 1].ToString(),
                     B = nums[start + 2].ToString(),
-                    dL = nums[start + 3].ToString(),
-                    dC = nums[start + 4].ToString(),
-                    dH = nums[start + 5].ToString(),
-                    dE = nums[start + 6].ToString(),
+                    DL = nums[start + 3].ToString(),
+                    DC = nums[start + 4].ToString(),
+                    DH = nums[start + 5].ToString(),
+                    DE = nums[start + 6].ToString(),
                     PF = pfMatch.Value.ToUpper()
                 };
+
+                // Extraer Lot No (segunda columna aprox o patrón letra+números)
+                var lotMatch = Regex.Match(line, @"\b([A-Z]\d{6,9}|\d{6,10})\b");
+                if (lotMatch.Success) 
+                {
+                    res.LotNo = lotMatch.Value;
+                }
+                else
+                {
+                    var words = line.Split(new[] { ' ', '|', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (words.Length > 1) res.LotNo = words[1];
+                }
+
+                return res;
             }
 
             return null;
@@ -491,8 +551,9 @@ namespace Color
         private string ExtractDtMainFromBitmap(Bitmap original)
         {
             // La línea "DT Main:" está en el encabezado medio, aprox entre 20% y 38% de la altura
-            int top = (int)(original.Height * 0.20);
-            int bot = (int)(original.Height * 0.38);
+            // Ampliado: 15% a 45%
+            int top = (int)(original.Height * 0.15);
+            int bot = (int)(original.Height * 0.45);
             int h = bot - top;
 
             if (h <= 0 || top + h > original.Height) return null;
@@ -534,8 +595,9 @@ namespace Color
         private string ExtractShadeNameFromBitmap(Bitmap original)
         {
             // El Shade Name está en la parte superior izquierda (aprox 0% al 15% de altura y 0 al 60% de ancho)
-            int h = (int)(original.Height * 0.15);
-            int w = (int)(original.Width * 0.60);
+            // Ampliado: 0% a 20%
+            int h = (int)(original.Height * 0.20);
+            int w = (int)(original.Width * 0.70);
 
             if (h <= 0 || w <= 0) return null;
 
@@ -585,8 +647,9 @@ namespace Color
         private (string L, string A, string B)? ExtractStdLabFromBitmap(Bitmap original)
         {
             // Localización de la banda Std L A B (mejorada con pre-procesamiento OpenCV)
-            int top = (int)(original.Height * 0.22);
-            int bot = (int)(original.Height * 0.38);
+            // Ampliado: 18% a 45%
+            int top = (int)(original.Height * 0.18);
+            int bot = (int)(original.Height * 0.45);
             int h = bot - top;
             if (h <= 0) return null;
 
@@ -651,8 +714,14 @@ namespace Color
             string ocrText = string.Empty;
             try
             {
-                int top = (int)(original.Height * 0.22);
-                int bot = (int)(original.Height * 0.52);
+                // Ampliado: 18% a 65%
+                int top = (int)(original.Height * 0.18);
+                int bot = (int)(original.Height * 0.65);
+
+                // Si la imagen es pequeña (< 900px de alto), probablemente ya es un recorte.
+                // En este caso, buscamos en el 100% de la imagen.
+                if (original.Height < 900) { top = 0; bot = original.Height; }
+
                 int h = bot - top;
                 if (h <= 0) return null;
 
@@ -696,8 +765,12 @@ namespace Color
         private BatchMeasure ExtractBatchMeasureFromBitmap(Bitmap original)
         {
             // La fila de Batch Measure está en la parte inferior (aprox 65% a 95% de la altura).
-            int top = (int)(original.Height * 0.60);
-            int h = (int)(original.Height * 0.35);
+            // Ampliado: 55% a 98%
+            int top = (int)(original.Height * 0.55);
+            int h = (int)(original.Height * 0.43);
+
+            // Si la imagen es pequeña, usar toda la altura
+            if (original.Height < 900) { top = 0; h = original.Height; }
 
             if (h <= 0 || top + h > original.Height) return null;
 
@@ -795,17 +868,31 @@ namespace Color
                     double A = double.Parse(rawA, System.Globalization.CultureInfo.InvariantCulture);
                     if (Math.Abs(A) > 150) continue;
 
-                    return new BatchMeasure
+                    var res = new BatchMeasure
                     {
                         L = rawL,
                         A = rawA,
                         B = FixNum(rawNums[start + 2]),
-                        dL = FixNum(rawNums[start + 3]),
-                        dC = FixNum(rawNums[start + 4]),
-                        dH = FixNum(rawNums[start + 5]),
-                        dE = FixNum(rawNums[start + 6]),
+                        DL = FixNum(rawNums[start + 3]),
+                        DC = FixNum(rawNums[start + 4]),
+                        DH = FixNum(rawNums[start + 5]),
+                        DE = FixNum(rawNums[start + 6]),
                         PF = pfMatch.Groups[1].Value.ToUpper()
                     };
+
+                    // Extraer Lot No
+                    var lotMatch = Regex.Match(line, @"\b([A-Z]\d{6,9}|\d{6,10})\b");
+                    if (lotMatch.Success)
+                    {
+                        res.LotNo = lotMatch.Value;
+                    }
+                    else
+                    {
+                        var words = line.Split(new[] { ' ', '|', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (words.Length > 1) res.LotNo = words[1];
+                    }
+
+                    return res;
                 }
             }
 

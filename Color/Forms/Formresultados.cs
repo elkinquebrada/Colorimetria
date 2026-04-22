@@ -156,7 +156,7 @@ namespace Color
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.Text = "Resultados — Corrección Colorimétrica";
+            this.Text = "ANALISIS DE COLORIMETRIA";
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
@@ -180,7 +180,7 @@ namespace Color
             // ---- Título ----
             var lblTitulo = new Label
             {
-                Text = "RESULTADOS DE CORRECCIÓN COLORIMÉTRICA",
+                Text = "ANALISIS DE COLORIMETRIA",
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204),
@@ -250,7 +250,7 @@ namespace Color
             // Panel IZQUIERDO: Reporte/OCR (encabezado + textbox)
             var panelLeftHeader = new Label
             {
-                Text = "📝 Reporte (Receta / OCR)",
+                Text = " ANALISIS DE RECETA",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
@@ -272,7 +272,7 @@ namespace Color
             // Panel DERECHO: CMC (2:1) / Recomendación (encabezado + textbox)
             var panelRightHeader = new Label
             {
-                Text = "✅ CMC (2:1) / Recomendación",
+                Text = "ANALISIS DE SAMPLE COMPARISON  ",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
@@ -466,6 +466,7 @@ namespace Color
                 {
                     int w = splitMedicionesCmc.ClientSize.Width;
                     int distance = (int)(w * _splitLeftRatio);
+
                     // evitar colapsos: reservar 200 px por lado
                     distance = Math.Max(200, Math.Min(w - 200, distance));
                     splitMedicionesCmc.SplitterDistance = distance;
@@ -688,12 +689,13 @@ namespace Color
         // =========================================================
         private static string BuildRecomendacionFromReport(OcrReport rep)
         {
-            // 1) Validaciones básicas
+            //  Validaciones básicas
             if (rep == null || rep.Measures == null || rep.Measures.Count == 0)
                 return "No hay datos en el reporte para generar recomendación.";
 
-            // 2) Convertir a filas para el motor (Std/Lot por iluminante)
+            //  Convertir a filas para el motor (Std/Lot por iluminante)
             List<EngineRow> rowsForEngine = rep.Measures.Select(m => {
+
                 // Asegurar que C* y h° estén calculados (requeridos para el cálculo de elipses CMC)
                 double chroma = m.Chroma;
                 if (chroma <= 0) chroma = Math.Sqrt(m.A * m.A + m.B * m.B);
@@ -716,7 +718,7 @@ namespace Color
                 };
             }).ToList();
 
-            // 3) Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)
+            //  Calcular con el motor (List<ColorimetricRow> -> List<CorrectionResult>)
             List<EngineRes> calcResults = EngineCalc.Calculate(rowsForEngine);
             
             // --- CÁLCULO CMC (ELIPSE) ---
@@ -730,7 +732,7 @@ namespace Color
                 }
             }
 
-            // 4) Prefijo con Shade Name y DT Main de manera segura
+            //  Prefijo con Shade Name y DT Main de manera segura
             string shadeName = string.Empty;
             string dtMain = string.Empty;
 
@@ -767,14 +769,14 @@ namespace Color
                 prefix = sb2.ToString();
             }
 
-            // 5) Reutilizar el generador de texto unificado
+            //  Reutilizar el generador de texto unificado
             string body = BuildRecomendacionFromResults(calcResults,
                 Properties.Settings.Default.ToleranciaDL,
                 Properties.Settings.Default.ToleranciaDC,
                 Properties.Settings.Default.ToleranciaDH,
                 Properties.Settings.Default.ToleranciaDE);
 
-            // 6) POBLAR CAMPOS DETALLADOS PARA EL HISTORIAL (Know-How)
+            //  POBLAR CAMPOS DETALLADOS PARA EL HISTORIAL (Know-How)
             try
             {
                 if (rep.Batch == null) rep.Batch = new BatchInfo();
@@ -927,7 +929,7 @@ namespace Color
         {
             try
             {
-                // 1. Obtener Metadatos
+                //  Obtener Metadatos
                 string shade = string.Empty;
                 string batch = string.Empty;
 
@@ -1003,7 +1005,7 @@ namespace Color
                     MessageBox.Show("Datos guardados correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
-                // ✅ Abrir historial
+                //  Abrir historial
                 FormHistorial frm = new FormHistorial();
                 frm.CargarHistorial(HistorialService.ObtenerHistorial());
                 frm.ShowDialog();
@@ -1086,24 +1088,28 @@ namespace Color
                 sb.AppendLine("<Interior ss:Color=\"#1F3864\" ss:Pattern=\"Solid\"/>");
                 sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
                 sb.AppendLine("</Style>");
+
                 // Estilo encabezado
                 sb.AppendLine("<Style ss:ID=\"sHeader\">");
                 sb.AppendLine("<Font ss:Bold=\"1\" ss:Size=\"10\" ss:Color=\"#FFFFFF\"/>");
                 sb.AppendLine("<Interior ss:Color=\"#2E75B6\" ss:Pattern=\"Solid\"/>");
                 sb.AppendLine("<Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/>");
                 sb.AppendLine("</Style>");
+
                 // Estilo fila normal
                 sb.AppendLine("<Style ss:ID=\"sRow\">");
                 sb.AppendLine("<Font ss:Size=\"10\"/>");
                 sb.AppendLine("<Interior ss:Color=\"#FFFFFF\" ss:Pattern=\"Solid\"/>");
                 sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
                 sb.AppendLine("</Style>");
+
                 // Estilo fila alterna
                 sb.AppendLine("<Style ss:ID=\"sAlt\">");
                 sb.AppendLine("<Font ss:Size=\"10\"/>");
                 sb.AppendLine("<Interior ss:Color=\"#DEEAF1\" ss:Pattern=\"Solid\"/>");
                 sb.AppendLine("<Alignment ss:Vertical=\"Center\"/>");
                 sb.AppendLine("</Style>");
+
                 // Estilo aprobado/rechazado
                 sb.AppendLine("<Style ss:ID=\"sOk\">");
                 sb.AppendLine("<Font ss:Bold=\"1\" ss:Color=\"#1E8449\"/>");

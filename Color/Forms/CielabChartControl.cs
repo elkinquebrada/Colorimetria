@@ -65,6 +65,7 @@ namespace Color
 
             // CORRECCIÓN 2: Cálculo de área dinámico para Pantalla Completa
             int margin = 50;
+
             // Calculamos un tamaño cuadrado basado en el lado más corto disponible
             int size = Math.Min(this.Width - (margin * 2), this.Height - (margin * 2) - 20);
             
@@ -86,7 +87,7 @@ namespace Color
             }
 
             // --- Determinar Escala y Rango Dinámico ---
-            double maxLabValue = 120.0; // Rango visual completo
+            double maxLabValue = 120.0; 
             if (Mode == ViewMode.Relative)
             {
                 double maxD = Math.Max(Math.Abs(DeltaA), Math.Abs(DeltaB));
@@ -164,7 +165,6 @@ namespace Color
             }
 
             // Dibujar Puntos (Diseño anidado para evitar ocultamientos cuando se superponen)
-            // Estándar es más grande y traslúcido
             g.FillEllipse(Brushes.LimeGreen, pStd.X - 7, pStd.Y - 7, 14, 14);
             g.DrawEllipse(Pens.White, pStd.X - 7, pStd.Y - 7, 14, 14);
             g.DrawString("Est.", new Font("Segoe UI", 7, FontStyle.Bold), Brushes.DarkGreen, pStd.X + 8, pStd.Y - 6);
@@ -182,6 +182,16 @@ namespace Color
             
             g.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(200, 0, 0, 0)), rectInfo);
             g.DrawString(info, this.Font, Brushes.White, rectInfo.X + 5, rectInfo.Y + 2);
+
+            // Leyenda de Puntos
+            using (Font fLegend = new Font("Segoe UI", 9, FontStyle.Bold))
+            {
+                g.FillEllipse(Brushes.LimeGreen, margin, chartArea.Bottom + 10, 12, 12);
+                g.DrawString("Estándar (Objetivo)", fLegend, Brushes.Black, margin + 15, chartArea.Bottom + 8);
+                
+                g.FillEllipse(Brushes.Red, margin + 180, chartArea.Bottom + 10, 12, 12);
+                g.DrawString("Lote (Resultado)", fLegend, Brushes.Black, margin + 195, chartArea.Bottom + 8);
+            }
 
             // Renderizar componentes adicionales perdidos
             int lWidth = 60;
@@ -298,13 +308,24 @@ namespace Color
             stdY = Math.Max(y, Math.Min(y + h, stdY));
             lotY = Math.Max(y, Math.Min(y + h, lotY));
 
+            // Indicador del Estándar
             g.DrawLine(new Pen(System.Drawing.Color.LimeGreen, 3f), x - 5, stdY, x + w + 5, stdY);
+            using (Font bf = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                g.DrawString("STD", bf, Brushes.DarkGreen, x + w + 2, stdY - 7);
             
-            Point[] arrow = { new Point(x - 5, (int)lotY), new Point(x - 15, (int)lotY - 6), new Point(x - 15, (int)lotY + 6) };
+            // Si están muy cerca, separamos las etiquetas
+            float textLotY = lotY - 7;
+            if (Math.Abs(stdY - lotY) < 15)
+            {
+                textLotY = (lotY >= stdY) ? lotY + 4 : lotY - 14;
+            }
+
+            // Indicador del Lote
+            Point[] arrow = { new Point(x - 5, (int)lotY), new Point(x - 13, (int)lotY - 5), new Point(x - 13, (int)lotY + 5) };
             g.FillPolygon(Brushes.Crimson, arrow);
             
-            using (Font bf = new Font(this.Font, FontStyle.Bold))
-                g.DrawString("Lote", bf, Brushes.Crimson, x - 45, lotY - 7);
+            using (Font bf = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+                g.DrawString("LOT", bf, Brushes.Crimson, x - 32, textLotY);
         }
     }
 }

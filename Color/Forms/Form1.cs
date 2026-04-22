@@ -135,29 +135,6 @@ namespace Color
 
                 // 1. Extraer datos
                 var validacion = _shadeExtractor.ExtractFromBitmap(tempBmp);
-
-                // 2. VERIFICACIÓN DE CABECERA 
-                bool esFormatoValido = false;
-                if (validacion != null)
-                {
-                    // El extractor debe detectar "Shade History Report"
-                    if (validacion.Recipe.Count > 0 || validacion.Lab != null)
-                    {
-                        esFormatoValido = true;
-                    }
-                }
-
-                if (!esFormatoValido)
-                {
-                    tempBmp.Dispose();
-                    target.Image = null;
-                    lblStatus.Text = "ERROR: Formato de receta no reconocido.";
-                    lblStatus.ForeColor = System.Drawing.Color.Red;
-                    MessageBox.Show("La imagen no corresponde al formato 'Shade History Report'.\n\nSolo se permite el formato oficial de Coats Cadena.",
-                                    "Error de Formato", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-                    CheckIfBothImagesLoaded();
-                    return;
-                }
                 _lastShadeResult = validacion;
             }
 

@@ -34,7 +34,8 @@ namespace Colorimetria
         private Button btnCancelar;
         private Button btnRegresar;
         private Label lblTitulo;
-        private Label lblSubtitulo;
+        private Label lblDatosReceta;
+        private Label lblStatus;
         private Label lblCount;
         private Label lblTol;
 
@@ -138,6 +139,7 @@ namespace Colorimetria
         {
             // ---- Ventana y escalado ----
             this.Text = "Verificar datos extraídos";
+
             // Barra estándar con min/max y redimensionamiento
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
@@ -166,7 +168,7 @@ namespace Colorimetria
                 Size = new Size(this.ClientSize.Width, 38),
                 Padding = new Padding(20, 6, 0, 0)
             };
-            lblSubtitulo = new Label
+            var lblSubtitulo = new Label
             {
                 Font = new Font("Segoe UI", 9),
                 ForeColor = SysColor.FromArgb(80, 80, 80),
@@ -205,7 +207,7 @@ namespace Colorimetria
             // Fila 0: Título "DATOS DE MEDICIÓN"
             var lblDatosMedicion = new Label
             {
-                Text = "DATOS DE MEDICIÓN",
+                Text = "SAMPLE COMPARISION",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = SysColor.FromArgb(0, 120, 215),
                 BackColor = SysColor.White,
@@ -226,9 +228,9 @@ namespace Colorimetria
             tlp.Controls.Add(dgvCmc, 0, 2);
 
             // Fila 3: Título "DATOS DE RECETA"
-            var lblDatosReceta = new Label
+            lblDatosReceta = new Label
             {
-                Text = "DATOS DE RECETA",
+                Text = "SHADE HISTORY REPORT",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = SysColor.FromArgb(0, 120, 215),
                 BackColor = SysColor.White,
@@ -243,7 +245,7 @@ namespace Colorimetria
             dgvReceta.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvReceta, 0, 4);
 
-            // Fila 5: LAB (Resultados Finales)
+            // Fila 5: LAB (Resultados Finales) - SOLO SE MOSTRARÁ LA FILA STD
             dgvLab = BuildLabGrid();
             dgvLab.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvLab, 0, 5);
@@ -509,12 +511,29 @@ namespace Colorimetria
 
             if (_shadeResult != null)
             {
+                // SINCRONIZACIÓN: Si el ShadeResult tiene valores Std nulos o incorrectos, 
+                // intentamos rescatarlos de las mediciones (D65 Std) que suelen ser más precisas
+                if (_report != null && _report.Measures != null)
+                {
+                    var d65Std = _report.Measures.Find(m => m.Illuminant == "D65" && m.Type == "Std");
+                    
+                    // Priorizar los valores del reporte si existen. Solo sincronizar si están vacíos.
+                    if (d65Std != null && string.IsNullOrWhiteSpace(_shadeResult.StdL))
+                    {
+                        _shadeResult.StdL = d65Std.L.ToString("F2", CultureInfo.InvariantCulture);
+                        _shadeResult.StdA = d65Std.A.ToString("F2", CultureInfo.InvariantCulture);
+                        _shadeResult.StdB = d65Std.B.ToString("F2", CultureInfo.InvariantCulture);
+                    }
+                }
+
                 LoadRecetaSection(_shadeResult);
                 LoadLabSection(_shadeResult);
             }
 
             txtRaw.Text = BuildTextView();
         }
+
+
 
         private void LoadMeasuresSection()
         {
@@ -814,10 +833,18 @@ namespace Colorimetria
 
         private void LoadRecetaSection(ShadeExtractionResult shade)
         {
-            if (dgvReceta == null)
-                return;
-
+            if (dgvReceta == null || shade == null) return;
             dgvReceta.Rows.Clear();
+
+            // Actualizar título con el Número de Lote si se encontró
+            if (!string.IsNullOrWhiteSpace(shade.LotNo))
+            {
+                lblDatosReceta.Text = $"SHADE HISTORY REPORT - LOT: {shade.LotNo}";
+            }
+            else
+            {
+                lblDatosReceta.Text = "SHADE HISTORY REPORT";
+            }
 
             // ✔ CORREGIDO: ya no evaluamos shade.Success
             if (shade == null ||
@@ -888,19 +915,22 @@ namespace Colorimetria
             // 1. Agregar Estándar (Std L A B) si existe
             if (!string.IsNullOrWhiteSpace(shade.StdL))
             {
-                int sIdx = dgvLab.Rows.Add("Std", shade.StdL, shade.StdA, shade.StdB, "", "", "", "", "");
+                string label = "Std";
+                int sIdx = dgvLab.Rows.Add(label, shade.StdL, shade.StdA, shade.StdB, "", "", "", "", "");
                 dgvLab.Rows[sIdx].DefaultCellStyle.BackColor = SysColor.FromArgb(240, 240, 240);
                 dgvLab.Rows[sIdx].DefaultCellStyle.ForeColor = SysColor.Black;
                 dgvLab.Rows[sIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
             }
 
-            // 2. Agregar Batch (Medición)
+            /* 
+            // 2. Agregar Batch (Medición) - OCULTO POR SOLICITUD (Redundante con grilla superior)
             var b = shade.Batch;
             if (b != null)
             {
-                int bIdx = dgvLab.Rows.Add("Batch", b.L, b.A, b.B, b.dL, b.dC, b.dH, b.dE, b.PF);
+                int bIdx = dgvLab.Rows.Add("Batch", b.L, b.A, b.B, b.DL, b.DC, b.DH, b.DE, b.PF);
                 dgvLab.Rows[bIdx].DefaultCellStyle.ForeColor = SysColor.Black;
             }
+            */
         }
 
         private double ParseCellDouble(object val)
