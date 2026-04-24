@@ -25,7 +25,7 @@ namespace Color.Tolerancias
             this.lblTitulo.Text = "Configuración de Tolerancias";
             this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.Location = new System.Drawing.Point(0, 15);
-            this.lblTitulo.Size = new System.Drawing.Size(600, 35);
+            this.lblTitulo.Size = new System.Drawing.Size(650, 35);
             this.lblTitulo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.lblTitulo.AutoSize = false;
 
@@ -57,7 +57,7 @@ namespace Color.Tolerancias
 
             // FormConfigTolerancias
             this.Text = "Configuración de Tolerancias";
-            this.ClientSize = new System.Drawing.Size(600, 380);
+            this.ClientSize = new System.Drawing.Size(650, 380);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;

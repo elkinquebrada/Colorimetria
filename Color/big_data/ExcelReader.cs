@@ -103,7 +103,7 @@ namespace OCR
                     var ws = wb.Worksheet(3);
 
                     // De acuerdo al esquema detectado, las tolerancias (DE, DL, DC, DH) se encuentran en:
-                    int[] cols = { 3, 6, 9 };
+                    int[] cols = { 3, 6, 9, 12 };
 
                     foreach (var col in cols)
                     {

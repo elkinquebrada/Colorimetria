@@ -75,19 +75,19 @@ namespace Color
 
         private void WireEvents()
         {
-            btnCargarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Mediciones");
-            btnCargarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Receta");
+            btnCargarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Sample Comparison");
+            btnCargarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Shade History Report");
 
             btnCambiarLeft = CrearBotonCambiar();
-            btnCambiarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Mediciones");
+            btnCambiarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Sample Comparison");
             contentBorder.Controls.Add(btnCambiarLeft);
 
             btnCambiarRight = CrearBotonCambiar();
-            btnCambiarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Receta");
+            btnCambiarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Shade History Report");
             contentBorder.Controls.Add(btnCambiarRight);
 
-            EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "Mediciones");
-            EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Receta");
+            EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "Sample Comparison");
+            EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Shade History Report");
 
             btnTolerancias.Click += (s, e) => { using (var f = new Color.Tolerancias.FormConfigTolerancias()) f.ShowDialog(this); };
             btnBaseDatos.Click += BtnBaseDatos_Click;
@@ -126,8 +126,8 @@ namespace Color
                 tempBmp = new Bitmap(Image.FromStream(fs));
             }
 
-            // --- VALIDACIÓN ESTRICTA DE FORMATO DE RECETA ---
-            if (etiqueta == "Receta")
+            // --- VALIDACIÓN ESTRICTA DE FORMATO DE SHADE HISTORY REPORT ---
+            if (etiqueta == "Shade History Report")
             {
                 lblStatus.Text = "Validando formato 'Shade History Report'...";
                 lblStatus.ForeColor = System.Drawing.Color.Blue;
@@ -185,7 +185,7 @@ namespace Color
         {
             if (picLeft.Image == null || picRight.Image == null || _lastShadeResult == null) return;
 
-            lblStatus.Text = "Procesando mediciones...";
+            lblStatus.Text = "Procesando Datos...";
             Cursor = Cursors.WaitCursor;
 
             try
@@ -199,7 +199,7 @@ namespace Color
 
                 if (ocrMediciones == null || ocrMediciones.Measures.Count == 0)
                 {
-                    MessageBox.Show("No se detectaron datos en la imagen de mediciones.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("No se detectaron datos en la imagen de Sample Comparison.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
@@ -356,7 +356,7 @@ namespace Color
         private string BuildResumenReceta(ShadeExtractionResult result)
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("RECETA EXTRAÍDA");
+            sb.AppendLine("Shade History Report EXTRAÍDA");
             if (result?.Recipe != null)
                 foreach (var i in result.Recipe) sb.AppendLine($"{i.Code} - {i.Name}: {i.Percentage}%");
             return sb.ToString();

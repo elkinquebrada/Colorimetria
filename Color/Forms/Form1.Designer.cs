@@ -201,7 +201,7 @@ namespace Color
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(520, 24);
             this.lblStatus.TabIndex = 10;
-            this.lblStatus.Text = "Cargue dos imágenes para comparación";
+            this.lblStatus.Text = "Cargue ambas imágenes para continuar";
             this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // contentBorder
@@ -269,7 +269,7 @@ namespace Color
             this.lblRightHint.Name = "lblRightHint";
             this.lblRightHint.Size = new System.Drawing.Size(298, 238);
             this.lblRightHint.TabIndex = 1;
-            this.lblRightHint.Text = "Cargar o arrastrar imagen";
+            this.lblRightHint.Text = "Cargar Shade History Report";
             this.lblRightHint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // picRight
@@ -303,7 +303,7 @@ namespace Color
             this.lblLeftHint.Name = "lblLeftHint";
             this.lblLeftHint.Size = new System.Drawing.Size(298, 238);
             this.lblLeftHint.TabIndex = 1;
-            this.lblLeftHint.Text = "Cargar o arrastrar imagen";
+            this.lblLeftHint.Text = "Cargar Sample Comparison";
             this.lblLeftHint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // picLeft
@@ -325,7 +325,7 @@ namespace Color
             this.lblRightTitle.Name = "lblRightTitle";
             this.lblRightTitle.Size = new System.Drawing.Size(69, 25);
             this.lblRightTitle.TabIndex = 4;
-            this.lblRightTitle.Text = "Receta";
+            this.lblRightTitle.Text = "Shade History Report";
             // 
             // lblLeftTitle
             // 
@@ -335,7 +335,7 @@ namespace Color
             this.lblLeftTitle.Name = "lblLeftTitle";
             this.lblLeftTitle.Size = new System.Drawing.Size(111, 25);
             this.lblLeftTitle.TabIndex = 3;
-            this.lblLeftTitle.Text = "Mediciones";
+            this.lblLeftTitle.Text = "Sample Comparison";
             // 
             // lblSubtitle
             // 
@@ -345,7 +345,7 @@ namespace Color
             this.lblSubtitle.Name = "lblSubtitle";
             this.lblSubtitle.Size = new System.Drawing.Size(860, 26);
             this.lblSubtitle.TabIndex = 8;
-            this.lblSubtitle.Text = "Analiza colores a partir de escaneo o imagen";
+            this.lblSubtitle.Text = "Analisis de Colorimetria";
             this.lblSubtitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // lblTitle

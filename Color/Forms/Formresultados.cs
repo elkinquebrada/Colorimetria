@@ -71,11 +71,6 @@ namespace Color
             // Poblar vistas
             SetFormattedText(txtReport, string.IsNullOrEmpty(prefix) ? _resumenLegacy : prefix + _resumenLegacy);
             SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
-            if (!string.IsNullOrEmpty(prefix)) 
-            {
-                // Re-aplicar con prefijo si existe
-                SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
-            }
 
             // Actualizar gráfico
             UpdateChartFromResults(_resultsLegacy);
@@ -109,10 +104,6 @@ namespace Color
             SetFormattedText(txtReport, sbLeft.ToString());
 
             SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
-            if (!string.IsNullOrEmpty(prefix))
-            {
-                SetFormattedText(txtRecomendacion, prefix + BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
-            }
 
             // Actualizar gráfico
             UpdateChartFromResults(_resultsLegacy);
@@ -121,32 +112,13 @@ namespace Color
         private static string GetGlobalMetadataPrefix()
         {
             var globalRes = Color.ShadeReportExtractor.LastResult;
-            if (globalRes == null) return string.Empty;
+            if (globalRes == null || string.IsNullOrWhiteSpace(globalRes.ShadeName)) return string.Empty;
 
             var sb = new System.Text.StringBuilder();
-            bool hasData = false;
-
-            if (!string.IsNullOrWhiteSpace(globalRes.ShadeName))
-            {
-                sb.Append(" Shade Name : ").Append(globalRes.ShadeName);
-                hasData = true;
-            }
-
-            if (!string.IsNullOrWhiteSpace(globalRes.DtMain))
-            {
-                if (hasData) sb.Append("    |    ");
-                sb.Append("DT Main : ").Append(globalRes.DtMain);
-                hasData = true;
-            }
-
-            if (hasData)
-            {
-                sb.AppendLine();
-                sb.AppendLine("───────────────────────────────────────────────────────────────");
-                return sb.ToString();
-            }
-
-            return string.Empty;
+            sb.Append(" Shade Name : ").Append(globalRes.ShadeName);
+            sb.AppendLine();
+            sb.AppendLine("───────────────────────────────────────────────────────────────");
+            return sb.ToString();
         }
 
         /// Referencia al formulario OCR de origen — para el boton Regresar.
@@ -250,7 +222,7 @@ namespace Color
             // Panel IZQUIERDO: Reporte/OCR (encabezado + textbox)
             var panelLeftHeader = new Label
             {
-                Text = " ANALISIS DE RECETA",
+                Text = " ANALISIS DE SHADE HISTORY REPORT ",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
                 AutoSize = false,
@@ -490,7 +462,7 @@ namespace Color
                 BackColor = System.Drawing.Color.White,
                 ForeColor = System.Drawing.Color.Black,
                 ReadOnly = true,
-                WordWrap = false,
+                WordWrap = true,
                 TabStop = false, 
                 BorderStyle = BorderStyle.None
             };
@@ -504,26 +476,35 @@ namespace Color
 
             rtb.SuspendLayout();
             
-            bool highlightingD65 = false;
+            bool inD65Block = true; // D65 es el predeterminado al inicio
             string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             
-            System.Drawing.Color highlightBlue = System.Drawing.Color.FromArgb(210, 230, 255); 
+            System.Drawing.Color colorDim = System.Drawing.Color.Gray;
+            System.Drawing.Color colorMain = System.Drawing.Color.Black;
 
             foreach (var line in lines)
             {
                 int startLine = rtb.TextLength;
-                
-                // --- 1. Lógica de Resaltado por Bloque (D65 es principal) ---
                 string trimmed = line.Trim();
-                if (trimmed.Contains("[D65]")) highlightingD65 = true;
-                else if (trimmed.StartsWith("[") && trimmed.EndsWith("]")) highlightingD65 = false;
-
-                bool isVarRow = line.Contains("Variación (Croma %)") || line.Contains("Variación (Ligthness %)");
+                
+                // --- 1. Detección de bloque ---
+                // Si la línea indica un iluminante secundario, cambiamos a modo tenue
+                if (trimmed.Contains("Iluminante") && !trimmed.Contains("D65"))
+                {
+                    inD65Block = false;
+                }
+                else if (trimmed.Contains("D65") || trimmed.Contains("DIAGNÓSTICO TÉCNICO") || trimmed.Contains("RECOMENDACIÓN FINAL"))
+                {
+                    inD65Block = true;
+                }
+                else if (trimmed.StartsWith("[ ") && trimmed.EndsWith(" ]")) // Tags de recomendación [ TL84 ]
+                {
+                    inD65Block = trimmed.Contains("D65");
+                }
 
                 // --- 2. Procesamiento de Etiquetas Dinámicas « » ---
                 string processedLine = line;
                 List<(int start, int length)> highlightRanges = new List<(int, int)>();
-
                 while (processedLine.Contains("«"))
                 {
                     int idxStart = processedLine.IndexOf("«");
@@ -532,20 +513,27 @@ namespace Color
 
                     string content = processedLine.Substring(idxStart + 1, idxEnd - idxStart - 1);
                     processedLine = processedLine.Remove(idxStart, (idxEnd - idxStart) + 1).Insert(idxStart, content);
-                    
                     highlightRanges.Add((idxStart, content.Length));
                 }
 
                 rtb.AppendText(processedLine + Environment.NewLine);
 
                 // --- 3. Aplicación de Estilos ---
+                rtb.Select(startLine, processedLine.Length);
                 
-                if (highlightingD65 || processedLine.Contains("D65") || isVarRow)
+                if (inD65Block)
                 {
-                    rtb.Select(startLine, processedLine.Length);
-                    rtb.SelectionBackColor = highlightBlue;
-                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold); 
-                    rtb.SelectionColor = System.Drawing.Color.Black;
+                    rtb.SelectionColor = colorMain;
+                    // Opcional: resaltar headers o D65 específico
+                    if (trimmed.Contains("D65") || trimmed.Contains("DIAGNÓSTICO") || trimmed.Contains("RECOMENDACIÓN"))
+                    {
+                        rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold);
+                    }
+                }
+                else
+                {
+                    rtb.SelectionColor = colorDim;
+                    rtb.SelectionFont = new Font(rtb.Font, FontStyle.Regular);
                 }
 
                 // Resaltado de celdas importantes (Etiquetadas con « »)
@@ -553,12 +541,11 @@ namespace Color
                 {
                     rtb.Select(startLine + range.start, range.length);
                     rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold);
-                    rtb.SelectionColor = System.Drawing.Color.Black;
+                    if (inD65Block) rtb.SelectionColor = colorMain;
                 }
 
-                // Restaurar color por defecto para el resto de la línea
+                // Restaurar posición
                 rtb.SelectionStart = rtb.TextLength;
-                rtb.SelectionColor = rtb.ForeColor;
             }
             
             rtb.SelectionStart = 0;
@@ -576,14 +563,16 @@ namespace Color
                 return "No hay resultados para generar recomendación.";
 
             var sb = new StringBuilder();
+            
+            // --- Encabezado de Shade (si existe) ---
+            var shade = Color.ShadeReportExtractor.LastResult;
+            if (shade != null && !string.IsNullOrEmpty(shade.ShadeName))
+            {
+                sb.AppendLine($"Shade Name : {shade.ShadeName}");
+                sb.AppendLine("───────────────────────────────────────────────────────────────────");
+            }
+            sb.AppendLine($"tolerancia:{DE_MAX:F2} DL:{DL_MAX:F2} DC:{DC_MAX:F2} DH:{DH_MAX:F2} segun tolerancia usada");
 
-            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
-            sb.AppendLine(" RECOMENDACIÓN FINAL INTEGRADA");
-            sb.AppendLine(" Fecha: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture));
-            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
-            sb.AppendLine();
-
-            // --- Evaluación de tolerancias ---
             var band = new ToleranceResult
             {
                 DE = DE_MAX,
@@ -592,72 +581,148 @@ namespace Color
                 DH = DH_MAX
             };
             var evaluation = EngineCalc.EvaluateTolerance(results, band);
-            sb.AppendLine(evaluation.FormatReport());
-            sb.AppendLine();
+            // sb.AppendLine(evaluation.FormatReport()); // Ocultar para ahorrar espacio
 
             // % formateado con un decimal para mayor precisión técnica
             Func<double, string> FmtPctSigned = v =>
                 double.IsNaN(v) ? "N/D" : (Math.Round(v, 1, MidpointRounding.AwayFromZero).ToString("0.0", CultureInfo.InvariantCulture) + "%");
 
-            // ---- 1) TABLA COMPACTA de % a corregir (L/A/B) ----
-            sb.AppendLine(" % Desviación (por iluminante):");
-            sb.AppendLine(string.Format(
-                CultureInfo.InvariantCulture,
-                " {0,-8} {1,10} {2,12} {3,12}",
-                "Illum", "%L", "%A", "%B"));
+            // --- 1) DIAGNÓSTICO TÉCNICO (D65 o Principal) ---
+            var mainRes = results.FirstOrDefault(r => string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase)) ?? results[0];
+            var mainCheck = evaluation.Checks.FirstOrDefault(c => string.Equals(c.Illuminant, mainRes.Illuminant, StringComparison.OrdinalIgnoreCase));
 
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            sb.AppendLine(" DIAGNÓSTICO TÉCNICO POR ILUMINANTE");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            
+            // --- Resumen de Cumplimiento ---
             foreach (var r in results)
             {
-                // Omitir este iluminante si CUMPLE la tolerancia
                 var check = evaluation.Checks.FirstOrDefault(c => string.Equals(c.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
-                if (check != null && check.Passes) continue;
-
-                sb.AppendLine(string.Format(
-                    CultureInfo.InvariantCulture,
-                    " {0,-8} {1,10} {2,12} {3,12}",
-                    r.Illuminant,
-                    FmtPctSigned(r.PercentL),
-                    FmtPctSigned(r.PercentA),
-                    FmtPctSigned(r.PercentB),
-                    r.CmcValue
-                ));
+                string statusTxt = (check != null && check.Passes) ? "CUMPLE" : "NO CUMPLE";
+                sb.AppendLine($"Iluminante {r.Illuminant} {statusTxt}");
             }
-
             sb.AppendLine();
-            sb.AppendLine("───────────────────────────────────────────────────────────────────");
 
             if (evaluation.AllPass)
             {
+                sb.AppendLine(" ESTADO DEL LOTE: PASS");
                 sb.AppendLine();
                 sb.AppendLine(" Todos los iluminantes cumplen las tolerancias definidas.");
                 sb.AppendLine(" Recomendación final: NO SE REQUIERE CORRECCIÓN.");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════════");
                 return sb.ToString();
             }
 
-            // ---- 3) DIAGNÓSTICO por iluminante  ----
+            sb.AppendLine("Basado en los deltas calculados, el color presenta las siguientes desviaciones:");
             sb.AppendLine();
-            sb.AppendLine("DIAGNOSTICO POR ILUMINANTE (Lot vs Std):");
+            sb.AppendLine("(ILUMINANTE PRINCIPAL D65)");
+            
+            sb.AppendLine(string.Format(" * Matiz (ΔH): {0:F2} ({1:F1}%). {2}.", 
+                mainRes.DeltaHue, 
+                mainRes.PercentHue,
+                GetHueDescription(mainRes)));
+            
+            sb.AppendLine(string.Format(" * Luminosidad (ΔL): {0:F2} ({1:F1}%). {2}.", 
+                mainRes.DeltaL, 
+                mainRes.PercentL,
+                GetLightnessDescription(mainRes.DeltaL)));
+
+            sb.AppendLine(string.Format(" * Chroma (ΔC): {0:F2} ({1:F1}%). {2}.", 
+                mainRes.DeltaChroma, 
+                mainRes.PercentChroma,
+                GetChromaDescription(mainRes.DeltaChroma)));
+
+            // --- Otros iluminantes en el diagnóstico ---
+            if (results.Count > 1)
+            {
+                foreach (var r in results)
+                {
+                    if (r == mainRes) continue;
+                    sb.AppendLine();
+                    sb.AppendLine($"--- Iluminante {r.Illuminant} ---");
+                    sb.AppendLine(string.Format(" * Matiz ΔH: {0:F2} ({1:F1}%). {2}", r.DeltaHue, r.PercentHue, GetHueDescription(r)));
+                    sb.AppendLine(string.Format(" * Luminosidad ΔL: {0:F2} ({1:F1}%). {2}", r.DeltaL, r.PercentL, GetLightnessDescription(r.DeltaL)));
+                    sb.AppendLine(string.Format(" * Chroma ΔC: {0:F2} ({1:F1}%). {2}", r.DeltaChroma, r.PercentChroma, GetChromaDescription(r.DeltaChroma)));
+                }
+            }
+            
+            // --- ESTADO DEL LOTE ---
+            string status = evaluation.AllPass ? "PASS" : "FALL";
+            string reason = "";
+            if (!evaluation.AllPass && mainCheck != null)
+            {
+                 if (mainCheck.MeasuredDE > DE_MAX) reason = $"(DE {mainCheck.MeasuredDE:F2} > {DE_MAX:F2})";
+                 else if (Math.Abs(mainRes.DeltaHue) > DH_MAX) reason = $"(ΔH {Math.Abs(mainRes.DeltaHue):F2} > {DH_MAX:F2})";
+            }
+            sb.AppendLine();
+            sb.AppendLine($" ESTADO DEL LOTE: {status} ");
             sb.AppendLine();
 
+
+            // --- 2) RECOMENDACIÓN FINAL ---
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            sb.AppendLine(" RECOMENDACIÓN FINAL POR ILUMINANTE");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            
             foreach (var r in results)
             {
-                // Omitir este iluminante si CUMPLE la tolerancia
-                var check = evaluation.Checks.FirstOrDefault(c => string.Equals(c.Illuminant, r.Illuminant, StringComparison.OrdinalIgnoreCase));
-                if (check != null && check.Passes) continue;
+                string cleanCorrA = r.CorrectionA.Replace("«", "").Replace("»", "");
+                string cleanCorrB = r.CorrectionB.Replace("«", "").Replace("»", "");
+                string cleanLight = r.LightnessInstruction.Replace("«", "").Replace("»", "");
 
-                string mainHeaderTag = string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase) ? " (ILUMINANTE PRINCIPAL)" : "";
-                sb.AppendLine(" [" + r.Illuminant + "]" + mainHeaderTag);
-
-                // L*, a*, b* con % 
-                sb.Append(BuildPerAxisPercentAdvice(r));
-
+                if (string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine("(ILUMINANTE PRINCIPAL D65)");
+                }
+                else
+                {
+                    sb.AppendLine($"[ {r.Illuminant} ]");
+                }
+                
+                sb.AppendLine(" • Ajuste de Tinte: (" + cleanCorrA + ")");
+                sb.AppendLine(" • Ajuste de Tinte: (" + cleanCorrB + ")");
+                sb.AppendLine(" • Ajuste de Concentración: " + cleanLight);
                 sb.AppendLine();
             }
+
+
 
             sb.AppendLine("───────────────────────────────────────────────────────────────────");
             sb.AppendLine("Tras el ajuste, se recomienda re-medición bajo todos los iluminantes.");
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             return sb.ToString();
+        }
+
+        private static string GetHueDescription(EngineRes r)
+        {
+            List<string> shifts = new List<string>();
+            if (r.DeltaA > 0.05) shifts.Add("más rojizos");
+            else if (r.DeltaA < -0.05) shifts.Add("más verdosos");
+
+            if (r.DeltaB > 0.05) shifts.Add("más amarillentos");
+            else if (r.DeltaB < -0.05) shifts.Add("más azulados");
+
+            if (shifts.Count == 0) return "Sin rotación de tono significativa";
+            
+            string intensity = Math.Abs(r.DeltaHue) > 1.0 ? "significativamente " : "";
+            return $"El color ha rotado {intensity}hacia tonos {string.Join(" y ", shifts)}";
+        }
+
+        private static string GetLightnessDescription(double dL)
+        {
+            if (dL < -0.20) return "La muestra es notablemente más oscura que el estándar";
+            if (dL < -0.01) return "La muestra es ligeramente más oscura";
+            if (dL > 0.20) return "La muestra es notablemente más clara que el estándar";
+            if (dL > 0.01) return "La muestra es ligeramente más clara";
+            return "Luminosidad dentro de rango";
+        }
+
+        private static string GetChromaDescription(double dC)
+        {
+            if (dC < -0.15) return "La muestra tiene menos saturación (está más 'lavada') que el estándar";
+            if (dC > 0.15) return "La muestra tiene más saturación (color más intenso)";
+            return "Saturación dentro de rango";
         }
 
         // ======= Helper: imprime L*, a*, b* con % y acción (formato específico) =======

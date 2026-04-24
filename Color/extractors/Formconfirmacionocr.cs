@@ -303,7 +303,7 @@ namespace Colorimetria
 
             lblCount = new Label
             {
-                Text = "Filas detectadas (mediciones): 0",
+                Text = "Filas detectadas (Sample Comparison): 0",
                 ForeColor = SysColor.FromArgb(60, 60, 60),
                 Font = new Font("Segoe UI", 9),
                 AutoSize = true
@@ -539,14 +539,7 @@ namespace Colorimetria
         {
             dgvData.Rows.Clear();
 
-            // Obtener Std de cabecera como referencia para alertas (L, A, B)
-            double headStdL = 0, headStdA = 0, headStdB = 0;
-            if (_shadeResult != null)
-            {
-                double.TryParse((_shadeResult.StdL ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdL);
-                double.TryParse((_shadeResult.StdA ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdA);
-                double.TryParse((_shadeResult.StdB ?? "").Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out headStdB);
-            }
+
 
             for (int i = 0; i < _rows.Count; i++)
             {
@@ -562,26 +555,9 @@ namespace Colorimetria
                 dgvData.Rows[idx].DefaultCellStyle.BackColor = rowColor;
                 dgvData.Rows[idx].DefaultCellStyle.ForeColor = SysColor.Black;
 
-                // ALERTA COMPONENTE A COMPONENTE: Solo para D65 de tipo "Std"
-                if (r.Illuminant == "D65" && r.Type == "Std")
-                {
-                    SysColor warningRed = SysColor.FromArgb(255, 210, 210);
-                    
-                    // Comparar L
-                    if (headStdL > 0 && r.L > headStdL)
-                        dgvData.Rows[idx].Cells["L"].Style.BackColor = warningRed;
-                    
-                    // Comparar A
-                    if (r.A > headStdA)
-                        dgvData.Rows[idx].Cells["A"].Style.BackColor = warningRed;
-
-                    // Comparar B
-                    if (r.B > headStdB)
-                        dgvData.Rows[idx].Cells["B"].Style.BackColor = warningRed;
-                }
             }
 
-            lblCount.Text = "Filas detectadas (mediciones): " + _rows.Count;
+            lblCount.Text = "Filas detectadas (Sample Comparison): " + _rows.Count;
 
             // Ajuste por contenido visible y luego rellenar sin aplastar
             dgvData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
@@ -839,7 +815,7 @@ namespace Colorimetria
             // Actualizar título con el Número de Lote si se encontró
             if (!string.IsNullOrWhiteSpace(shade.LotNo))
             {
-                lblDatosReceta.Text = $"SHADE HISTORY REPORT - LOT: {shade.LotNo}";
+                lblDatosReceta.Text = $"SHADE HISTORY REPORT";
             }
             else
             {
@@ -851,7 +827,7 @@ namespace Colorimetria
                 shade.Recipe == null ||
                 shade.Recipe.Count == 0)
             {
-                dgvReceta.Rows.Add("", "Sin datos de receta", "");
+                dgvReceta.Rows.Add("", "Sin datos de Shade History Report", "");
                 return;
             }
 
@@ -922,15 +898,6 @@ namespace Colorimetria
                 dgvLab.Rows[sIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
             }
 
-            /* 
-            // 2. Agregar Batch (Medición) - OCULTO POR SOLICITUD (Redundante con grilla superior)
-            var b = shade.Batch;
-            if (b != null)
-            {
-                int bIdx = dgvLab.Rows.Add("Batch", b.L, b.A, b.B, b.DL, b.DC, b.DH, b.DE, b.PF);
-                dgvLab.Rows[bIdx].DefaultCellStyle.ForeColor = SysColor.Black;
-            }
-            */
         }
 
         private double ParseCellDouble(object val)

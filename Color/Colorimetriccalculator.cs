@@ -34,6 +34,8 @@ namespace Color
         public double PercentL { get; set; }
         public double PercentA { get; set; }
         public double PercentB { get; set; }
+        public double PercentChroma { get; set; }
+        public double PercentHue { get; set; }
 
         // --- INSTRUCCIONES DE CORRECCIÓN PROFESIONAL ---
 
@@ -259,6 +261,10 @@ namespace Color
                 double pctA = (std.A != 0) ? (Math.Abs(dA) / std.A) * 100.0 : double.NaN;
                 double pctB = (std.B != 0) ? (Math.Abs(dB) / std.B) * 100.0 : double.NaN;
 
+                // --- % REALES PARA DIAGNÓSTICO (Relativos al Estándar) ---
+                double pctChromaReal = (chromaStd > 0.1) ? (Math.Abs(dChroma) / chromaStd) * 100.0 : 0.0;
+                double pctHueReal = (chromaStd > 0.1) ? (Math.Abs(dHue) / chromaStd) * 100.0 : 0.0;
+
                 // --- FACTOR ACCIONABLE (Sincronizado con Cálculos de Receta) ---
                 double actPctL = Math.Abs(dL) * 10.0;
                 double actPctA = Math.Abs(dA) * 10.0;
@@ -296,6 +302,8 @@ namespace Color
                     PercentL = double.IsNaN(pctL) ? double.NaN : Math.Round(pctL, 6),
                     PercentA = double.IsNaN(pctA) ? double.NaN : Math.Round(pctA, 6),
                     PercentB = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
+                    PercentChroma = Math.Round(pctChromaReal, 4),
+                    PercentHue = Math.Round(pctHueReal, 4),
                     LightnessInstruction = lightnessInst,
                     ChromaInstruction = chromaInst,
                     CorrectionA = correctionA,
