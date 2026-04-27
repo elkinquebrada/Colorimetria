@@ -136,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="big_data\ExcelReader.cs" />
+    <Compile Include="big_data\ExcelWriter.cs" />
     <Compile Include="big_data\ReportExtractor.cs" />
     <Compile Include="ColorimetriaApiClient.cs" />
     <Compile Include="Colorimetriccalculator.cs" />

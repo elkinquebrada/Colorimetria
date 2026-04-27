@@ -1,5 +1,6 @@
 using Color.Forms;
 using Color.Services;
+using OCR;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -20,6 +21,10 @@ namespace Color
         private readonly string _resumenLegacy;
         private readonly List<EngineRes> _resultsLegacy;
         private List<Color.IlluminantCorrectionResult> _recipeResults;
+
+        // ======= Datos OCR retenidos para escritura automática al Excel =======
+        private List<EngineRow> _ocrRows;      // L/A/B por iluminante del OCR
+        private List<CmcResult> _cmcResults;   // CMC(2:1) calculado
 
         // ======= Controles de la vista =======
         private RichTextBox txtReport;
@@ -54,9 +59,27 @@ namespace Color
             var recom = BuildRecomendacionFromReport(_report);
             SetFormattedText(txtReport, resumen);
             SetFormattedText(txtRecomendacion, recom);
-            
+
+            // Retener filas OCR y calcular CMC para escritura automática al Excel
+            _ocrRows = _report.Measures?.Select(m => new EngineRow
+            {
+                Illuminant = m.Illuminant, Type = m.Type,
+                L = m.L, A = m.A, B = m.B,
+                Chroma = m.Chroma > 0 ? m.Chroma : Math.Sqrt(m.A * m.A + m.B * m.B),
+                Hue = m.Hue > 0 ? m.Hue : (Math.Atan2(m.B, m.A) * 180.0 / Math.PI + (Math.Atan2(m.B, m.A) < 0 ? 360.0 : 0.0))
+            }).ToList();
+
+            if (_ocrRows != null && _ocrRows.Count > 0)
+            {
+                var corr = EngineCalc.Calculate(_ocrRows);
+                _cmcResults = EngineCalc.CalculateCmc(corr, _ocrRows);
+            }
+
             // Actualizar gráfico con D65 del reporte
             UpdateChartFromReport(_report);
+
+            // ── ESCRITURA AUTOMÁTICA AL EXCEL DE REFERENCIA ──
+            WriteExcelSilently();
         }
 
         public FormResultados(string resumen, List<EngineRes> results)
@@ -72,8 +95,24 @@ namespace Color
             SetFormattedText(txtReport, string.IsNullOrEmpty(prefix) ? _resumenLegacy : prefix + _resumenLegacy);
             SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
 
+            // Retener filas OCR desde el reporte global y calcular CMC
+            _ocrRows = OcrReport.LastReport?.Measures?.Select(m => new EngineRow
+            {
+                Illuminant = m.Illuminant, Type = m.Type,
+                L = m.L, A = m.A, B = m.B,
+                Chroma = m.Chroma > 0 ? m.Chroma : Math.Sqrt(m.A * m.A + m.B * m.B),
+                Hue = m.Hue > 0 ? m.Hue : (Math.Atan2(m.B, m.A) * 180.0 / Math.PI + (Math.Atan2(m.B, m.A) < 0 ? 360.0 : 0.0))
+            }).ToList();
+
+            _cmcResults = _resultsLegacy?.Count > 0 && _ocrRows?.Count > 0
+                ? EngineCalc.CalculateCmc(_resultsLegacy, _ocrRows)
+                : null;
+
             // Actualizar gráfico
             UpdateChartFromResults(_resultsLegacy);
+
+            // ── ESCRITURA AUTOMÁTICA AL EXCEL DE REFERENCIA ──
+            WriteExcelSilently();
         }
 
         // Constructor de 3 argumentos — resumen + correcciones colorimetricas + correcciones de receta.
@@ -91,22 +130,144 @@ namespace Color
             var sbLeft = new System.Text.StringBuilder();
             if (!string.IsNullOrEmpty(prefix)) sbLeft.Append(prefix);
             sbLeft.Append(_resumenLegacy);
-            if (_recipeResults != null && _recipeResults.Count > 0)
+            if (_resultsLegacy != null && _resultsLegacy.Count > 0)
             {
-    
-                // Tablas Consolidadas Estilo Excel
+                var d65Res = _resultsLegacy.FirstOrDefault(r => string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase)) ?? _resultsLegacy[0];
+                Color.IlluminantCorrectionResult recipeD65 = null;
+                if (_recipeResults != null)
+                {
+                    recipeD65 = _recipeResults.FirstOrDefault(r => string.Equals(r.Illuminant, "D65", StringComparison.OrdinalIgnoreCase)) ?? _recipeResults.FirstOrDefault();
+                }
+                
                 sbLeft.AppendLine();
-                sbLeft.Append(RecipeCorrector.BuildConsolidatedLightnessTable(_recipeResults));
-
-                sbLeft.AppendLine();
-                sbLeft.Append(RecipeCorrector.BuildConsolidatedCalculationTable(_recipeResults));
+                sbLeft.Append(BuildExecutiveSummary(d65Res, recipeD65));
             }
             SetFormattedText(txtReport, sbLeft.ToString());
 
             SetFormattedText(txtRecomendacion, BuildRecomendacionFromResults(_resultsLegacy, DL_MAX, DC_MAX, DH_MAX, DE_MAX));
 
+            // Retener filas OCR desde el reporte global + calcular CMC
+            _ocrRows = OcrReport.LastReport?.Measures?.Select(m => new EngineRow
+            {
+                Illuminant = m.Illuminant, Type = m.Type,
+                L = m.L, A = m.A, B = m.B,
+                Chroma = m.Chroma > 0 ? m.Chroma : Math.Sqrt(m.A * m.A + m.B * m.B),
+                Hue = m.Hue > 0 ? m.Hue : (Math.Atan2(m.B, m.A) * 180.0 / Math.PI + (Math.Atan2(m.B, m.A) < 0 ? 360.0 : 0.0))
+            }).ToList();
+
+            _cmcResults = _resultsLegacy?.Count > 0 && _ocrRows?.Count > 0
+                ? EngineCalc.CalculateCmc(_resultsLegacy, _ocrRows)
+                : null;
+
             // Actualizar gráfico
             UpdateChartFromResults(_resultsLegacy);
+
+            // ── ESCRITURA AUTOMÁTICA AL EXCEL DE REFERENCIA ──
+            WriteExcelSilently();
+        }
+
+        private string BuildExecutiveSummary(EngineRes d65Res, Color.IlluminantCorrectionResult recipeRes)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("============================================================");
+            sb.AppendLine($"       ANALIASIS DE LA RECDETA - ILUMINANTE {d65Res.Illuminant}");
+            sb.AppendLine("============================================================");
+            sb.AppendLine();
+
+            // 1. LIGHTNESS
+            double dLVar = d65Res.DeltaL * 10.0;
+            string diagL = dLVar < 0 ? "El lote está más OSCURO que el estándar." 
+                         : dLVar > 0 ? "El lote está más CLARO que el estándar." 
+                         : "La luminosidad coincide con el estándar.";
+            string impL = dLVar < 0 ? "Exceso de concentración de colorantes en la mezcla." 
+                        : dLVar > 0 ? "Falta de concentración de colorantes en la mezcla." 
+                        : "Concentración balanceada.";
+
+            sb.AppendLine("[1. ANÁLISIS DE LUMINOSIDAD (LIGHTNESS)]");
+            sb.AppendLine($"Variación (dL): {dLVar:F1}%");
+            sb.AppendLine($"Diagnóstico: {diagL}");
+            sb.AppendLine($"Impacto: {impL}");
+            sb.AppendLine();
+
+            // 2. CHROMA
+            double dCVar = d65Res.DeltaChroma * 10.0;
+            string diagC = dCVar < 0 ? "El color está notablemente más OPACO/GRIS." 
+                         : dCVar > 0 ? "El color está notablemente más VIVO/SATURADO." 
+                         : "La saturación coincide con el estándar.";
+            string impC = dCVar < 0 ? "Pérdida de viveza; la mezcla está \"sucia\" o mal balanceada." 
+                        : dCVar > 0 ? "Exceso de saturación." 
+                        : "Saturación balanceada.";
+
+            sb.AppendLine("[2. ANÁLISIS DE SATURACIÓN (CHROMA)]");
+            sb.AppendLine($"Variación (dC): {dCVar:F1}%");
+            sb.AppendLine($"Diagnóstico: {diagC}");
+            sb.AppendLine($"Impacto: {impC}");
+            sb.AppendLine();
+
+            // 3. HUE
+            double stdHue = d65Res.StdHue;
+            double lotHue = d65Res.LotHue;
+            double dHueVar = d65Res.PercentHue; 
+            string hueShiftDir = "";
+            if (d65Res.DeltaB < -0.05) hueShiftDir = "AZUL";
+            else if (d65Res.DeltaB > 0.05) hueShiftDir = "AMARILLO";
+            else if (d65Res.DeltaA > 0.05) hueShiftDir = "ROJO";
+            else if (d65Res.DeltaA < -0.05) hueShiftDir = "VERDE";
+
+            if (string.IsNullOrEmpty(hueShiftDir)) hueShiftDir = "NEUTRO";
+
+            string sign = d65Res.DeltaHue >= 0 ? "+" : "";
+            sb.AppendLine("[3. ANÁLISIS DE MATIZ (HUE)]");
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Ángulos: Std: {0:F2}°  |  Lote: {1:F2}°", stdHue, lotHue));
+            sb.AppendLine($"Variación: {dHueVar:F1}%");
+            sb.AppendLine($"Diagnóstico: Desviación ({sign}{d65Res.DeltaHue:F2}°) hacia el {hueShiftDir}.");
+            sb.AppendLine();
+
+            sb.AppendLine("============================================");
+            sb.AppendLine("[RECOMENDACIÓN]");
+            sb.AppendLine("============================================");
+            sb.AppendLine();
+
+            int recNum = 1;
+
+            if (recipeRes != null && recipeRes.Ingredients != null && recipeRes.Ingredients.Count > 0 && hueShiftDir != "NEUTRO")
+            {
+                string culpritDye = "";
+                if (hueShiftDir == "AZUL") culpritDye = recipeRes.Ingredients.FirstOrDefault(i => i.Name.ToUpper().Contains("BLUE") || i.Name.ToUpper().Contains("NAVY"))?.Name;
+                else if (hueShiftDir == "ROJO") culpritDye = recipeRes.Ingredients.FirstOrDefault(i => i.Name.ToUpper().Contains("RED") || i.Name.ToUpper().Contains("RUBINE") || i.Name.ToUpper().Contains("SCARLET"))?.Name;
+                else if (hueShiftDir == "AMARILLO") culpritDye = recipeRes.Ingredients.FirstOrDefault(i => i.Name.ToUpper().Contains("YELLOW") || i.Name.ToUpper().Contains("GOLD"))?.Name;
+                else if (hueShiftDir == "VERDE") culpritDye = recipeRes.Ingredients.FirstOrDefault(i => i.Name.ToUpper().Contains("GREEN"))?.Name;
+
+                if (!string.IsNullOrEmpty(culpritDye))
+                {
+                    sb.AppendLine($"{recNum++}. Reducir carga de {culpritDye} (Causante del viraje hacia el {hueShiftDir.ToLower()}).");
+                }
+                else
+                {
+                    string cleanCorrA = d65Res.CorrectionA.Replace("«", "").Replace("»", "");
+                    string cleanCorrB = d65Res.CorrectionB.Replace("«", "").Replace("»", "");
+                    if (!string.IsNullOrEmpty(cleanCorrA) && cleanCorrA != Color.ToleranceResult.MSG_OK) sb.AppendLine($"{recNum++}. Ajuste de Tinte: {cleanCorrA}");
+                    if (!string.IsNullOrEmpty(cleanCorrB) && cleanCorrB != Color.ToleranceResult.MSG_OK) sb.AppendLine($"{recNum++}. Ajuste de Tinte: {cleanCorrB}");
+                }
+            }
+            else
+            {
+                string cleanCorrA = d65Res.CorrectionA.Replace("«", "").Replace("»", "");
+                string cleanCorrB = d65Res.CorrectionB.Replace("«", "").Replace("»", "");
+                if (!string.IsNullOrEmpty(cleanCorrA) && cleanCorrA != Color.ToleranceResult.MSG_OK) sb.AppendLine($"{recNum++}. Ajuste de Tinte: {cleanCorrA}");
+                if (!string.IsNullOrEmpty(cleanCorrB) && cleanCorrB != Color.ToleranceResult.MSG_OK) sb.AppendLine($"{recNum++}. Ajuste de Tinte: {cleanCorrB}");
+            }
+
+            if (Math.Abs(dLVar) >= 0.1)
+            {
+                sb.AppendLine($"{recNum++}. Ajustar concentración general para corregir el {dLVar:F1}% de Luz.");
+            }
+
+            string cost = dHueVar > 20.0 ? "alto" : dHueVar > 5.0 ? "medio" : "bajo";
+            sb.AppendLine($"{recNum++}. El costo de reproceso es {cost} debido a la desviación del {dHueVar:F1}%.");
+            sb.AppendLine("============================================================");
+
+            return sb.ToString();
         }
 
         private static string GetGlobalMetadataPrefix()
@@ -124,11 +285,39 @@ namespace Color
         /// Referencia al formulario OCR de origen — para el boton Regresar.
         public Form FormOcrOrigen { get; set; }
 
+        // ======= Escritura automática al Excel de referencia =======
+        /// <summary>
+        /// Vuelca silenciosamente los valores OCR a las celdas azules del Excel de referencia.
+        /// El usuario no interviene en nada: ocurre automáticamente en segundo plano.
+        /// </summary>
+        private void WriteExcelSilently()
+        {
+            // Capturar snapshot de los datos para el hilo de fondo
+            var rows     = _ocrRows;
+            var cmc      = _cmcResults;
+            var recipe   = _recipeResults;
+
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    string excelPath = ExcelWriter.FindReferenceExcelPath();
+                    if (string.IsNullOrEmpty(excelPath)) return;
+
+                    ExcelWriter.WriteAll(excelPath, rows, cmc, recipe);
+                }
+                catch
+                {
+                    // Silencioso — nunca interrumpir el flujo del usuario
+                }
+            });
+        }
+
         // ======= Inicialización de la UI (layout elástico) =======
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.Text = "ANALISIS DE COLORIMETRIA";
+            this.Text = "TINT COATS CADENA";
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
@@ -571,7 +760,7 @@ namespace Color
                 sb.AppendLine($"Shade Name : {shade.ShadeName}");
                 sb.AppendLine("───────────────────────────────────────────────────────────────────");
             }
-            sb.AppendLine($"tolerancia:{DE_MAX:F2} DL:{DL_MAX:F2} DC:{DC_MAX:F2} DH:{DH_MAX:F2} segun tolerancia usada");
+            sb.AppendLine($"Tolerancia: ({DE_MAX:F2} DL:{DL_MAX:F2} DC:{DC_MAX:F2} DH:{DH_MAX:F2}) ");
 
             var band = new ToleranceResult
             {

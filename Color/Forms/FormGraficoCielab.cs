@@ -24,7 +24,7 @@ namespace Color
             chartFull.DeltaE = dE;
             chartFull.ToleranceDE = tolerance;
 
-            chartFull.Title = "Proyección Espacial CIELAB (Motor de Inmersión)";
+            chartFull.Title = "Grafico de Desviación de Color (CIELAB)";
             chartFull.InstructionMessage = advice;
 
             // Inmersión de Datos (Valores Absolutos)
@@ -38,12 +38,12 @@ namespace Color
             chartFull.LotB = absB + dB;
             
             txtAdvice.Text = advice;
-            lblTitle.Text = $"Análisis de Colorimetría Avanzada — Lote vs Estándar";
+            lblTitle.Text = $"Análisis Grafico — Lote vs Estándar";
         }
 
         private void InitializeComponents()
         {
-            this.Text = "Colorimetría Avanzada - Diagnóstico Espacial";
+            this.Text = "TINT COATS CADENA";
             this.Size = new Size(1250, 920);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.Sizable;

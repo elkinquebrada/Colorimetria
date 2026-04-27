@@ -138,7 +138,7 @@ namespace Colorimetria
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.Text = "Verificar datos extraídos";
+            this.Text = "TINT COATS CADENA";
 
             // Barra estándar con min/max y redimensionamiento
             this.FormBorderStyle = FormBorderStyle.Sizable;
@@ -182,7 +182,7 @@ namespace Colorimetria
                 Location = new Point(20, 75),
                 Font = new Font("Segoe UI", 9)
             };
-            var tabCombined = new TabPage("📎 Combinado")
+            var tabCombined = new TabPage("📎 REPORTES")
             {
                 BackColor = SysColor.White
             };

@@ -37,6 +37,9 @@ namespace Color
         public double PercentChroma { get; set; }
         public double PercentHue { get; set; }
 
+        public double StdHue { get; set; }
+        public double LotHue { get; set; }
+
         // --- INSTRUCCIONES DE CORRECCIÓN PROFESIONAL ---
 
         // Determina la acción sobre la claridad
@@ -304,6 +307,8 @@ namespace Color
                     PercentB = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
                     PercentChroma = Math.Round(pctChromaReal, 4),
                     PercentHue = Math.Round(pctHueReal, 4),
+                    StdHue = Math.Round(std.Hue, 2),
+                    LotHue = Math.Round(lot.Hue, 2),
                     LightnessInstruction = lightnessInst,
                     ChromaInstruction = chromaInst,
                     CorrectionA = correctionA,

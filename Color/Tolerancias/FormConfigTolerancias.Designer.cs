@@ -22,7 +22,7 @@ namespace Color.Tolerancias
             this.SuspendLayout();
 
             // lblTitulo
-            this.lblTitulo.Text = "Configuración de Tolerancias";
+            this.lblTitulo.Text = "Configuracion de Tolerancias";
             this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.Location = new System.Drawing.Point(0, 15);
             this.lblTitulo.Size = new System.Drawing.Size(650, 35);
@@ -56,7 +56,7 @@ namespace Color.Tolerancias
             this.btnCancelar.Click += new System.EventHandler(this.btnCancelar_Click);
 
             // FormConfigTolerancias
-            this.Text = "Configuración de Tolerancias";
+            this.Text = "TINT COATS CADENA";
             this.ClientSize = new System.Drawing.Size(650, 380);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;

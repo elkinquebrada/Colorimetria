@@ -61,7 +61,7 @@ namespace Color.Forms
             this.lblTitulo.Dock = System.Windows.Forms.DockStyle.None;
             this.lblTitulo.Location = new System.Drawing.Point(14, 13);
             this.lblTitulo.Size = new System.Drawing.Size(380, 28);
-            this.lblTitulo.Text = "HISTORIAL DE MEDICIONES";
+            this.lblTitulo.Text = "HISTORIAL DE ANALISIS";
             this.lblTitulo.Font = new System.Drawing.Font("Segoe UI Black", 14F,
                                            System.Drawing.FontStyle.Bold,
                                            System.Drawing.GraphicsUnit.Point, 0);

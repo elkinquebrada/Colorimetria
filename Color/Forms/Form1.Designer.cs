@@ -369,7 +369,7 @@ namespace Color
             this.MinimumSize = new System.Drawing.Size(1100, 680);
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Tintoreria";
+            this.Text = "TINT COATS CADENA";
             this.leftNav.ResumeLayout(false);
             this.leftNav.PerformLayout();
             this.mainArea.ResumeLayout(false);

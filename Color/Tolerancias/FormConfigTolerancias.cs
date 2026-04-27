@@ -32,16 +32,21 @@ namespace Color.Tolerancias
         {
             try
             {
-                // Ruta relativa al excel de configuración dentro del proyecto
-                string excelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"LogicDocs\calculos a realizar con el programa.xlsx");
-                
-                if (!File.Exists(excelPath))
+                // Intentamos encontrar el archivo con espacios o con guiones bajos (visto en capturas de pantalla)
+                string[] possibleNames = { "calculos a realizar con el programa.xlsx", "calculos_a_realizar_con_el_programa.xlsx" };
+                string excelPath = "";
+
+                foreach (var name in possibleNames)
                 {
+                    string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LogicDocs", name);
+                    if (File.Exists(path)) { excelPath = path; break; }
+
                     // Fallback para depuración en VS
-                    excelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\LogicDocs\calculos a realizar con el programa.xlsx");
+                    path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "LogicDocs", name);
+                    if (File.Exists(path)) { excelPath = path; break; }
                 }
 
-                if (File.Exists(excelPath))
+                if (!string.IsNullOrEmpty(excelPath) && File.Exists(excelPath))
                 {
                     _profiles = OCR.ExcelReader.LoadTolerances(excelPath);
                 }
@@ -61,7 +66,7 @@ namespace Color.Tolerancias
             {
                 MessageBox.Show("Error al leer el archivo Excel: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 _profiles = new List<ToleranceResult>();
-                
+
                 // Fallback de emergencia
                 while (_profiles.Count < 4)
                 {
@@ -73,14 +78,14 @@ namespace Color.Tolerancias
         private void RenderCards()
         {
             flowCards.Controls.Clear();
-            
+
             if (_profiles.Count > 0)
             {
                 int cardWidth = 110;
 
                 // Reducido para asegurar que quepan 4
-                int gap = 10; 
-                int totalWidth = _profiles.Count * cardWidth + (_profiles.Count - 1) * (gap + 20); 
+                int gap = 10;
+                int totalWidth = _profiles.Count * cardWidth + (_profiles.Count - 1) * (gap + 20);
 
                 int leftPadding = (flowCards.Width - totalWidth) / 2;
                 if (leftPadding < 0) leftPadding = 0;
@@ -109,12 +114,12 @@ namespace Color.Tolerancias
                     Text = (i == 3) ? "Ingresa el DE" : $"DE {profile.DE.ToString("0.00", CultureInfo.InvariantCulture)}",
                     Dock = DockStyle.Top,
                     Height = 35,
-                    BackColor = System.Drawing.Color.FromArgb(43, 142, 227), 
+                    BackColor = System.Drawing.Color.FromArgb(43, 142, 227),
                     ForeColor = System.Drawing.Color.White,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                     TextAlign = ContentAlignment.MiddleCenter
                 };
-                
+
                 // Cuerpo con DL, DC, DH
                 var lblBody = new Label
                 {
@@ -152,7 +157,7 @@ namespace Color.Tolerancias
                             profile.DL = newTol.DL;
                             profile.DC = newTol.DC;
                             profile.DH = newTol.DH;
-                            
+
                             lblBody.Text = $"\nDL  {profile.DL.ToString("0.000", CultureInfo.InvariantCulture)}\nDC  {profile.DC.ToString("0.000", CultureInfo.InvariantCulture)}\nDH  {profile.DH.ToString("0.000", CultureInfo.InvariantCulture)}";
                         }
                     };
@@ -209,7 +214,7 @@ namespace Color.Tolerancias
             {
                 _selectedPanel.BorderStyle = BorderStyle.FixedSingle;
                 _selectedPanel.BackColor = System.Drawing.Color.White;
-                
+
                 // Reset header color
                 var prevHeader = _selectedPanel.Controls.Cast<Control>().FirstOrDefault(c => c is Label && c.Dock == DockStyle.Top);
                 if (prevHeader != null)
@@ -219,14 +224,14 @@ namespace Color.Tolerancias
             // Apply selected state
             _selectedPanel = pnl;
             _selectedProfile = profile;
-            
-            pnl.BorderStyle = BorderStyle.Fixed3D; 
+
+            pnl.BorderStyle = BorderStyle.Fixed3D;
             pnl.BackColor = System.Drawing.Color.AliceBlue;
-            
+
             // Highlight current header
             var currentHeader = pnl.Controls.Cast<Control>().FirstOrDefault(c => c is Label && c.Dock == DockStyle.Top);
             if (currentHeader != null)
-                currentHeader.BackColor = System.Drawing.Color.FromArgb(20, 100, 180); 
+                currentHeader.BackColor = System.Drawing.Color.FromArgb(20, 100, 180);
         }
 
         private void btnGuardar_Click(object sender, EventArgs e)
