@@ -10,6 +10,7 @@ namespace Color
     public sealed class ColorCorrectionResult
     {
         public string Illuminant { get; set; } = "";
+        public string ShadeName { get; set; } = "";
 
         // Diferencias (Lot - Std)
         public double DeltaL { get; set; }
@@ -56,6 +57,31 @@ namespace Color
 
         // ΔE CMC(2:1) - Recomendado para grado comercial (Elipse de tolerancia)
         public double CmcValue { get; set; }
+
+        // --- PROPIEDADES DINÁMICAS PARA EL REPORTE ---
+        public string DescripcionL => DeltaL < 0 ? "Más Oscuro" : "Más Claro";
+        
+        public string RecomendacionL => DeltaL < 0 
+            ? $"REDUCIR RECETA {Math.Abs(PercentL * 100):F1}%" 
+            : $"AUMENTAR RECETA {Math.Abs(PercentL * 100):F1}%";
+
+        public string RecomendacionMatiz
+        {
+            get
+            {
+                // Si Delta es positivo, significa que el Lote tiene de más -> DISMINUIR
+                // Si Delta es negativo, significa que al Lote le falta -> AGREGAR
+                string accionA = DeltaA > 0 ? "Disminuir" : "Agregar";
+                string accionB = DeltaB > 0 ? "Disminuir" : "Agregar";
+                
+                return $"{accionA} Rojo {Math.Abs(PercentA * 100):F1}% / {accionB} Amarillo {Math.Abs(PercentB * 100):F1}%";
+            }
+        }
+
+        public string ImpactoMatiz => $"Viraje hacia {(DeltaA > 0 ? "Rojo" : "Verde")}-{(DeltaB > 0 ? "Amarillo" : "Azul")}";
+        
+        public string DiagnosisC => DeltaChroma < 0 ? "Muestra Opaca" : "Muestra Brillante";
+        public string RecommendationC => DeltaChroma > 0 ? $"DISMINUIR FUERZA {Math.Abs(PercentChroma * 100):F1}%" : $"AUMENTAR FUERZA {Math.Abs(PercentChroma * 100):F1}%";
 
         // Estado de aprobación basado en la tolerancia seleccionada
         public bool Pass { get; set; }
@@ -249,24 +275,32 @@ namespace Color
                 // ΔE (CIE76)
                 double dE = Math.Sqrt(dL * dL + dA * dA + dB * dB);
 
-                // ΔC (croma)
+                // --- CÁLCULOS TRIGONOMÉTRICOS (Propuesta Técnica) ---
                 double chromaStd = Math.Sqrt(std.A * std.A + std.B * std.B);
                 double chromaLot = Math.Sqrt(lot.A * lot.A + lot.B * lot.B);
                 double dChroma = chromaLot - chromaStd;
 
-                // Δh angular ±180°
-                double dHue = lot.Hue - std.Hue;
-                if (Math.Abs(dHue) > 180.0)
-                    dHue = dHue > 0 ? dHue - 360.0 : dHue + 360.0;
+                // Hue (h°) usando atan2(b*, a*)
+                double hStd = Math.Atan2(std.B, std.A) * (180.0 / Math.PI);
+                if (hStd < 0) hStd += 360.0;
+                
+                double hLot = Math.Atan2(lot.B, lot.A) * (180.0 / Math.PI);
+                if (hLot < 0) hLot += 360.0;
 
-                // El Excel usa =ABS(Δ)/Std, 
-                double pctL = (std.L != 0) ? (Math.Abs(dL) / std.L) * 100.0 : double.NaN;
-                double pctA = (std.A != 0) ? (Math.Abs(dA) / std.A) * 100.0 : double.NaN;
-                double pctB = (std.B != 0) ? (Math.Abs(dB) / std.B) * 100.0 : double.NaN;
+                // Delta h (angular difference)
+                double dhAngular = hLot - hStd;
+                if (dhAngular > 180) dhAngular -= 360;
+                if (dhAngular < -180) dhAngular += 360;
 
-                // --- % REALES PARA DIAGNÓSTICO (Relativos al Estándar) ---
-                double pctChromaReal = (chromaStd > 0.1) ? (Math.Abs(dChroma) / chromaStd) * 100.0 : 0.0;
-                double pctHueReal = (chromaStd > 0.1) ? (Math.Abs(dHue) / chromaStd) * 100.0 : 0.0;
+                // Delta Hue (ΔH) simplificado para reporte (Fidelidad al Estándar Excel)
+                double dHueSimp = Math.Sqrt(Math.Max(0, Math.Pow(dA, 2) + Math.Pow(dB, 2) - Math.Pow(dChroma, 2)));
+
+                // --- % REALES PARA DIAGNÓSTICO (Ratios base para multiplicar por 100 en UI) ---
+                double pctL_Ratio = (std.L > 0.1) ? (dL / std.L) : 0.0;
+                double pctA_Ratio = (Math.Abs(std.A) > 0.1) ? (dA / Math.Abs(std.A)) : 0.0;
+                double pctB_Ratio = (Math.Abs(std.B) > 0.1) ? (dB / Math.Abs(std.B)) : 0.0;
+                double pctChromaRatio = (chromaStd > 0.1) ? (dChroma / chromaStd) : 0.0;
+                double pctHueRatio = (chromaStd > 0.1) ? (dHueSimp / chromaStd) : 0.0;
 
                 // --- FACTOR ACCIONABLE (Sincronizado con Cálculos de Receta) ---
                 double actPctL = Math.Abs(dL) * 10.0;
@@ -300,15 +334,15 @@ namespace Color
                     AbsDeltaA = Math.Round(Math.Abs(dA), 4),
                     AbsDeltaB = Math.Round(Math.Abs(dB), 4),
                     DeltaChroma = Math.Round(dChroma, 4),
-                    DeltaHue = Math.Round(dHue, 4),
+                    DeltaHue = Math.Round(dHueSimp, 4),
                     DeltaE = Math.Round(dE, 4),
-                    PercentL = double.IsNaN(pctL) ? double.NaN : Math.Round(pctL, 6),
-                    PercentA = double.IsNaN(pctA) ? double.NaN : Math.Round(pctA, 6),
-                    PercentB = double.IsNaN(pctB) ? double.NaN : Math.Round(pctB, 6),
-                    PercentChroma = Math.Round(pctChromaReal, 4),
-                    PercentHue = Math.Round(pctHueReal, 4),
-                    StdHue = Math.Round(std.Hue, 2),
-                    LotHue = Math.Round(lot.Hue, 2),
+                    PercentL = Math.Round(pctL_Ratio, 6),
+                    PercentA = Math.Round(pctA_Ratio, 6),
+                    PercentB = Math.Round(pctB_Ratio, 6),
+                    PercentChroma = Math.Round(pctChromaRatio, 6),
+                    PercentHue = Math.Round(pctHueRatio, 6),
+                    StdHue = Math.Round(hStd, 2),
+                    LotHue = Math.Round(hLot, 2),
                     LightnessInstruction = lightnessInst,
                     ChromaInstruction = chromaInst,
                     CorrectionA = correctionA,

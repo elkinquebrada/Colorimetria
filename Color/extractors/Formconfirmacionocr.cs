@@ -279,8 +279,7 @@ namespace Colorimetria
                 BackColor = SysColor.FromArgb(34, 139, 34),
                 ForeColor = SysColor.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                DialogResult = DialogResult.OK
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
             btnConfirmar.FlatAppearance.BorderSize = 0;
             btnConfirmar.FlatAppearance.MouseOverBackColor = SysColor.FromArgb(0, 120, 0);
@@ -329,7 +328,6 @@ namespace Colorimetria
             this.Controls.Add(btnCancelar);
             this.Controls.Add(btnRegresar);
 
-            this.AcceptButton = btnConfirmar;
             this.CancelButton = btnCancelar;
             this.ResumeLayout(false);
         }
@@ -704,6 +702,9 @@ namespace Colorimetria
         // =========================================================
         private void BtnConfirmar_Click(object sender, EventArgs e)
         {
+            if (dgvData.IsCurrentCellInEditMode) dgvData.EndEdit();
+            if (dgvReceta != null && dgvReceta.IsCurrentCellInEditMode) dgvReceta.EndEdit();
+
             RowsConfirmed = new List<ColorimetricRow>();
 
             foreach (DataGridViewRow row in dgvData.Rows)

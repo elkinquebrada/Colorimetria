@@ -205,16 +205,22 @@ namespace Color
 
                 OcrReport.SetLastReport(ocrMediciones);
 
-                var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
-                dlgConfirm.MainFormOwner = this;
+                OcrReport.SetLastReport(ocrMediciones);
                 this.Hide();
 
-                if (dlgConfirm.ShowDialog() == DialogResult.OK)
+                bool seguir = true;
+                var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
+                dlgConfirm.MainFormOwner = this;
+
+                while (seguir)
                 {
-                    // 1. Calcular correcciones estándar (CIE76)
+                    if (dlgConfirm.ShowDialog() != DialogResult.OK)
+                    {
+                        seguir = false;
+                        break;
+                    }
+
                     var correcciones = ColorimetricCalculator.Calculate(dlgConfirm.RowsConfirmed);
-                    
-                    // 2. Calcular CMC(2:1) y sincronizar (¡NUEVO!)
                     var cmcRes = ColorimetricCalculator.CalculateCmc(correcciones, dlgConfirm.RowsConfirmed);
                     foreach (var c in correcciones)
                     {
@@ -223,48 +229,22 @@ namespace Color
                     }
 
                     var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
-                    var deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
+                    var deltas = RecipeCorrector.DeltasFromReport(dlgConfirm.Report);
                     var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
 
-                    // Ciclo: el usuario puede regresar al OCR y volver a Resultados
-                    bool seguir = true;
-                    while (seguir)
+                    using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>, _lastShadeResult))
                     {
-                        var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>);
-
-                        // Crear nuevo OCR fresco para el botón Regresar
-                        var dlgOcr = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
-                        dlgOcr.MainFormOwner = this;
-                        frmRes.FormOcrOrigen = dlgOcr;
-
-                        frmRes.ShowDialog();
-
-                        // Si el usuario regresó al OCR y volvió a confirmar
-                        if (!dlgOcr.IsDisposed && dlgOcr.RowsConfirmed != null && dlgOcr.RowsConfirmed.Count > 0)
+                        if (frmRes.ShowDialog() == DialogResult.Retry)
                         {
-                            // Recalcular con los nuevos datos (Incluyendo CMC)
-                            correcciones = ColorimetricCalculator.Calculate(dlgOcr.RowsConfirmed);
-                            
-                            var cmcResLoop = ColorimetricCalculator.CalculateCmc(correcciones, dlgOcr.RowsConfirmed);
-                            foreach (var c in correcciones)
-                            {
-                                var m = cmcResLoop.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
-                                if (m != null) c.CmcValue = m.CmcValue;
-                            }
-
-                            ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
-                            deltas = RecipeCorrector.DeltasFromReport(ocrMediciones);
-                            corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
+                            continue;
                         }
                         else
                         {
                             seguir = false;
                         }
-
-                        if (!dlgOcr.IsDisposed) dlgOcr.Dispose();
-                        frmRes.Dispose();
                     }
                 }
+                dlgConfirm.Dispose();
                 this.Show();
             }
             catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
