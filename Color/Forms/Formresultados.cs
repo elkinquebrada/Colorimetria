@@ -127,21 +127,23 @@ namespace Color
 
             // ---- Grids ----
             dgvShadeHistory = CreateStyledGrid();
+            dgvShadeHistory.ColumnHeadersVisible = false;
             dgvShadeHistory.ColumnCount = 3;
-            dgvShadeHistory.Columns[0].Name = "Codigo";
-            dgvShadeHistory.Columns[1].Name = "nombre";
-            dgvShadeHistory.Columns[2].Name = "porcentaje";
+            dgvShadeHistory.Columns[0].Name = "Dye Code";
+            dgvShadeHistory.Columns[1].Name = "Dye Names";
+            dgvShadeHistory.Columns[2].Name = "Concentration";
 
             dgvAnalysisLeft = CreateAnalysisGrid();
             dgvAnalysisLeftTL84 = CreateAnalysisGrid();
             dgvAnalysisLeftA = CreateAnalysisGrid();
 
             dgvComparisonSummary = CreateStyledGrid();
+            dgvComparisonSummary.ColumnHeadersVisible = false;
             dgvComparisonSummary.ColumnCount = 4;
-            dgvComparisonSummary.Columns[0].Name = "Dato";
-            dgvComparisonSummary.Columns[1].Name = "Tolerancia";
-            dgvComparisonSummary.Columns[2].Name = "Iluminante";
-            dgvComparisonSummary.Columns[3].Name = "Resultado";
+            dgvComparisonSummary.Columns[0].Name = "Fact";
+            dgvComparisonSummary.Columns[1].Name = "Tolerance";
+            dgvComparisonSummary.Columns[2].Name = "Illuminant";
+            dgvComparisonSummary.Columns[3].Name = "Result";
 
             dgvAnalysisRight = CreateAnalysisGrid();
             dgvAnalysisRightTL84 = CreateAnalysisGrid();
@@ -160,7 +162,7 @@ namespace Color
                 catch { } 
             };
 
-            var pnlCorrective = new Panel { Dock = DockStyle.Bottom, Height = 220 };
+            var pnlCorrective = new Panel { Dock = DockStyle.Bottom, Height = 150 };
             dgvCorrectiveRecipe = CreateCorrectiveGrid();
             lblAlertCorrective = new Label { 
                 Dock = DockStyle.Bottom, 
@@ -170,15 +172,17 @@ namespace Color
                 ForeColor = System.Drawing.Color.White,
                 BackColor = System.Drawing.Color.Gray
             };
+            
+            var lblHeaderCorrective = CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)");
+            lblHeaderCorrective.Dock = DockStyle.Top;
+            lblHeaderCorrective.Height = 28;
+
             pnlCorrective.Controls.Add(dgvCorrectiveRecipe);
             pnlCorrective.Controls.Add(lblAlertCorrective);
-            pnlCorrective.Controls.Add(CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)"));
+            pnlCorrective.Controls.Add(lblHeaderCorrective);
 
             var pnlLeft = CreatePanelWithGrids("ANALISIS DE SHADE HISTORY REPORT", dgvShadeHistory, 
                                                "ANALISIS ILUMINANTE D65", dgvAnalysisLeft);
-            pnlLeft.Controls.Add(pnlCorrective);
-            pnlCorrective.BringToFront();
-            pnlCorrective.Dock = DockStyle.Bottom;
 
             var pnlRight = CreatePanelWithManyGrids("ANALISIS DE SAMPLE COMPARISON", dgvComparisonSummary, 
                                                    "ANALISIS ILUMINANTE D65", dgvAnalysisRight,
@@ -194,6 +198,8 @@ namespace Color
             pnlRight.Controls.Add(pnlBtnGrafico);
 
             splitMedicionesCmc.Panel1.Controls.Add(pnlLeft);
+            splitMedicionesCmc.Panel1.Controls.Add(pnlCorrective);
+            pnlCorrective.BringToFront(); // Ensures bottom dock takes precedence
             splitMedicionesCmc.Panel2.Controls.Add(pnlRight);
 
             var pnlBottom = new FlowLayoutPanel
@@ -216,14 +222,14 @@ namespace Color
         private Panel CreatePanelWithManyGrids(string h1, DataGridView g1, string h2, DataGridView g2, string h3, DataGridView g3, string h4, DataGridView g4)
         {
             var pnl = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 8 };
-            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // Header 1
-            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 135)); // Grid 1 (Summary) - Ampliado para 5 filas
-            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 2 (D65)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 2 (D65 - Principal)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 3 (TL84)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 3 (TL84)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 4 (A)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 4 (A)
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 135)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); 
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); 
 
             pnl.Controls.Add(CreateHeaderLabel(h1), 0, 0);
             pnl.Controls.Add(g1, 0, 1);
@@ -275,21 +281,26 @@ namespace Color
                 DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True }
             };
             dgv.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            dgv.ColumnHeadersDefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.EnableHeadersVisualStyles = false;
+            
+            dgv.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
+            dgv.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
+            
             return dgv;
         }
 
         private DataGridView CreateCorrectiveGrid()
         {
             var dgv = CreateStyledGrid();
-            dgv.ColumnCount = 6;
-            dgv.Columns[0].Name = "Nombre";         dgv.Columns[0].FillWeight = 25;
-            dgv.Columns[1].Name = "% Original";     dgv.Columns[1].FillWeight = 12;
+            dgv.ColumnCount = 5;
+            dgv.Columns[0].Name = "Colorante";         dgv.Columns[0].FillWeight = 25;
+            dgv.Columns[1].Name = "% Receta Original";     dgv.Columns[1].FillWeight = 12;
             dgv.Columns[2].Name = "Ajuste DL";      dgv.Columns[2].FillWeight = 12;
             dgv.Columns[3].Name = "Ajuste DH";      dgv.Columns[3].FillWeight = 12;
             dgv.Columns[4].Name = "% Nueva Receta"; dgv.Columns[4].FillWeight = 18;
-            dgv.Columns[5].Name = "Status";         dgv.Columns[5].FillWeight = 21;
             return dgv;
         }
 
@@ -299,21 +310,36 @@ namespace Color
             dgv.ColumnCount = 6;
             dgv.Columns[0].Name = "EJE";          dgv.Columns[0].FillWeight = 10;
             dgv.Columns[1].Name = "VARIACION";    dgv.Columns[1].FillWeight = 12;
-            dgv.Columns[2].Name = "%";            dgv.Columns[2].FillWeight = 10;
-            dgv.Columns[3].Name = "DIAGNOSTICO";   dgv.Columns[3].FillWeight = 25;
-            dgv.Columns[4].Name = "IMPACTO";      dgv.Columns[4].FillWeight = 18;
+            dgv.Columns[2].Name = "Δ";        dgv.Columns[2].FillWeight = 10;
+            dgv.Columns[3].Name = "IMPACTO";      dgv.Columns[3].FillWeight = 18;
+            dgv.Columns[4].Name = "DIAGNOSTICO";   dgv.Columns[4].FillWeight = 25;
             dgv.Columns[5].Name = "RECOMENDACION"; dgv.Columns[5].FillWeight = 25;
             return dgv;
         }
 
         private void ApplyTranslucentStyle(DataGridView dgv)
         {
-            var faintColor = System.Drawing.Color.FromArgb(180, 180, 180);
+            var faintColor = System.Drawing.Color.FromArgb(160, 170, 180);
             dgv.DefaultCellStyle.ForeColor = faintColor;
             dgv.ColumnHeadersDefaultCellStyle.ForeColor = faintColor;
             dgv.GridColor = System.Drawing.Color.FromArgb(245, 245, 245);
-            dgv.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(250, 250, 250);
+            dgv.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
             dgv.DefaultCellStyle.SelectionForeColor = faintColor;
+
+            dgv.CellMouseEnter += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    dgv.Rows[e.RowIndex].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                    dgv.Rows[e.RowIndex].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+                    dgv.Rows[e.RowIndex].Cells[0].Style.ForeColor = System.Drawing.Color.White;
+                }
+            };
+            dgv.CellMouseLeave += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    dgv.Rows[e.RowIndex].DefaultCellStyle.BackColor = System.Drawing.Color.White;
+                    dgv.Rows[e.RowIndex].DefaultCellStyle.ForeColor = faintColor;
+                    dgv.Rows[e.RowIndex].Cells[0].Style.ForeColor = faintColor;
+                }
+            };
         }
 
         private Button CreateStyledButton(string text, System.Drawing.Color color)
@@ -331,8 +357,8 @@ namespace Color
 
         private Label CreateHeaderLabel(string text, bool tenue = false)
         {
-            var backColor = tenue ? System.Drawing.Color.FromArgb(235, 240, 245) : System.Drawing.Color.FromArgb(0, 102, 204);
-            var foreColor = tenue ? System.Drawing.Color.FromArgb(160, 170, 180) : System.Drawing.Color.White;
+            var backColor = tenue ? System.Drawing.Color.FromArgb(80, 80, 80) : System.Drawing.Color.FromArgb(0, 102, 204);
+            var foreColor = tenue ? System.Drawing.Color.FromArgb(200, 200, 200) : System.Drawing.Color.White;
             return new Label
             {
                 Text = " " + text,
@@ -349,7 +375,17 @@ namespace Color
             if (shadeData != null)
             {
                 dgvShadeHistory.Rows.Clear();
-                dgvShadeHistory.Rows.Add("Shade Name", shadeData.ShadeName ?? "N/A", "");
+                int idxShade = dgvShadeHistory.Rows.Add("Shade Name", shadeData.ShadeName ?? "N/A", "");
+                dgvShadeHistory.Rows[idxShade].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+                dgvShadeHistory.Rows[idxShade].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                dgvShadeHistory.Rows[idxShade].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+                dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+
+                int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration");
+                dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+                dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+
                 if (shadeData.Recipe != null)
                 {
                     foreach (var ing in shadeData.Recipe)
@@ -370,14 +406,21 @@ namespace Color
                 
                 dgvComparisonSummary.Rows.Clear();
                 string shadeName = !string.IsNullOrEmpty(d65.ShadeName) ? d65.ShadeName : (shadeData?.ShadeName ?? "N/A");
-                dgvComparisonSummary.Rows.Add("Shade Name", shadeName, "", "");
+                
+                int idxShade2 = dgvComparisonSummary.Rows.Add("Shade Name", shadeName, "", "");
+                dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+                dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+                dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+
+                int idxHdr2 = dgvComparisonSummary.Rows.Add("Facet", "Tolerance", "Illuminant", "Result");
+                dgvComparisonSummary.Rows[idxHdr2].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+                dgvComparisonSummary.Rows[idxHdr2].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
                 
                 // --- Cuadro de Tolerancia CMC Estándar (Formato Profesional) ---
                 string tolSummary = $"DE {DE_MAX:F2}";
                 int tolIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolSummary, "", "");
-                dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-                dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(230, 240, 250);
-                dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
 
                 // --- Filas Detalladas (DL, DC, DH) ---
                 var resDL = Math.Abs(d65.DeltaL) <= DL_MAX ? "CUMPLE" : "NO CUMPLE";
@@ -450,9 +493,9 @@ namespace Color
 
             if (dE > 0 && dE <= DE_MAX)
             {
-                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
-                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
-                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "Normal");
+                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
+                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
                 ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
                 ApplyEjeStyle(dgv, i2, "DC (Brillo)");
                 ApplyEjeStyle(dgv, i3, "DH (Matiz)");
@@ -472,9 +515,9 @@ namespace Color
                     PercentChroma = toDbl(batch.DC) / 100.0
                 };
 
-                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", res.DiagnosticoL, res.ImpactoRecetaL, res.RecomendacionRecetaL);
-                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
-                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", res.ImpactoRecetaL, res.DiagnosticoL, res.RecomendacionRecetaL);
+                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
                 ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
                 ApplyEjeStyle(dgv, r2, "DC (Brillo)");
                 ApplyEjeStyle(dgv, r3, "DH (Matiz)");
@@ -488,6 +531,12 @@ namespace Color
             cell.Value = eje;
             cell.Style.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             cell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            if (dgv.DefaultCellStyle.SelectionBackColor == System.Drawing.Color.White)
+            {
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(160, 170, 180); // Light Gray
+                return;
+            }
 
             if (eje.StartsWith("DL"))
             {
@@ -515,14 +564,13 @@ namespace Color
                     ing.Original.ToString("F5"),
                     (ing.FactorDL >= 1 ? "+" : "") + ((ing.FactorDL - 1) * 100).ToString("F5"),
                     (ing.FactorDH >= 1 ? "+" : "") + ((ing.FactorDH - 1) * 100).ToString("F5"),
-                    ing.NewConcentration.ToString("F5"),
-                    ing.Status
+                    ing.NewConcentration.ToString("F5")
                 );
 
                 if (ing.Status == "SATURACIÓN")
                 {
-                    dgvCorrectiveRecipe.Rows[idx].Cells[5].Style.BackColor = System.Drawing.Color.MistyRose;
-                    dgvCorrectiveRecipe.Rows[idx].Cells[5].Style.ForeColor = System.Drawing.Color.Red;
+                    dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.BackColor = System.Drawing.Color.MistyRose;
+                    dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.ForeColor = System.Drawing.Color.Red;
                 }
             }
 
@@ -552,9 +600,9 @@ namespace Color
 
             if (res.CmcValue <= DE_MAX || res.DeltaE <= DE_MAX)
             {
-                int i1 = dgv.Rows.Add("", (res.DeltaL * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
-                int i2 = dgv.Rows.Add("", (res.DeltaChroma * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
-                int i3 = dgv.Rows.Add("", (res.DeltaHue * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", (res.DeltaL * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "Normal");
+                int i2 = dgv.Rows.Add("", (res.DeltaChroma * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
+                int i3 = dgv.Rows.Add("", (res.DeltaHue * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
                 ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
                 ApplyEjeStyle(dgv, i2, "DC (Brillo)");
                 ApplyEjeStyle(dgv, i3, "DH (Matiz)");
@@ -565,9 +613,9 @@ namespace Color
                 string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
                 string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
 
-                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", diag, imp, rec);
-                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
-                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", imp, diag, rec);
+                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
                 ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
                 ApplyEjeStyle(dgv, r2, "DC (Brillo)");
                 ApplyEjeStyle(dgv, r3, "DH (Matiz)");
@@ -581,6 +629,17 @@ namespace Color
             if (report == null) return;
 
             dgvShadeHistory.Rows.Clear();
+            int idxShade = dgvShadeHistory.Rows.Add("Shade Name", report.Batch?.ShadeName ?? "N/A", "");
+            dgvShadeHistory.Rows[idxShade].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            dgvShadeHistory.Rows[idxShade].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvShadeHistory.Rows[idxShade].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+            dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+
+            int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration");
+            dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+
             if (report.Recipe != null)
             {
                 foreach (var ing in report.Recipe)
@@ -593,14 +652,20 @@ namespace Color
             var illA = report.CmcDifferences.FirstOrDefault(c => c.Illuminant.Contains("A") || c.Illuminant.Contains("CWF"));
 
             dgvComparisonSummary.Rows.Clear();
-            dgvComparisonSummary.Rows.Add("Shade Name", report.Batch?.ShadeName ?? "N/A", "", "");
+            int idxShade2 = dgvComparisonSummary.Rows.Add("Shade Name", report.Batch?.ShadeName ?? "N/A", "", "");
+            dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+            dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvComparisonSummary.Rows[idxShade2].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+
+            int idxHdr2 = dgvComparisonSummary.Rows.Add("Dato", "Tolerancia", "Iluminante", "Resultado");
+            dgvComparisonSummary.Rows[idxHdr2].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            dgvComparisonSummary.Rows[idxHdr2].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             
             // --- Cuadro de Tolerancia CMC Estándar (Formato Profesional) ---
             string tolSummary = $"DE {report.TolDE:F2}";
             int tIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolSummary, "", "");
-            dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(230, 240, 250);
-            dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
 
             // --- Filas Detalladas (DL, DC, DH) ---
             if (d65 != null)
@@ -705,9 +770,9 @@ namespace Color
 
             if (dE > 0 && dE <= tolDE)
             {
-                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "LOTE APROBADO");
-                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
-                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "-");
+                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
+                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
                 ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
                 ApplyEjeStyle(dgv, i2, "DC (Brillo)");
                 ApplyEjeStyle(dgv, i3, "DH (Matiz)");
