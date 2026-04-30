@@ -196,12 +196,12 @@ namespace Colorimetria
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));   
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));    
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));    
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));    
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             // Fila 0: Título "DATOS DE MEDICIÓN"
@@ -514,7 +514,7 @@ namespace Colorimetria
                 if (_report != null && _report.Measures != null)
                 {
                     var d65Std = _report.Measures.Find(m => m.Illuminant == "D65" && m.Type == "Std");
-                    
+
                     // Priorizar los valores del reporte si existen. Solo sincronizar si están vacíos.
                     if (d65Std != null && string.IsNullOrWhiteSpace(_shadeResult.StdL))
                     {

@@ -46,6 +46,7 @@ namespace Color
         public double DeltaHue { get; set; }
         public double? DeltaCMC { get; set; }
 
+
         // Texto crudo (del OCR) solo para diagnóstico
         public string LightnessFlagOcr { get; set; }
         public string ChromaFlagOcr { get; set; }
@@ -99,7 +100,7 @@ namespace Color
         public double dL { get; set; }
         public double dC { get; set; }
         public double dH { get; set; }
-        public string PF { get; set; } 
+        public string PF { get; set; }
     }
     public class OcrReport
     {
@@ -116,6 +117,7 @@ namespace Color
 
         // --- Estructura para Historial Detallado (Know-How) ---
         public BatchInfo Batch { get; set; } = new BatchInfo();
+        public List<RecipeItem> Recipe { get; set; } = new List<RecipeItem>();
 
         public string DiagnosticoL { get; set; }
         public string Recomendacion { get; set; }
@@ -413,11 +415,11 @@ namespace Color
             }
 
             report.ParseLog.Add(string.Format("[OPENCV] Datos desde fila {0}", dataStartRow));
-            
+
             // --- EVOLUCIÓN UNIVERSAL INTELIGENTE (DATOS COLORIMÉTRICOS) ---
             int dominantPrecision = DetectDominantPrecision(cellTexts, dataStartRow, _rowCount);
             report.ParseLog.Add(string.Format("[SMART] Precisión dominante detectada: {0} decimales", dominantPrecision));
-            
+
             RepairNumericCellsByContext(cellTexts, dataStartRow, _rowCount, dominantPrecision, report.ParseLog);
 
             // 4. Construir OcrReport desde las celdas
@@ -496,7 +498,7 @@ namespace Color
             }
 
             // Guardar marca de confusión si la tenía
-            if (hadConfusionChar && !text.Contains("CONF")) text += "!"; 
+            if (hadConfusionChar && !text.Contains("CONF")) text += "!";
 
             return text;
         }
@@ -507,7 +509,7 @@ namespace Color
             for (int r = startRow; r < totalRows; r++)
             {
                 if (!cellTexts.ContainsKey(r)) continue;
-                for (int c = 2; c <= 7; c++) 
+                for (int c = 2; c <= 7; c++)
                 {
                     if (!cellTexts[r].ContainsKey(c)) continue;
                     string val = cellTexts[r][c];
@@ -521,7 +523,7 @@ namespace Color
                 }
             }
 
-            if (precisionCounts.Count == 0) return 2; 
+            if (precisionCounts.Count == 0) return 2;
             return precisionCounts.GroupBy(n => n)
                                  .OrderByDescending(g => g.Count())
                                  .First().Key;
@@ -538,7 +540,7 @@ namespace Color
                     string val = cellTexts[r][c];
                     bool hasConfusion = val.Contains("!");
                     val = val.Replace("!", "");
-                    
+
                     string digits = Regex.Replace(val, @"[^\d]", "");
                     if (string.IsNullOrEmpty(digits)) continue;
 
@@ -556,7 +558,7 @@ namespace Color
                             // Ej: "1854" -> "18.54"
                             restored = digits.Insert(digits.Length - precision, ".");
                         }
-                        
+
                         log.Add(string.Format("[SMART] R{0}C{1}: Restaurando punto '{2}' -> '{3}'", r, c, val, restored));
                         val = restored;
                     }
@@ -651,7 +653,7 @@ namespace Color
                     double errDiv = Math.Abs(dCDiv10 - dCReported);
                     double errOrig = Math.Abs(dCCalculated - dCReported);
 
-                    if (errDiv < errOrig * 0.3) 
+                    if (errDiv < errOrig * 0.3)
                     {
                         report.ParseLog.Add(string.Format(
                             "[CMC-VAL] {0}: ΔC calculado={1:F3} reportado={2:F3} ratio={3:F1} → ×10 detectado, dividiendo por 10",
@@ -1015,7 +1017,7 @@ namespace Color
                 }
             }
 
-            if (count == 0) return 50f; 
+            if (count == 0) return 50f;
             double mean = sum / count;
             double variance = (sumSq / count) - (mean * mean);
             return (float)Math.Max(0, variance);

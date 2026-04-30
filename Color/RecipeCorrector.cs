@@ -33,6 +33,27 @@ namespace Color
         public double Calc3 { get; set; }   
     }
 
+    public class CorrectiveIngredientDetail
+    {
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public double Original { get; set; }
+        public double FactorDL { get; set; }
+        public double FactorDH { get; set; }
+        public double NewConcentration { get; set; }
+        public string Status { get; set; } // "OK", "SATURACIÓN", "REVISAR"
+    }
+
+    public class CorrectiveRecipeResult
+    {
+        public string Illuminant { get; set; }
+        public List<CorrectiveIngredientDetail> Ingredients { get; set; } = new List<CorrectiveIngredientDetail>();
+        public double TotalOriginal { get; set; }
+        public double TotalNew { get; set; }
+        public string AlertMessage { get; set; }
+        public string AlertSeverity { get; set; } // "None", "Warning", "Critical", "Error"
+    }
+
     ///Resultado completo de corrección para un iluminante.
     public class IlluminantCorrectionResult
     {
@@ -77,7 +98,6 @@ namespace Color
             return $"{instruccion} «({Math.Abs(porcentaje):F1}%)»";
         }
 
-        /// Calcula la corrección de la receta para cada iluminante usando la fómula secuencial de Excel.
         public static List<IlluminantCorrectionResult> Calculate(
             List<RecipeIngredientInput> ingredients,
             List<IlluminantDelta> deltas)
@@ -143,6 +163,102 @@ namespace Color
             }
 
             return results;
+        }
+
+        // ── NUEVO MÓDULO DE RECETA CORRECTIVA (PROPUESTA COATS 2026) ──
+
+        public static CorrectiveRecipeResult CalculateCorrectiveRecipe(
+            List<RecipeIngredientInput> originalRecipe,
+            ColorCorrectionResult analysis)
+        {
+            var result = new CorrectiveRecipeResult
+            {
+                Illuminant = analysis.Illuminant,
+                TotalOriginal = originalRecipe.Sum(i => i.Percentage)
+            };
+
+            // 1. Factores de Entrada
+            double factorDL = 1.0 + (analysis.DeltaL * 10.0 / 100.0);
+            double factorDH = 1.0 + (analysis.DeltaHue * 10.0 / 100.0);
+            
+            // 2. Identificación del Matizador
+            // Se asume que DH se aplica al colorante que necesita corregir el matiz.
+            // Según propuesta: "Factor_DH se aplica exclusivamente al colorante identificado como Principal/Matizador"
+            var matizador = IdentifyMatizador(originalRecipe, analysis.DeltaHue);
+
+            bool incompatibility = (analysis.DeltaHue != 0 && matizador == null);
+
+            foreach (var ing in originalRecipe)
+            {
+                bool isMatizador = (matizador != null && ing.Code == matizador.Code);
+                double fDH = isMatizador ? factorDH : 1.0;
+                
+                double newConc = ing.Percentage * factorDL * fDH;
+                string status = "OK";
+
+                // Alerta de Saturación (Crítica)
+                if (newConc > 4.5) status = "SATURACIÓN";
+
+                result.Ingredients.Add(new CorrectiveIngredientDetail
+                {
+                    Code = ing.Code,
+                    Name = ing.Name,
+                    Original = ing.Percentage,
+                    FactorDL = factorDL,
+                    FactorDH = fDH,
+                    NewConcentration = Math.Round(newConc, 5),
+                    Status = status
+                });
+            }
+
+            result.TotalNew = result.Ingredients.Sum(i => i.NewConcentration);
+
+            // 3. Sistema de Alertas
+            double combinedFactor = factorDL * factorDH;
+            if (incompatibility)
+            {
+                result.AlertMessage = "Error: Incompatibilidad de matiz detectada";
+                result.AlertSeverity = "Error";
+            }
+            else if (result.Ingredients.Any(i => i.Status == "SATURACIÓN"))
+            {
+                result.AlertMessage = "Límite de saturación excedido: Riesgo de solidez deficiente";
+                result.AlertSeverity = "Critical";
+            }
+            else if (combinedFactor > 1.30)
+            {
+                result.AlertMessage = "Ajuste agresivo detectado: Verificar condiciones de máquina";
+                result.AlertSeverity = "Warning";
+            }
+            else
+            {
+                result.AlertMessage = "Receta optimizada correctamente";
+                result.AlertSeverity = "None";
+            }
+
+            return result;
+        }
+
+        private static RecipeIngredientInput IdentifyMatizador(List<RecipeIngredientInput> ingredients, double deltaHue)
+        {
+            if (Math.Abs(deltaHue) < 0.01) return null;
+
+            // Mapeo simplificado de familias Coats
+            // Si el desvío es positivo (Azulado en nuestra escala), necesitamos corregir con Rojo/Rubine
+            // Si el desvío es negativo (Rojizo), necesitamos corregir con Amarillo o Azul según el eje.
+            // Para esta propuesta, usaremos keywords:
+            
+            string[] keywords = null;
+            if (deltaHue > 0) keywords = new[] { "RED", "RUBINE", "PINK", "BORDEAUX", "ROJO" };
+            else keywords = new[] { "YELLOW", "GOLDEN", "ORANGE", "BLUE", "NAVY", "TURQUOISE", "AMARILLO", "AZUL" };
+
+            foreach (var kw in keywords)
+            {
+                var found = ingredients.FirstOrDefault(i => i.Name.ToUpper().Contains(kw));
+                if (found != null) return found;
+            }
+
+            return ingredients.OrderByDescending(i => i.Percentage).FirstOrDefault(); // Fallback al de mayor concentración
         }
 
         public static List<RecipeIngredientInput> IngredientsFromShade(ShadeExtractionResult shade)
@@ -229,9 +345,9 @@ namespace Color
                     rowFormat += $" {{{j + 1},14}} |";
                     
                     if (j == 0)
-                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", val, orig / totalOrig));
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F5} | {1,4:P0}»", val, orig / totalOrig));
                     else
-                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", val, orig / totalOrig));
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F5} | {1,4:P0}", val, orig / totalOrig));
                 }
                 
                 double avg = sumVal / validResults.Count;
@@ -257,9 +373,9 @@ namespace Color
                 sumTotalAvg += sumCalc2;
                 totFormat += $" {{{j + 1},14}} |";
                 if (j == 0)
-                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | 100%»", sumCalc2));
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F5} | 100%»", sumCalc2));
                 else
-                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", sumCalc2));
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F5} | 100%", sumCalc2));
             }
             double totalAvg = sumTotalAvg / validResults.Count;
             totFormat += $" {{{validResults.Count + 1},14}}";
@@ -325,16 +441,16 @@ namespace Color
                     // Se aplica la etiqueta de importancia si es D65
                     sb.AppendLine(string.Format("  {0,-28} {1,14:F5} {2,12:P1} {3,14} {4,12}",
                         ing.Name, ing.Original, ing.Calc1, 
-                        tag + ing.Calc2.ToString("F3", CultureInfo.InvariantCulture) + endTag,
-                        tag + ing.Calc3.ToString("F3", CultureInfo.InvariantCulture) + endTag));
+                        tag + ing.Calc2.ToString("F5", CultureInfo.InvariantCulture) + endTag,
+                        tag + ing.Calc3.ToString("F5", CultureInfo.InvariantCulture) + endTag));
                 }
 
                 sb.AppendLine("  " + new string('─', 84));
                 
                 sb.AppendLine(string.Format("  {0,-28} {1,14:F5} {2,12} {3,14} {4,12}",
                     "  [Total]", r.TotalOriginal, "100%", 
-                    tag + r.SumCalc2.ToString("F3", CultureInfo.InvariantCulture) + endTag,
-                    tag + r.SumCalc3.ToString("F3", CultureInfo.InvariantCulture) + endTag));
+                    tag + r.SumCalc2.ToString("F5", CultureInfo.InvariantCulture) + endTag,
+                    tag + r.SumCalc3.ToString("F5", CultureInfo.InvariantCulture) + endTag));
 
                 sb.AppendLine(string.Format("  {0,-28} {1,14} {2,12} {3,14} {4,12}",
                     "  Variación en la []", "", "Lightness", 
@@ -402,9 +518,9 @@ namespace Color
                     rowFormat += $" {{{j + 1},14}} |";
                     
                     if (j == 0)
-                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | {1,4:P0}»", val, val / sumCalc3));
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F5} | {1,4:P0}»", val, val / sumCalc3));
                     else
-                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | {1,4:P0}", val, val / sumCalc3));
+                        rowArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F5} | {1,4:P0}", val, val / sumCalc3));
                 }
                 
                 double avg = sumVal / validResults.Count;
@@ -428,12 +544,12 @@ namespace Color
                 double sumCalc3 = validResults[j].SumCalc3;
                 totFormat += $" {{{j + 1},14}} |";
                 if (j == 0)
-                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F3} | 100%»", sumCalc3));
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "«{0,6:F5} | 100%»", sumCalc3));
                 else
-                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", sumCalc3));
+                    totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F5} | 100%", sumCalc3));
             }
             totFormat += $" {{{validResults.Count + 1},14}}";
-            totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F3} | 100%", globalSumAvg));
+            totArgs.Add(string.Format(CultureInfo.InvariantCulture, "{0,6:F5} | 100%", globalSumAvg));
 
             sb.AppendLine(string.Format(totFormat, totArgs.ToArray()));
 

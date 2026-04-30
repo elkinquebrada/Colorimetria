@@ -192,7 +192,7 @@ namespace Color
                 Lab = ExtractLabValues(ocrText),
                 Batch = ExtractBatchMeasure(ocrText)
             };
-            
+
             // Extraer Std L A B del texto crudo (fallback)
             var std = ExtractStdLab(ocrText);
             if (std != null)
@@ -217,22 +217,22 @@ namespace Color
         public (string L, string A, string B)? ExtractStdLab(string ocrText)
         {
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
-            
+
             // 1. Intento con Regex principal (que busca la palabra "Std")
             var m = StdLabRegex.Match(ocrText);
             if (m.Success)
             {
-                return (NormalizeLabValue(m.Groups[1].Value), 
-                        NormalizeLabValue(m.Groups[2].Value), 
+                return (NormalizeLabValue(m.Groups[1].Value),
+                        NormalizeLabValue(m.Groups[2].Value),
                         NormalizeLabValue(m.Groups[3].Value));
             }
-            
+
             // 2. Fallback: Buscar los primeros 3 números en la parte superior del reporte (donde suele estar el estándar)
             var mNum = Regex.Matches(ocrText, @"[-+]?\d+(?:\s?[.,]\s?\d+)?");
             if (mNum.Count >= 3)
             {
-                return (NormalizeLabValue(mNum[0].Value), 
-                        NormalizeLabValue(mNum[1].Value), 
+                return (NormalizeLabValue(mNum[0].Value),
+                        NormalizeLabValue(mNum[1].Value),
                         NormalizeLabValue(mNum[2].Value));
             }
 
@@ -315,7 +315,7 @@ namespace Color
             string recipeArea = ocrText;
             int startIdx = ocrText.IndexOf("Recipe Version", StringComparison.OrdinalIgnoreCase);
             if (startIdx < 0) startIdx = ocrText.IndexOf("Recipe Number", StringComparison.OrdinalIgnoreCase); // fallback
-            
+
             int endIdx = ocrText.IndexOf("Dyelots for Recipe", StringComparison.OrdinalIgnoreCase);
             if (endIdx < 0) endIdx = ocrText.IndexOf("Prescreening", StringComparison.OrdinalIgnoreCase); // fallback
 
@@ -339,10 +339,10 @@ namespace Color
                 var code = m.Groups[1].Value.Trim();
                 var name = m.Groups[2].Value.Trim();
                 var pctRaw = m.Groups[3].Value.Trim().Replace(" ", "");
-                
+
                 // Limpiar dígitos para detectar precisión real capturada
                 string digitsOnly = Regex.Replace(pctRaw, @"[^\d]", "");
-                
+
                 // Detectar cuántos decimales leyó el OCR originalmente (si hay punto)
                 int decPos = pctRaw.IndexOf('.');
                 if (decPos >= 0)
@@ -357,7 +357,7 @@ namespace Color
             }
 
             // Determinar precisión dominante (Moda)
-            int dominantPrecision = 5; 
+            int dominantPrecision = 5;
             if (decimalCounts.Count > 0)
             {
                 dominantPrecision = decimalCounts.GroupBy(n => n)
@@ -371,7 +371,7 @@ namespace Color
                 string name = item.name;
                 string pctRaw = item.pctRaw;
                 string digits = item.digits;
-                
+
                 char lastCharName = name.Length > 0 ? name[name.Length - 1] : ' ';
                 char firstCharPct = pctRaw.Length > 0 ? pctRaw[0] : ' ';
                 bool hasConfusionEvidence = (lastCharName == 'L' || lastCharName == 'I' || lastCharName == '|' ||
@@ -393,7 +393,7 @@ namespace Color
                         // Ej: L7826 (donde L colapsó "1.1")
                         pctRaw = "1.1" + digits;
                     }
-                    
+
                     // Limpiar el carácter de confusión del nombre si era una letra pegada
                     if (char.IsLetter(lastCharName)) name = name.Substring(0, name.Length - 1).Trim();
                 }
@@ -412,7 +412,7 @@ namespace Color
 
                 // Normalización final conservadora
                 pctRaw = pctRaw.Replace('O', '0').Replace('o', '0').Replace('S', '5').Replace('Z', '2').Replace(',', '.').Replace("..", ".");
-                
+
                 list.Add(new RecipeItem
                 {
                     Code = item.code,
@@ -529,7 +529,7 @@ namespace Color
 
                 // Extraer Lot No (segunda columna aprox o patrón letra+números)
                 var lotMatch = Regex.Match(line, @"\b([A-Z]\d{6,9}|\d{6,10})\b");
-                if (lotMatch.Success) 
+                if (lotMatch.Success)
                 {
                     res.LotNo = lotMatch.Value;
                 }
@@ -671,11 +671,11 @@ namespace Color
                             {
                                 // Cambio a AdaptiveThreshold: 
                                 Cv2.AdaptiveThreshold(resized, thresholded, 255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.Binary, 11, 2);
-                                
+
                                 using (Bitmap bmpToOcr = BitmapConverter.ToBitmap(thresholded))
                                 {
                                     using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))
-                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleLine)) 
+                                    using (var page = engine.Process(bmpToOcr, PageSegMode.SingleLine))
                                     {
                                         ocrText = (page.GetText() ?? string.Empty).Replace(',', '.');
                                     }
@@ -693,10 +693,10 @@ namespace Color
         private string NormalizeLabValue(string val)
         {
             if (string.IsNullOrWhiteSpace(val)) return "0.00";
-            
+
             // Eliminar espacios y limpiar caracteres no numericos (excepto punto y signo)
             string clean = Regex.Replace(val, @"[^\d.-]", "");
-            
+
             // Si tiene 4 dígitos sin punto (ej: 3093), asumimos que el punto va antes de los últimos 2 (30.93)
             // Si tiene 3 dígitos sin punto (ej: 860), asumimos 8.60
             if (!clean.Contains(".") && clean.Length >= 3)
@@ -704,7 +704,7 @@ namespace Color
                 int len = clean.Length;
                 clean = clean.Insert(len - 2, ".");
             }
-            
+
             return clean;
         }
 
@@ -732,17 +732,17 @@ namespace Color
                     using (var roi = new Mat(mat, roiRect))
                     {
                         Cv2.CvtColor(roi, gray, ColorConversionCodes.BGR2GRAY);
-                        
+
                         using (var resized = new Mat())
                         {
                             // Escala 4x con interpolación cúbica (como Dataextraxtor) para nitidez decimal
                             Cv2.Resize(gray, resized, new OpenCvSharp.Size(0, 0), 4.0, 4.0, InterpolationFlags.Cubic);
-                            
+
                             using (var thresholded = new Mat())
                             {
                                 // Binarización de Otsu para limpiar el ruido del fondo
                                 Cv2.Threshold(resized, thresholded, 0, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
-                                
+
                                 using (Bitmap bmpToOcr = BitmapConverter.ToBitmap(thresholded))
                                 {
                                     using (var engine = new TesseractEngine(_tessdataPath, OCR_LANG, EngineMode.Default))

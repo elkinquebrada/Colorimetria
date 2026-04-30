@@ -33,6 +33,8 @@ namespace Color
         private DataGridView dgvAnalysisRight;
         private DataGridView dgvAnalysisRightTL84;
         private DataGridView dgvAnalysisRightA;
+        private DataGridView dgvCorrectiveRecipe;
+        private Label lblAlertCorrective;
 
         private RichTextBox txtReport;
         private RichTextBox txtRecomendacion;
@@ -158,8 +160,25 @@ namespace Color
                 catch { } 
             };
 
+            var pnlCorrective = new Panel { Dock = DockStyle.Bottom, Height = 220 };
+            dgvCorrectiveRecipe = CreateCorrectiveGrid();
+            lblAlertCorrective = new Label { 
+                Dock = DockStyle.Bottom, 
+                Height = 35, 
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = System.Drawing.Color.White,
+                BackColor = System.Drawing.Color.Gray
+            };
+            pnlCorrective.Controls.Add(dgvCorrectiveRecipe);
+            pnlCorrective.Controls.Add(lblAlertCorrective);
+            pnlCorrective.Controls.Add(CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)"));
+
             var pnlLeft = CreatePanelWithGrids("ANALISIS DE SHADE HISTORY REPORT", dgvShadeHistory, 
                                                "ANALISIS ILUMINANTE D65", dgvAnalysisLeft);
+            pnlLeft.Controls.Add(pnlCorrective);
+            pnlCorrective.BringToFront();
+            pnlCorrective.Dock = DockStyle.Bottom;
 
             var pnlRight = CreatePanelWithManyGrids("ANALISIS DE SAMPLE COMPARISON", dgvComparisonSummary, 
                                                    "ANALISIS ILUMINANTE D65", dgvAnalysisRight,
@@ -198,16 +217,22 @@ namespace Color
         {
             var pnl = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 8 };
             pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // Header 1
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); // Grid 1
+            pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 135)); // Grid 1 (Summary) - Ampliado para 5 filas
             pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 2 (D65)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 35)); // Grid 2 (D65)
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 2 (D65 - Principal)
             pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 3 (TL84)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 20)); // Grid 3 (TL84)
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 3 (TL84)
             pnl.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // Header 4 (A)
-            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 20)); // Grid 4 (A)
+            pnl.RowStyles.Add(new RowStyle(SizeType.Percent, 33)); // Grid 4 (A)
 
             pnl.Controls.Add(CreateHeaderLabel(h1), 0, 0);
             pnl.Controls.Add(g1, 0, 1);
+            
+            // Ajustar pesos de columnas para Summary
+            g1.Columns[0].FillWeight = 20;
+            g1.Columns[1].FillWeight = 50;
+            g1.Columns[2].FillWeight = 15;
+            g1.Columns[3].FillWeight = 15;
             pnl.Controls.Add(CreateHeaderLabel(h2), 0, 2);
             pnl.Controls.Add(g2, 0, 3);
             pnl.Controls.Add(CreateHeaderLabel(h3, true), 0, 4);
@@ -245,7 +270,7 @@ namespace Color
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 Font = new Font("Segoe UI", 8.2f), 
-                ScrollBars = ScrollBars.None,
+                ScrollBars = ScrollBars.Vertical,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
                 DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True }
             };
@@ -255,15 +280,29 @@ namespace Color
             return dgv;
         }
 
+        private DataGridView CreateCorrectiveGrid()
+        {
+            var dgv = CreateStyledGrid();
+            dgv.ColumnCount = 6;
+            dgv.Columns[0].Name = "Nombre";         dgv.Columns[0].FillWeight = 25;
+            dgv.Columns[1].Name = "% Original";     dgv.Columns[1].FillWeight = 12;
+            dgv.Columns[2].Name = "Ajuste DL";      dgv.Columns[2].FillWeight = 12;
+            dgv.Columns[3].Name = "Ajuste DH";      dgv.Columns[3].FillWeight = 12;
+            dgv.Columns[4].Name = "% Nueva Receta"; dgv.Columns[4].FillWeight = 18;
+            dgv.Columns[5].Name = "Status";         dgv.Columns[5].FillWeight = 21;
+            return dgv;
+        }
+
         private DataGridView CreateAnalysisGrid()
         {
             var dgv = CreateStyledGrid();
-            dgv.ColumnCount = 5;
-            dgv.Columns[0].Name = "VARIACION";
-            dgv.Columns[1].Name = "%";
-            dgv.Columns[2].Name = "DIAGNOSTICO";
-            dgv.Columns[3].Name = "IMPACTO";
-            dgv.Columns[4].Name = "RECOMENDACION";
+            dgv.ColumnCount = 6;
+            dgv.Columns[0].Name = "EJE";          dgv.Columns[0].FillWeight = 10;
+            dgv.Columns[1].Name = "VARIACION";    dgv.Columns[1].FillWeight = 12;
+            dgv.Columns[2].Name = "%";            dgv.Columns[2].FillWeight = 10;
+            dgv.Columns[3].Name = "DIAGNOSTICO";   dgv.Columns[3].FillWeight = 25;
+            dgv.Columns[4].Name = "IMPACTO";      dgv.Columns[4].FillWeight = 18;
+            dgv.Columns[5].Name = "RECOMENDACION"; dgv.Columns[5].FillWeight = 25;
             return dgv;
         }
 
@@ -334,19 +373,25 @@ namespace Color
                 dgvComparisonSummary.Rows.Add("Shade Name", shadeName, "", "");
                 
                 // --- Cuadro de Tolerancia CMC Estándar (Formato Profesional) ---
-                string tolStr = $"DE {DE_MAX:F2}  |  DL {DL_MAX:F3}  |  DC {DC_MAX:F3}  |  DH {DH_MAX:F3}";
-                int tolIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolStr, "", "");
+                string tolSummary = $"DE {DE_MAX:F2}";
+                int tolIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolSummary, "", "");
                 dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
                 dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(230, 240, 250);
                 dgvComparisonSummary.Rows[tolIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
-                
-                string resDL = Math.Abs(d65.DeltaL) <= DL_MAX ? "CUMPLE" : "NO CUMPLE";
-                string resDC = (ill2 != null) ? (Math.Abs(ill2.DeltaChroma) <= DC_MAX ? "CUMPLE" : "NO CUMPLE") : "N/A";
-                string resDH = (ill3 != null) ? (Math.Abs(ill3.DeltaHue) <= DH_MAX ? "CUMPLE" : "NO CUMPLE") : "N/A";
 
-                dgvComparisonSummary.Rows.Add("DL", DL_MAX.ToString("F3"), d65.Illuminant, resDL);
-                dgvComparisonSummary.Rows.Add("DC", DC_MAX.ToString("F3"), ill2?.Illuminant ?? "TL84", resDC);
-                dgvComparisonSummary.Rows.Add("DH", DH_MAX.ToString("F3"), ill3?.Illuminant ?? "A", resDH);
+                // --- Filas Detalladas (DL, DC, DH) ---
+                var resDL = Math.Abs(d65.DeltaL) <= DL_MAX ? "CUMPLE" : "NO CUMPLE";
+                int idxDL = dgvComparisonSummary.Rows.Add("DL", DL_MAX.ToString("F3"), "D65", resDL);
+                if (resDL == "NO CUMPLE") dgvComparisonSummary.Rows[idxDL].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+
+                var resDC = (ill2 != null && Math.Abs(ill2.DeltaChroma) <= DC_MAX) ? "CUMPLE" : "NO CUMPLE";
+                int idxDC = dgvComparisonSummary.Rows.Add("DC", DC_MAX.ToString("F3"), (ill2?.Illuminant ?? "TL84"), resDC);
+                if (resDC == "NO CUMPLE") dgvComparisonSummary.Rows[idxDC].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+
+                var resDH = (ill3 != null && Math.Abs(ill3.DeltaHue) <= DH_MAX) ? "CUMPLE" : "NO CUMPLE";
+                int idxDH = dgvComparisonSummary.Rows.Add("DH", DH_MAX.ToString("F3"), (ill3?.Illuminant ?? "A"), resDH);
+                if (resDH == "NO CUMPLE") dgvComparisonSummary.Rows[idxDH].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+                
                 
                 // --- TABLA IZQUIERDA: Datos del Shade History Report (OCR) ---
                 if (shadeData != null && shadeData.Batch != null)
@@ -363,6 +408,14 @@ namespace Color
                 FillAnalysisGrid(dgvAnalysisRight, d65, false);
                 if (ill2 != null) FillAnalysisGrid(dgvAnalysisRightTL84, ill2, false);
                 if (ill3 != null) FillAnalysisGrid(dgvAnalysisRightA, ill3, false);
+
+                // --- CALCULO DE RECETA CORRECTIVA (D65) ---
+                if (shadeData != null)
+                {
+                    var ingredients = RecipeCorrector.IngredientsFromShade(shadeData);
+                    var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, d65);
+                    FillCorrectiveRecipeGrid(correctiveResult);
+                }
             }
         }
 
@@ -397,9 +450,12 @@ namespace Color
 
             if (dE > 0 && dE <= DE_MAX)
             {
-                dgv.Rows.Add("DL", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
-                dgv.Rows.Add("DC", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
-                dgv.Rows.Add("DH", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
+                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, i2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, i3, "DH (Matiz)");
             }
             else
             {
@@ -416,9 +472,76 @@ namespace Color
                     PercentChroma = toDbl(batch.DC) / 100.0
                 };
 
-                dgv.Rows.Add("DL", res.DeltaL.ToString("F2"), "Carga Colorante", res.DescripcionL, res.RecomendacionL);
-                dgv.Rows.Add("DC", res.DeltaChroma.ToString("F2"), "Saturación", res.DiagnosisC, res.RecommendationC);
-                dgv.Rows.Add("DH", res.DeltaHue.ToString("F2"), "Matiz/Hue", res.ImpactoMatiz, res.RecomendacionMatiz);
+                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", res.DiagnosticoL, res.ImpactoRecetaL, res.RecomendacionRecetaL);
+                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
+                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+                ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, r2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, r3, "DH (Matiz)");
+            }
+        }
+
+        private void ApplyEjeStyle(DataGridView dgv, int rowIndex, string eje)
+        {
+            if (rowIndex < 0 || rowIndex >= dgv.Rows.Count) return;
+            var cell = dgv.Rows[rowIndex].Cells[0];
+            cell.Value = eje;
+            cell.Style.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            cell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            if (eje.StartsWith("DL"))
+            {
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(45, 45, 45); // Dark Gray
+            }
+            else if (eje.StartsWith("DC"))
+            {
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100); // Medium Gray
+            }
+            else if (eje.StartsWith("DH"))
+            {
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0); // Dark Red
+            }
+        }
+
+        private void FillCorrectiveRecipeGrid(CorrectiveRecipeResult result)
+        {
+            dgvCorrectiveRecipe.Rows.Clear();
+            if (result == null) return;
+
+            foreach (var ing in result.Ingredients)
+            {
+                int idx = dgvCorrectiveRecipe.Rows.Add(
+                    ing.Name,
+                    ing.Original.ToString("F5"),
+                    (ing.FactorDL >= 1 ? "+" : "") + ((ing.FactorDL - 1) * 100).ToString("F5"),
+                    (ing.FactorDH >= 1 ? "+" : "") + ((ing.FactorDH - 1) * 100).ToString("F5"),
+                    ing.NewConcentration.ToString("F5"),
+                    ing.Status
+                );
+
+                if (ing.Status == "SATURACIÓN")
+                {
+                    dgvCorrectiveRecipe.Rows[idx].Cells[5].Style.BackColor = System.Drawing.Color.MistyRose;
+                    dgvCorrectiveRecipe.Rows[idx].Cells[5].Style.ForeColor = System.Drawing.Color.Red;
+                }
+            }
+
+            lblAlertCorrective.Text = result.AlertMessage;
+            switch (result.AlertSeverity)
+            {
+                case "Critical":
+                case "Error":
+                    lblAlertCorrective.BackColor = System.Drawing.Color.Firebrick;
+                    break;
+                case "Warning":
+                    lblAlertCorrective.BackColor = System.Drawing.Color.Goldenrod;
+                    break;
+                case "None":
+                    lblAlertCorrective.BackColor = System.Drawing.Color.ForestGreen;
+                    break;
+                default:
+                    lblAlertCorrective.BackColor = System.Drawing.Color.Gray;
+                    break;
             }
         }
 
@@ -429,80 +552,40 @@ namespace Color
 
             if (res.CmcValue <= DE_MAX || res.DeltaE <= DE_MAX)
             {
-                dgv.Rows.Add("DL", (res.DeltaL * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
-                dgv.Rows.Add("DC", (res.DeltaChroma * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
-                dgv.Rows.Add("DH", (res.DeltaHue * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", (res.DeltaL * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "LOTE APROBADO");
+                int i2 = dgv.Rows.Add("", (res.DeltaChroma * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                int i3 = dgv.Rows.Add("", (res.DeltaHue * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "Normal", "No requiere corrección");
+                ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, i2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, i3, "DH (Matiz)");
             }
             else
             {
-                if (isRecipe)
-                {
-                    dgv.Rows.Add("DL", res.DeltaL.ToString("F2"), "Carga Colorante", res.DescripcionL, res.RecomendacionL);
-                    dgv.Rows.Add("DC", res.DeltaChroma.ToString("F2"), "Saturación", res.DiagnosisC, res.RecommendationC);
-                    dgv.Rows.Add("DH", res.DeltaHue.ToString("F2"), "Matiz/Hue", res.ImpactoMatiz, res.RecomendacionMatiz);
-                }
-                else
-                {
-                    dgv.Rows.Add("DL", res.DeltaL.ToString("F2"), "Tiempo/Temperatura", res.DescripcionL, res.RecomendacionL);
-                    dgv.Rows.Add("DC", res.DeltaChroma.ToString("F2"), "Agotamiento químico", res.DiagnosisC, res.RecommendationC);
-                    dgv.Rows.Add("DH", res.DeltaHue.ToString("F2"), "Desvío de matiz", res.ImpactoMatiz, res.RecomendacionMatiz);
-                }
+                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+                string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+                string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+
+                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", diag, imp, rec);
+                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
+                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+                ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, r2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, r3, "DH (Matiz)");
             }
         }
 
-        // --- PANEL IZQUIERDO: RECETA / CONCENTRACIÓN ---
-        private string GetDiagLRecipe(double dL) => dL < 0 ? "Exceso de concentración en formulación" : dL > 0 ? "Falta de carga colorante en receta" : "Concentración correcta";
-        private string GetImpLRecipe(double dL) => dL < 0 ? "Oscurecimiento por sobre-concentración" : dL > 0 ? "Aclaramiento por falta de tinte" : "-";
-        private string GetInstLRecipe_ConCifra(double dL, double varL) => dL < 0 ? $"REDUCIR % TOTAL RECETA EN {Math.Abs(varL):F1}%" : $"AUMENTAR % TOTAL RECETA EN {Math.Abs(varL):F1}%";
-
-        // --- PANEL DERECHO: LOTE / PROCESO ---
-        private string GetDiagLLot(double dL) => dL < 0 ? "Lote Oscuro (Sobre-teñido)" : dL > 0 ? "Lote Claro (Bajo agotamiento)" : "Luminosidad OK";
-        private string GetImpLLot(double dL) => dL < 0 ? "Revisar curva de temperatura y agotamiento" : dL > 0 ? "Verificar fijación, pH y relación de baño" : "-";
-        private string GetInstLLot_ConCifra(double dL, double pctL) => dL < 0 ? $"REVISAR CURVA: Lote oscuro, corregir intensidad en {Math.Abs(pctL):F1}%" : $"VERIFICAR PH: Lote claro, aumentar carga en {Math.Abs(pctL):F1}%";
-
-        private string GetInstC(double dC) => dC < -1 ? "AUMENTAR FUERZA / CONC." : dC > 1 ? "REDUCIR CARGA / DILUIR" : "OK";
-        private string GetInstH(double dH) => dH < -1 ? "AUMENTAR ROJO / DISM. VERDE" : dH > 1 ? "AUMENTAR AZUL / DISM. AMAR." : "OK";
-
-        private string GetDiagC(double dC) => dC < 0 ? "Más Opaco / Sucio" : dC > 0 ? "Más Vivo / Saturado" : "Saturación OK";
-        private string GetDiagH(double dH) => dH < 0 ? "Desviación hacia tonos AZULES" : dH > 0 ? "Desviación hacia tonos AMARILLOS" : "Matiz OK";
-        private string GetImpH(double dH) => Math.Abs(dH) > 1 ? "Cambio tonal perceptible" : "Normal";
-
-        private string GetCombinedAxesText(double pctARatio, double pctBRatio)
-        {
-            double pA = pctARatio * 100.0;
-            double pB = pctBRatio * 100.0;
-            string partA = Math.Abs(pA) > 0.05 ? (pA > 0 ? $"Rojo {Math.Abs(pA):F1}%" : $"Verde {Math.Abs(pA):F1}%") : "";
-            string partB = Math.Abs(pB) > 0.05 ? (pB > 0 ? $"Amarillo {Math.Abs(pB):F1}%" : $"Azul {Math.Abs(pB):F1}%") : "";
-            if (!string.IsNullOrEmpty(partA) && !string.IsNullOrEmpty(partB)) return $"{partA} / {partB}";
-            return string.IsNullOrEmpty(partA) ? (string.IsNullOrEmpty(partB) ? "Matiz OK" : partB) : partA;
-        }
-
-        private string GetCombinedImpactText(double pctARatio, double pctBRatio)
-        {
-            double pA = pctARatio * 100.0;
-            double pB = pctBRatio * 100.0;
-            string partA = Math.Abs(pA) > 0.05 ? (pA > 0 ? "Más Rojizo" : "Más Verdoso") : "";
-            string partB = Math.Abs(pB) > 0.05 ? (pB > 0 ? "Más Amarillento" : "Más Azulado") : "";
-            if (!string.IsNullOrEmpty(partA) && !string.IsNullOrEmpty(partB)) return $"{partA} / {partB}";
-            return string.IsNullOrEmpty(partA) ? (string.IsNullOrEmpty(partB) ? "Normal" : partB) : partA;
-        }
-
-        private string GetCombinedInstText(double pctARatio, double pctBRatio, bool isRecipe)
-        {
-            double pA = pctARatio * 100.0;
-            double pB = pctBRatio * 100.0;
-            string suffix = isRecipe ? "" : " en baño";
-            
-            string instA = Math.Abs(pA) > 0.05 ? (pA > 0 ? $"Bajar Rojo {Math.Abs(pA):F1}%{suffix}" : $"Subir Rojo {Math.Abs(pA):F1}%{suffix}") : "";
-            string instB = Math.Abs(pB) > 0.05 ? (pB > 0 ? $"Bajar Amarillo {Math.Abs(pB):F1}%{suffix}" : $"Subir Amarillo {Math.Abs(pB):F1}%{suffix}") : "";
-            
-            if (!string.IsNullOrEmpty(instA) && !string.IsNullOrEmpty(instB)) return $"{instA} / {instB}";
-            return string.IsNullOrEmpty(instA) ? (string.IsNullOrEmpty(instB) ? "OK" : instB) : instA;
-        }
+        // --- HELPERS DE MATIZ ---
 
         private void PopulateFromReport(OcrReport report)
         {
             if (report == null) return;
+
+            dgvShadeHistory.Rows.Clear();
+            if (report.Recipe != null)
+            {
+                foreach (var ing in report.Recipe)
+                    dgvShadeHistory.Rows.Add(ing.Code, ing.Name, ing.Percentage);
+            }
 
             // Buscamos los iluminantes en las medidas
             var d65 = report.CmcDifferences.FirstOrDefault(c => c.Illuminant.Contains("D65"));
@@ -513,17 +596,34 @@ namespace Color
             dgvComparisonSummary.Rows.Add("Shade Name", report.Batch?.ShadeName ?? "N/A", "", "");
             
             // --- Cuadro de Tolerancia CMC Estándar (Formato Profesional) ---
-            string tolStr = $"DE {report.TolDE:F2}  |  DL {report.TolDL:F3}  |  DC {report.TolDC:F3}  |  DH {report.TolDH:F3}";
-            int tIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolStr, "", "");
+            string tolSummary = $"DE {report.TolDE:F2}";
+            int tIdx = dgvComparisonSummary.Rows.Add("Tolerancia CMC", tolSummary, "", "");
             dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(230, 240, 250);
             dgvComparisonSummary.Rows[tIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
 
+            // --- Filas Detalladas (DL, DC, DH) ---
             if (d65 != null)
             {
-                string resDL = Math.Abs(d65.DeltaLightness) <= report.TolDL ? "CUMPLE" : "NO CUMPLE";
-                dgvComparisonSummary.Rows.Add("DL", report.TolDL.ToString("F3"), d65.Illuminant, resDL);
-                
+                var resDL = Math.Abs(d65.DeltaLightness) <= report.TolDL ? "CUMPLE" : "NO CUMPLE";
+                int idxDL = dgvComparisonSummary.Rows.Add("DL", report.TolDL.ToString("F3"), "D65", resDL);
+                if (resDL == "NO CUMPLE") dgvComparisonSummary.Rows[idxDL].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+            }
+            if (tl84 != null)
+            {
+                var resDC = Math.Abs(tl84.DeltaChroma) <= report.TolDC ? "CUMPLE" : "NO CUMPLE";
+                int idxDC = dgvComparisonSummary.Rows.Add("DC", report.TolDC.ToString("F3"), "TL84", resDC);
+                if (resDC == "NO CUMPLE") dgvComparisonSummary.Rows[idxDC].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+            }
+            if (illA != null)
+            {
+                var resDH = Math.Abs(illA.DeltaHue) <= report.TolDH ? "CUMPLE" : "NO CUMPLE";
+                int idxDH = dgvComparisonSummary.Rows.Add("DH", report.TolDH.ToString("F3"), illA.Illuminant, resDH);
+                if (resDH == "NO CUMPLE") dgvComparisonSummary.Rows[idxDH].Cells[3].Style.ForeColor = System.Drawing.Color.Red;
+            }
+
+            if (d65 != null)
+            {
                 // Buscar medidas Lab para calcular ejes A/B
                 var std = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && m.Type.ToUpper().Contains("STD"));
                 var lot = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && (m.Type.ToUpper().Contains("SPL") || m.Type.ToUpper().Contains("LOT")));
@@ -539,9 +639,6 @@ namespace Color
 
             if (tl84 != null)
             {
-                string resDC = Math.Abs(tl84.DeltaChroma) <= report.TolDC ? "CUMPLE" : "NO CUMPLE";
-                dgvComparisonSummary.Rows.Add("DC", report.TolDC.ToString("F3"), tl84.Illuminant, resDC);
-
                 var std = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("TL84") && m.Type.ToUpper().Contains("STD"));
                 var lot = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("TL84") && (m.Type.ToUpper().Contains("SPL") || m.Type.ToUpper().Contains("LOT")));
                 double pA = 0, pB = 0;
@@ -554,9 +651,6 @@ namespace Color
 
             if (illA != null)
             {
-                string resDH = Math.Abs(illA.DeltaHue) <= report.TolDH ? "CUMPLE" : "NO CUMPLE";
-                dgvComparisonSummary.Rows.Add("DH", report.TolDH.ToString("F3"), illA.Illuminant, resDH);
-
                 var std = report.Measures.FirstOrDefault(m => (m.Illuminant.Contains("A") || m.Illuminant.Contains("CWF")) && m.Type.ToUpper().Contains("STD"));
                 var lot = report.Measures.FirstOrDefault(m => (m.Illuminant.Contains("A") || m.Illuminant.Contains("CWF")) && (m.Type.ToUpper().Contains("SPL") || m.Type.ToUpper().Contains("LOT")));
                 double pA = 0, pB = 0;
@@ -565,6 +659,37 @@ namespace Color
                     pB = (Math.Abs(std.B) > 0.1) ? (lot.B - std.B) / Math.Abs(std.B) : 0;
                 }
                 FillAnalysisGridFromCmc(dgvAnalysisRightA, illA, report.TolDE, false, pA, pB);
+            }
+
+            // --- CALCULO DE RECETA CORRECTIVA (D65) ---
+            if (d65 != null)
+            {
+                var stdD65 = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && m.Type.ToUpper().Contains("STD"));
+                var lotD65 = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && (m.Type.ToUpper().Contains("SPL") || m.Type.ToUpper().Contains("LOT")));
+                double pA = 0, pB = 0;
+                if (stdD65 != null && lotD65 != null) {
+                    pA = (Math.Abs(stdD65.A) > 0.1) ? (lotD65.A - stdD65.A) / Math.Abs(stdD65.A) : 0;
+                    pB = (Math.Abs(stdD65.B) > 0.1) ? (lotD65.B - stdD65.B) / Math.Abs(stdD65.B) : 0;
+                }
+
+                var resD65 = new ColorCorrectionResult {
+                    Illuminant = "D65",
+                    DeltaL = d65.DeltaLightness,
+                    DeltaHue = d65.DeltaHue,
+                    PercentL = d65.DeltaLightness,
+                    PercentA = pA,
+                    PercentB = pB
+                };
+
+                var ingredients = RecipeCorrector.IngredientsFromShade(new ShadeExtractionResult { 
+                    Recipe = report.Recipe
+                });
+                
+                if (ingredients.Count > 0)
+                {
+                    var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, resD65);
+                    FillCorrectiveRecipeGrid(correctiveResult);
+                }
             }
         }
 
@@ -580,9 +705,12 @@ namespace Color
 
             if (dE > 0 && dE <= tolDE)
             {
-                dgv.Rows.Add("DL", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "LOTE APROBADO");
-                dgv.Rows.Add("DC", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
-                dgv.Rows.Add("DH", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
+                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "LOTE APROBADO");
+                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
+                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "-", "No requiere corrección");
+                ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, i2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, i3, "DH (Matiz)");
             }
             else
             {
@@ -599,18 +727,16 @@ namespace Color
                     PercentChroma = cmc.DeltaChroma
                 };
 
-                if (isRecipe)
-                {
-                    dgv.Rows.Add("DL", res.DeltaL.ToString("F2"), "Carga Colorante", res.DescripcionL, res.RecomendacionL);
-                    dgv.Rows.Add("DC", res.DeltaChroma.ToString("F2"), "Saturación", res.DiagnosisC, res.RecommendationC);
-                    dgv.Rows.Add("DH", res.DeltaHue.ToString("F2"), "Matiz/Hue", res.ImpactoMatiz, res.RecomendacionMatiz);
-                }
-                else
-                {
-                    dgv.Rows.Add("DL", res.DeltaL.ToString("F2"), "Tiempo/Temperatura", res.DescripcionL, res.RecomendacionL);
-                    dgv.Rows.Add("DC", res.DeltaChroma.ToString("F2"), "Agotamiento químico", res.DiagnosisC, res.RecommendationC);
-                    dgv.Rows.Add("DH", res.DeltaHue.ToString("F2"), "Desvío de matiz", res.ImpactoMatiz, res.RecomendacionMatiz);
-                }
+                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+                string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+                string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+
+                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", diag, imp, rec);
+                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
+                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+                ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
+                ApplyEjeStyle(dgv, r2, "DC (Brillo)");
+                ApplyEjeStyle(dgv, r3, "DH (Matiz)");
             }
         }
 

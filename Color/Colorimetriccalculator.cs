@@ -58,12 +58,25 @@ namespace Color
         // ΔE CMC(2:1) - Recomendado para grado comercial (Elipse de tolerancia)
         public double CmcValue { get; set; }
 
-        // --- PROPIEDADES DINÁMICAS PARA EL REPORTE ---
-        public string DescripcionL => DeltaL < 0 ? "Más Oscuro" : "Más Claro";
+        // --- PROPIEDADES DINÁMICAS PARA EL REPORTE (Expert System) ---
+        public string DiagnosisL => ColorimetricCalculator.GetDiagL_Expert(DeltaL);
+        // --- NUEVAS PROPIEDADES PARA PANELES SEPARADOS (ESTÁNDAR TEXTIL 2026) ---
+        public double PorcentajeRecetaL => Math.Abs(PercentL * 100);
         
-        public string RecomendacionL => DeltaL < 0 
-            ? $"REDUCIR RECETA {Math.Abs(PercentL * 100):F1}%" 
-            : $"AUMENTAR RECETA {Math.Abs(PercentL * 100):F1}%";
+        public string ImpactoRecetaL => ColorimetricCalculator.GetImpactoLRecipe(DeltaL);
+        public string ImpactoLoteL => ColorimetricCalculator.GetImpactoLLot(DeltaL);
+        
+        public string RecomendacionRecetaL => ColorimetricCalculator.GetInstLRecipe(DeltaL, PorcentajeRecetaL);
+        public string RecomendacionLoteL => ColorimetricCalculator.GetInstLLot(DeltaL, PorcentajeRecetaL);
+        
+        // Diagnóstico técnico (mismo para ambos)
+        public string DiagnosticoL => ColorimetricCalculator.GetDiagL_Expert(DeltaL);
+        
+        // Compatibilidad legacy
+        public string DescripcionL => ImpactoRecetaL;
+        public string RecomendacionL => RecomendacionRecetaL; 
+        public string DiagnosticoLRecipe => DiagnosticoL;
+        public string DiagnosticoLoteL => DiagnosticoL;
 
         public string RecomendacionMatiz
         {
@@ -74,14 +87,31 @@ namespace Color
                 string accionA = DeltaA > 0 ? "Disminuir" : "Agregar";
                 string accionB = DeltaB > 0 ? "Disminuir" : "Agregar";
                 
-                return $"{accionA} Rojo {Math.Abs(PercentA * 100):F1}% / {accionB} Amarillo {Math.Abs(PercentB * 100):F1}%";
+                string baseRec = $"{accionA} Rojo {Math.Abs(PercentA * 100):F1}% / {accionB} Amarillo {Math.Abs(PercentB * 100):F1}%";
+                
+                // Si el desvío es crítico, añadir instrucción experta
+                if (Math.Abs(DeltaHue) > 0.4)
+                {
+                    string coloranteNeutralizador = DeltaHue > 0 ? "Azulado" : "Rojizo";
+                    return $"AJUSTE DE MATIZ: Adicionar {Math.Abs(DeltaHue * 10):F1}% de colorante para neutralizar {coloranteNeutralizador}. " + baseRec;
+                }
+                return baseRec;
             }
         }
 
-        public string ImpactoMatiz => $"Viraje hacia {(DeltaA > 0 ? "Rojo" : "Verde")}-{(DeltaB > 0 ? "Amarillo" : "Azul")}";
+        public string ImpactoMatiz => ColorimetricCalculator.GetImpactH_Expert(DeltaHue);
         
-        public string DiagnosisC => DeltaChroma < 0 ? "Muestra Opaca" : "Muestra Brillante";
+        public string DiagnosisC => ColorimetricCalculator.GetDiagC_Expert(DeltaChroma);
+        public string DescripcionC => DeltaChroma < 0 ? "Más Opaca / Sucia" : "Más Brillante / Vívida";
         public string RecommendationC => DeltaChroma > 0 ? $"DISMINUIR FUERZA {Math.Abs(PercentChroma * 100):F1}%" : $"AUMENTAR FUERZA {Math.Abs(PercentChroma * 100):F1}%";
+
+        public string DiagnosisH => ColorimetricCalculator.GetDiagH_Expert(DeltaHue, 0.1); 
+
+        // Impacto visual de dE
+        public string ImpactoDE => ColorimetricCalculator.GetImpactDE_Expert(DeltaE);
+
+        // Alerta de Metamerismo (se llena externamente si se evalúan múltiples iluminantes)
+        public string MetamerismAlert { get; set; } = "";
 
         // Estado de aprobación basado en la tolerancia seleccionada
         public bool Pass { get; set; }
@@ -351,7 +381,92 @@ namespace Color
                 });
             }
 
+            // --- EVALUACIÓN DE METAMERISMO (Propuesta Técnica 3) ---
+            var d65Res = results.FirstOrDefault(r => r.Illuminant.Contains("D65"));
+            var tl84Res = results.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
+            if (d65Res != null && tl84Res != null)
+            {
+                double diffDE = Math.Abs(d65Res.DeltaE - tl84Res.DeltaE);
+                if (diffDE > 0.3)
+                {
+                    string alert = $"ALTA INCONSISTENCIA: Muestra metamérica bajo luz de tienda (ΔΔE={diffDE:F2})";
+                    d65Res.MetamerismAlert = alert;
+                    tl84Res.MetamerismAlert = alert;
+                }
+            }
+
             return results;
+        }
+
+        // --- LÓGICA DE DIAGNÓSTICO EXPERTO (Propuesta Técnica 1, 2 y 3) ---
+
+        public static string GetDiagL_Expert(double dL)
+        {
+            double absDL = Math.Abs(dL);
+            if (absDL > 0.5) return "Desviación Crítica: Error de pesaje o sustrato contaminado";
+            if (absDL > 0.2) return "Desviación Moderada: Revisar relación de baño y agotamiento";
+            return "Luminosidad dentro de Tolerancia";
+        }
+
+        public static string GetActionL_Expert(double dL, double percentL)
+        {
+            return dL > 0 
+                ? $"AUMENTAR RECETA {Math.Abs(percentL * 100):F1}%" 
+                : $"REDUCIR RECETA {Math.Abs(percentL * 100):F1}%";
+        }
+
+        // --- NUEVA LÓGICA DE RECOMENDACIÓN DINÁMICA ---
+        
+        /// <summary>
+        /// A. Para el Panel de RECETA (Laboratorio)
+        /// </summary>
+        public static string GetImpactoLRecipe(double dL) => dL > 0 ? "Más Claro" : "Más Oscuro";
+
+        public static string GetInstLRecipe(double dL, double varL) 
+        {
+            string accion = dL > 0 ? "AUMENTAR" : "REDUCIR";
+            return $"{accion} % TOTAL RECETA EN {Math.Abs(varL):F1}%";
+        }
+
+        /// <summary>
+        /// B. Para el Panel de LOTE (Planta/Proceso)
+        /// </summary>
+        public static string GetImpactoLLot(double dL) => dL > 0 ? "Más Claro" : "Más Oscuro";
+
+        public static string GetInstLLot(double dL, double pctL) 
+        {
+            string accion = dL > 0 ? "AUMENTAR" : "DISMINUIR";
+            return $"{accion} FUERZA {Math.Abs(pctL):F1}%";
+        }
+
+        public static string GetDiagC_Expert(double dC, double tolerance = 0.4)
+        {
+            if (dC < -tolerance) return "Muestra Opaca/Sucia: Posible hidrólisis o exceso de sales";
+            if (dC > tolerance) return "Muestra Brillante/Vivida: Revisar pureza de colorantes primarios";
+            return dC < 0 ? "Muestra Opaca" : "Muestra Brillante";
+        }
+
+        public static string GetDiagH_Expert(double dH, double tolerance)
+        {
+            double absDH = Math.Abs(dH);
+            if (absDH <= tolerance) return "Tono Estable";
+
+            if (dH > 0)
+                return absDH > 0.4 ? "Viraje CRÍTICO hacia Azulado" : "Desvío leve hacia Azulado";
+            else
+                return absDH > 0.4 ? "Viraje CRÍTICO hacia Rojizo" : "Desvío leve hacia Rojizo";
+        }
+
+        public static string GetImpactH_Expert(double dH)
+        {
+            if (dH > 0.1) return "Viraje hacia el siguiente color en espectro (más frío/azul)";
+            if (dH < -0.1) return "Viraje hacia color anterior en espectro (más cálido/rojo)";
+            return "Tono equilibrado";
+        }
+
+        public static string GetImpactDE_Expert(double dE)
+        {
+            return dE > 0.8 ? "Diferencia de color PERCEPTIBLE - Requiere corrección" : "Diferencia mínima";
         }
 
         // Retorna (sl, sc, sh)
