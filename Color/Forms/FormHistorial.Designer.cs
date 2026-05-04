@@ -18,6 +18,9 @@ namespace Color.Forms
         private void InitializeComponent()
         {
             this.dgvHistorial = new System.Windows.Forms.DataGridView();
+            this.pnlGroupHeaders = new System.Windows.Forms.Panel();
+            this.lblShadeHistoryHeader = new System.Windows.Forms.Label();
+            this.lblCalculoRecetaHeader = new System.Windows.Forms.Label();
             this.pnlTitulo = new System.Windows.Forms.Panel();
             this.lblTitulo = new System.Windows.Forms.Label();
             this.txtBuscar = new System.Windows.Forms.TextBox();
@@ -29,17 +32,18 @@ namespace Color.Forms
             this.btnCerrar = new System.Windows.Forms.Button();
 
             // Columnas del DataGridView
-            this.colFechaHora = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colShadeName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colFechaHora = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colIluminante = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colLightness = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colChroma = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDiagL = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colCorrL = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDiagA = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colCorrA = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDiagB = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colCorrB = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDLEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDCEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDHEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDyeCode = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDyeName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colConcentration = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colAjusteDL = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colAjusteDH = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colNuevaReceta = new System.Windows.Forms.DataGridViewTextBoxColumn();
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvHistorial)).BeginInit();
             this.pnlTitulo.SuspendLayout();
@@ -84,6 +88,31 @@ namespace Color.Forms
             this.txtBuscar.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtBuscar.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtBuscar.TextChanged += new System.EventHandler(this.txtBuscar_TextChanged);
+
+            // ──────────────────────────────────────────────────────────────
+            // pnlGroupHeaders (Barra azul para agrupar columnas)
+            // ──────────────────────────────────────────────────────────────
+            this.pnlGroupHeaders.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            this.pnlGroupHeaders.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlGroupHeaders.Height = 28;
+            this.pnlGroupHeaders.Controls.Add(this.lblShadeHistoryHeader);
+            this.pnlGroupHeaders.Controls.Add(this.lblCalculoRecetaHeader);
+
+            // lblShadeHistoryHeader
+            this.lblShadeHistoryHeader.BackColor = System.Drawing.Color.FromArgb(0, 112, 192);
+            this.lblShadeHistoryHeader.ForeColor = System.Drawing.Color.White;
+            this.lblShadeHistoryHeader.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblShadeHistoryHeader.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblShadeHistoryHeader.Text = "shade histori reprt";
+            this.lblShadeHistoryHeader.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+
+            // lblCalculoRecetaHeader
+            this.lblCalculoRecetaHeader.BackColor = System.Drawing.Color.FromArgb(0, 112, 192);
+            this.lblCalculoRecetaHeader.ForeColor = System.Drawing.Color.White;
+            this.lblCalculoRecetaHeader.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblCalculoRecetaHeader.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblCalculoRecetaHeader.Text = "calculo nueva receta";
+            this.lblCalculoRecetaHeader.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
 
             // ──────────────────────────────────────────────────────────────
             // dgvHistorial  (tema claro — igual que FormResultados)
@@ -143,68 +172,72 @@ namespace Color.Forms
             this.dgvHistorial.RowTemplate.Height = 24;
 
             // Columnas
-            //  1. Fecha y Hora
-            this.colFechaHora.Name = "colFechaHora";
-            this.colFechaHora.HeaderText = "Fecha y Hora";
-            this.colFechaHora.ToolTipText = "Fecha y hora de la medición";
-
-            //  2. Shade Name
+            //  1. Shade Name
             this.colShadeName.Name = "colShadeName";
             this.colShadeName.HeaderText = "Shade Name";
-            this.colShadeName.ToolTipText = "Nombre del color / receta estándar";
+
+            //  2. Fecha
+            this.colFechaHora.Name = "colFechaHora";
+            this.colFechaHora.HeaderText = "Fecha/Hora";
 
             //  3. Iluminante
             this.colIluminante.Name = "colIluminante";
-            this.colIluminante.HeaderText = "Iluminante";
+            this.colIluminante.HeaderText = "Ilum.";
 
-            //  4. Lightness
-            this.colLightness.Name = "colLightness";
-            this.colLightness.HeaderText = "Lightness (%)";
+            //  4. DL Eje
+            this.colDLEje.Name = "colDLEje";
+            this.colDLEje.HeaderText = "%  Eje DL ";
 
-            //  5. Chroma
-            this.colChroma.Name = "colChroma";
-            this.colChroma.HeaderText = "Chroma (%)";
+            //  5. DC Eje
+            this.colDCEje.Name = "colDCEje";
+            this.colDCEje.HeaderText = "% Eje DC";
 
-            //  6. DiagL
-            this.colDiagL.Name = "colDiagL";
-            this.colDiagL.HeaderText = "Diagnóstico L*";
+            //  6. DH Eje
+            this.colDHEje.Name = "colDHEje";
+            this.colDHEje.HeaderText = "% Eje DH";
 
-            //  7. CorrL
-            this.colCorrL.Name = "colCorrL";
-            this.colCorrL.HeaderText = "Corrección L*";
+            //  7. Dye Code
+            this.colDyeCode.Name = "colDyeCode";
+            this.colDyeCode.HeaderText = "Dye Code";
 
-            //  8. DiagA
-            this.colDiagA.Name = "colDiagA";
-            this.colDiagA.HeaderText = "Diagnóstico a*";
+            //  8. Dye Name
+            this.colDyeName.Name = "colDyeName";
+            this.colDyeName.HeaderText = "Dye Name";
 
-            //  9. CorrA
-            this.colCorrA.Name = "colCorrA";
-            this.colCorrA.HeaderText = "Corrección a*";
+            //  9. Conc Original
+            this.colConcentration.Name = "colConcentration";
+            this.colConcentration.HeaderText = "% Conc Original";
 
-            //  10. DiagB
-            this.colDiagB.Name = "colDiagB";
-            this.colDiagB.HeaderText = "Diagnóstico b*";
+            //  10. Ajuste DL
+            this.colAjusteDL.Name = "colAjusteDL";
+            this.colAjusteDL.HeaderText = "% Ajuste DL";
 
-            //  11. CorrB
-            this.colCorrB.Name = "colCorrB";
-            this.colCorrB.HeaderText = "Corrección b*";
+            //  11. Ajuste DH
+            this.colAjusteDH.Name = "colAjusteDH";
+            this.colAjusteDH.HeaderText = "% Ajuste DH";
+
+            //  12. Nueva Receta
+            this.colNuevaReceta.Name = "colNuevaReceta";
+            this.colNuevaReceta.HeaderText = "% Nueva Receta";
 
             this.dgvHistorial.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[]
             {
-                this.colFechaHora,
                 this.colShadeName,
+                this.colFechaHora,
                 this.colIluminante,
-                this.colLightness,
-                this.colChroma,
-                this.colDiagL,
-                this.colCorrL,
-                this.colDiagA,
-                this.colCorrA,
-                this.colDiagB,
-                this.colCorrB
+                this.colDLEje,
+                this.colDCEje,
+                this.colDHEje,
+                this.colDyeCode,
+                this.colDyeName,
+                this.colConcentration,
+                this.colAjusteDL,
+                this.colAjusteDH,
+                this.colNuevaReceta
             });
 
             this.dgvHistorial.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dgvHistorial.ColumnWidthChanged += (s, e) => { /* Evento manual */ }; 
 
             // ──────────────────────────────────────────────────────────────
             // pnlPie  (barra inferior blanca — igual que FormResultados)
@@ -284,9 +317,10 @@ namespace Color.Forms
                                            System.Drawing.FontStyle.Regular,
                                            System.Drawing.GraphicsUnit.Point, 0);
 
-            // Orden de capas: pnlTitulo (top) → dgvHistorial (fill) → pnlPie (bottom)
+            // Orden de capas: pnlTitulo (top) → pnlGroupHeaders (top) → dgvHistorial (fill) → pnlPie (bottom)
             this.Controls.Add(this.dgvHistorial);
             this.Controls.Add(this.pnlPie);
+            this.Controls.Add(this.pnlGroupHeaders);
             this.Controls.Add(this.pnlTitulo);
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvHistorial)).EndInit();
@@ -299,6 +333,9 @@ namespace Color.Forms
 
         // ── Controles declarados ──────────────────────────────────────────
         private System.Windows.Forms.DataGridView dgvHistorial;
+        private System.Windows.Forms.Panel pnlGroupHeaders;
+        private System.Windows.Forms.Label lblShadeHistoryHeader;
+        private System.Windows.Forms.Label lblCalculoRecetaHeader;
         private System.Windows.Forms.Panel pnlTitulo;
         private System.Windows.Forms.Label lblTitulo;
         private System.Windows.Forms.Label lblBuscar;
@@ -310,16 +347,17 @@ namespace Color.Forms
         private System.Windows.Forms.Button btnCerrar;
 
         // Columnas
-        private System.Windows.Forms.DataGridViewTextBoxColumn colFechaHora;
         private System.Windows.Forms.DataGridViewTextBoxColumn colShadeName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colFechaHora;
         private System.Windows.Forms.DataGridViewTextBoxColumn colIluminante;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colLightness;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colChroma;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDiagL;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colCorrL;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDiagA;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colCorrA;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDiagB;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colCorrB;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colDLEje;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colDCEje;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colDHEje;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colDyeCode;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colDyeName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colConcentration;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDL;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDH;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colNuevaReceta;
     }
 }

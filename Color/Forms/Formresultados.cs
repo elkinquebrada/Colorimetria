@@ -23,6 +23,7 @@ namespace Color
         private readonly string _resumenLegacy;
         private readonly List<EngineRes> _resultsLegacy;
         private List<Color.IlluminantCorrectionResult> _recipeResults;
+        private ShadeExtractionResult _shadeData;
 
         // ======= Controles de la vista (Tablas) =======
         private DataGridView dgvShadeHistory;
@@ -39,13 +40,12 @@ namespace Color
         private RichTextBox txtReport;
         private RichTextBox txtRecomendacion;
         private SplitContainer splitMedicionesCmc;
-        private Button btnExportar;
-        private Button btnHistorial;
+        private Button btnGuardar;
         private Button btnCerrar;
         private Button btnRegresar;
 
-        // ======= Gráfico CIELAB =======
         private Button btnVerGrafico;
+        private CielabChartControl _cielabChart;
         private EngineRes _lastMainResult; 
         public object FormOcrOrigen { get; set; }
 
@@ -59,6 +59,7 @@ namespace Color
         public FormResultados(OcrReport report)
         {
             _report = report ?? new OcrReport();
+            _resultsLegacy = new List<EngineRes>();
             InitializeComponents();
             
             // Lógica silenciosa: Poblar desde el objeto Report directamente
@@ -70,10 +71,11 @@ namespace Color
             _resumenLegacy = resumen ?? "";
             _resultsLegacy = results ?? new List<EngineRes>();
             _recipeResults = recipeResults;
+            _shadeData = shadeData;
             InitializeComponents();
 
             // Lógica silenciosa: Poblar desde los objetos ya calculados
-            PopulateFromObjects(shadeData, _resultsLegacy);
+            PopulateFromObjects(_shadeData, _resultsLegacy);
         }
 
         private void InitializeComponents()
@@ -97,23 +99,25 @@ namespace Color
             };
 
             // ---- Botones ----
-            btnRegresar = CreateStyledButton("← Regresar", System.Drawing.Color.FromArgb(180, 100, 0));
-            btnRegresar.Click += (s, e) => {
-                this.DialogResult = DialogResult.Retry;
-                this.Close();
-            };
-
-            btnHistorial = CreateStyledButton("📜 Historial", System.Drawing.Color.FromArgb(34, 139, 34));
-            btnHistorial.Click += BtnHistorial_Click;
-            btnExportar = CreateStyledButton("💾 Exportar .txt", System.Drawing.Color.FromArgb(70, 130, 180));
-            btnExportar.Click += BtnExportar_Click;
-            btnCerrar = CreateStyledButton("Cerrar", System.Drawing.Color.FromArgb(200, 30, 30));
+            btnGuardar = CreateStyledButton("💾 Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
+            btnGuardar.Click += BtnGuardar_Click;
+            btnCerrar = CreateStyledButton("Finalizar", System.Drawing.Color.FromArgb(200, 30, 30));
             btnCerrar.Click += (s, e) => this.Close();
+            btnRegresar = CreateStyledButton("← Regresar", System.Drawing.Color.FromArgb(180, 100, 30));
+            btnRegresar.Click += BtnRegresar_Click;
+
+            _cielabChart = new CielabChartControl
+            {
+                Dock = DockStyle.Fill,
+                Mode = CielabChartControl.ViewMode.Relative,
+                Title = "", // El título lo pondremos en un label externo para el estilo solicitado
+                BackColor = System.Drawing.Color.White
+            };
 
             btnVerGrafico = new Button
             {
-                Text = "🔍 Ver Gráfico Detallado",
-                Size = new Size(180, 34),
+                Text = "🔍 Ver Gráfico",
+                Size = new Size(130, 34),
                 BackColor = System.Drawing.Color.FromArgb(240, 240, 240),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
@@ -149,6 +153,12 @@ namespace Color
             dgvAnalysisRightTL84 = CreateAnalysisGrid();
             dgvAnalysisRightA = CreateAnalysisGrid();
 
+            // Estilo tenue para iluminantes secundarios (no compiten con D65)
+            ApplyTenueGridStyle(dgvAnalysisLeftTL84);
+            ApplyTenueGridStyle(dgvAnalysisLeftA);
+            ApplyTenueGridStyle(dgvAnalysisRightTL84);
+            ApplyTenueGridStyle(dgvAnalysisRightA);
+
             // ---- Layout ----
             splitMedicionesCmc = new SplitContainer
             {
@@ -173,7 +183,8 @@ namespace Color
                 BackColor = System.Drawing.Color.Gray
             };
             
-            var lblHeaderCorrective = CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)");
+            var lblHeaderCorrective = CreateHeaderLabel(" FORMULACIÓN CORRECTIVA DE RECETA" +
+                "");
             lblHeaderCorrective.Dock = DockStyle.Top;
             lblHeaderCorrective.Height = 28;
 
@@ -189,36 +200,76 @@ namespace Color
                                                    "ANALISIS ILUMINANTE TL84", dgvAnalysisRightTL84,
                                                    "ANALISIS ILUMINANTE A / CWF", dgvAnalysisRightA);
 
-            ApplyTranslucentStyle(dgvAnalysisRightTL84);
-            ApplyTranslucentStyle(dgvAnalysisRightA);
-            
-            var pnlBtnGrafico = new Panel { Dock = DockStyle.Bottom, Height = 45 };
-            pnlBtnGrafico.Controls.Add(btnVerGrafico);
-            btnVerGrafico.Location = new Point(10, 5);
-            pnlRight.Controls.Add(pnlBtnGrafico);
+            // --- Panel Izquierdo Unificado (Grillas + Receta) ---
+            var pnlLeftUnified = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6 };
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Percent, 33));   
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Percent, 33));   
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
+            pnlLeftUnified.RowStyles.Add(new RowStyle(SizeType.Percent, 34));   
 
-            splitMedicionesCmc.Panel1.Controls.Add(pnlLeft);
-            splitMedicionesCmc.Panel1.Controls.Add(pnlCorrective);
-            pnlCorrective.BringToFront(); // Ensures bottom dock takes precedence
+            // Forzar eliminación de barras de scroll en grillas técnicas para asegurar visión total
+            dgvShadeHistory.ScrollBars = ScrollBars.None;
+            dgvAnalysisLeft.ScrollBars = ScrollBars.None;
+            dgvCorrectiveRecipe.ScrollBars = ScrollBars.None;
+            dgvShadeHistory.BorderStyle = BorderStyle.None;
+            dgvAnalysisLeft.BorderStyle = BorderStyle.None;
+            dgvCorrectiveRecipe.BorderStyle = BorderStyle.None;
+
+            // 1. Shade History
+            pnlLeftUnified.Controls.Add(CreateHeaderLabel("ANALISIS DE SHADE HISTORY REPORT"), 0, 0);
+            pnlLeftUnified.Controls.Add(dgvShadeHistory, 0, 1);
+            
+            // 2. D65 Analysis
+            pnlLeftUnified.Controls.Add(CreateHeaderLabel("ANALISIS ILUMINANTE D65"), 0, 2);
+            pnlLeftUnified.Controls.Add(dgvAnalysisLeft, 0, 3);
+
+            // 3. Receta Correctiva
+            var pnlCorrectiveContainer = new Panel { Dock = DockStyle.Fill };
+            pnlCorrectiveContainer.Controls.Add(dgvCorrectiveRecipe);
+            pnlCorrectiveContainer.Controls.Add(lblAlertCorrective);
+            dgvCorrectiveRecipe.Dock = DockStyle.Fill;
+            lblAlertCorrective.Dock = DockStyle.Bottom;
+            pnlLeftUnified.Controls.Add(CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)"), 0, 4);
+            pnlLeftUnified.Controls.Add(pnlCorrectiveContainer, 0, 5);
+
+            splitMedicionesCmc.Panel1.Controls.Add(pnlLeftUnified);
             splitMedicionesCmc.Panel2.Controls.Add(pnlRight);
 
-            var pnlBottom = new FlowLayoutPanel
+            var pnlBottom = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 60,
-                FlowDirection = FlowDirection.RightToLeft,
+                BackColor = System.Drawing.Color.FromArgb(245, 245, 245),
                 Padding = new Padding(10)
             };
-            pnlBottom.Controls.Add(btnCerrar);
-            pnlBottom.Controls.Add(btnExportar);
-            pnlBottom.Controls.Add(btnHistorial);
+
+            // Botones IZQUIERDA: Regresar y Finalizar
+            btnRegresar.Location = new Point(15, 12);
+            btnCerrar.Text = "Finalizar";
+            btnCerrar.Location = new Point(btnRegresar.Right + 10, 12);
+
+            // Helper para reposicionar botones DERECHA dinamicamente
+            Action reposicionarDerecha = () => {
+                btnVerGrafico.Left = pnlBottom.Width - btnVerGrafico.Width - 15;
+                btnGuardar.Left  = btnVerGrafico.Left - btnGuardar.Width - 10;
+                btnVerGrafico.Top = 12;
+                btnGuardar.Top    = 12;
+            };
+
+            // Reposicionar cuando el panel cambia de tamaño (Maximize incluido)
+            pnlBottom.Resize += (s, e) => reposicionarDerecha();
+
             pnlBottom.Controls.Add(btnRegresar);
+            pnlBottom.Controls.Add(btnCerrar);
+            pnlBottom.Controls.Add(btnGuardar);
+            pnlBottom.Controls.Add(btnVerGrafico);
 
             this.Controls.Add(splitMedicionesCmc);
             this.Controls.Add(lblTitulo);
             this.Controls.Add(pnlBottom);
         }
-
         private Panel CreatePanelWithManyGrids(string h1, DataGridView g1, string h2, DataGridView g2, string h3, DataGridView g3, string h4, DataGridView g4)
         {
             var pnl = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 8 };
@@ -234,17 +285,18 @@ namespace Color
             pnl.Controls.Add(CreateHeaderLabel(h1), 0, 0);
             pnl.Controls.Add(g1, 0, 1);
             
-            // Ajustar pesos de columnas para Summary
             g1.Columns[0].FillWeight = 20;
             g1.Columns[1].FillWeight = 50;
             g1.Columns[2].FillWeight = 15;
             g1.Columns[3].FillWeight = 15;
+
             pnl.Controls.Add(CreateHeaderLabel(h2), 0, 2);
             pnl.Controls.Add(g2, 0, 3);
             pnl.Controls.Add(CreateHeaderLabel(h3, true), 0, 4);
             pnl.Controls.Add(g3, 0, 5);
             pnl.Controls.Add(CreateHeaderLabel(h4, true), 0, 6);
             pnl.Controls.Add(g4, 0, 7);
+
             return pnl;
         }
 
@@ -298,8 +350,8 @@ namespace Color
             dgv.ColumnCount = 5;
             dgv.Columns[0].Name = "Colorante";         dgv.Columns[0].FillWeight = 25;
             dgv.Columns[1].Name = "% Receta Original";     dgv.Columns[1].FillWeight = 12;
-            dgv.Columns[2].Name = "Ajuste DL";      dgv.Columns[2].FillWeight = 12;
-            dgv.Columns[3].Name = "Ajuste DH";      dgv.Columns[3].FillWeight = 12;
+            dgv.Columns[2].Name = "% Ajuste DL";      dgv.Columns[2].FillWeight = 12;
+            dgv.Columns[3].Name = "% Ajuste DH";      dgv.Columns[3].FillWeight = 12;
             dgv.Columns[4].Name = "% Nueva Receta"; dgv.Columns[4].FillWeight = 18;
             return dgv;
         }
@@ -357,8 +409,9 @@ namespace Color
 
         private Label CreateHeaderLabel(string text, bool tenue = false)
         {
-            var backColor = tenue ? System.Drawing.Color.FromArgb(80, 80, 80) : System.Drawing.Color.FromArgb(0, 102, 204);
-            var foreColor = tenue ? System.Drawing.Color.FromArgb(200, 200, 200) : System.Drawing.Color.White;
+            // Colores corporativos para D65, colores muy suaves para secundarios
+            var backColor = tenue ? System.Drawing.Color.FromArgb(210, 210, 215) : System.Drawing.Color.FromArgb(0, 102, 204);
+            var foreColor = tenue ? System.Drawing.Color.FromArgb(120, 120, 120) : System.Drawing.Color.White;
             return new Label
             {
                 Text = " " + text,
@@ -368,6 +421,94 @@ namespace Color
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft
             };
+        }
+
+        /// <summary>
+        /// Aplica estilo tenue (gris claro) a las grillas de iluminantes secundarios
+        /// para que no compitan visualmente con el iluminante principal D65.
+        /// </summary>
+        private void ApplyTenueGridStyle(DataGridView dgv)
+        {
+            var lightGray = System.Drawing.Color.FromArgb(200, 200, 200); // Texto muy claro
+            var bgGray = System.Drawing.Color.FromArgb(248, 248, 248);
+
+            // 1. Estilo General
+            dgv.DefaultCellStyle.BackColor = bgGray;
+            dgv.DefaultCellStyle.ForeColor = lightGray;
+            dgv.DefaultCellStyle.SelectionBackColor = bgGray; 
+            dgv.DefaultCellStyle.SelectionForeColor = lightGray;
+            dgv.DefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+
+            // 2. Estilo de Filas (Forzado)
+            dgv.RowsDefaultCellStyle.BackColor = bgGray;
+            dgv.RowsDefaultCellStyle.ForeColor = lightGray;
+            dgv.RowsDefaultCellStyle.SelectionBackColor = bgGray;
+            dgv.RowsDefaultCellStyle.SelectionForeColor = lightGray;
+
+            // 3. Filas Alternas
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(242, 242, 242);
+            dgv.AlternatingRowsDefaultCellStyle.ForeColor = lightGray;
+            dgv.AlternatingRowsDefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(242, 242, 242);
+
+            // 4. Cabeceras
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = bgGray;
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = lightGray;
+            dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = bgGray;
+            dgv.EnableHeadersVisualStyles = false;
+
+            // 5. Bordes
+            dgv.GridColor = System.Drawing.Color.FromArgb(235, 235, 235);
+            
+            // 6. Desactivar resaltado visual de selección estándar
+            dgv.SelectionMode = DataGridViewSelectionMode.CellSelect; 
+
+            // 7. INTERACCIÓN PROFESIONAL: Efecto Hover (Revelar datos al pasar el mouse)
+            dgv.CellMouseEnter += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    var row = dgv.Rows[e.RowIndex];
+                    row.DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204); // Azul Coats
+                    row.DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+                    foreach (DataGridViewCell cell in row.Cells) {
+                        cell.Style.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                        cell.Style.ForeColor = System.Drawing.Color.White;
+                    }
+                }
+            };
+
+            dgv.CellMouseLeave += (s, e) => {
+                if (e.RowIndex >= 0) {
+                    var row = dgv.Rows[e.RowIndex];
+                    var originalBg = (e.RowIndex % 2 == 0) ? bgGray : System.Drawing.Color.FromArgb(242, 242, 242);
+                    row.DefaultCellStyle.BackColor = originalBg;
+                    row.DefaultCellStyle.ForeColor = lightGray;
+                    foreach (DataGridViewCell cell in row.Cells) {
+                        cell.Style.BackColor = originalBg;
+                        cell.Style.ForeColor = lightGray;
+                    }
+                }
+            };
+        }
+
+        /// Aplica estilo tenue a todas las celdas de una fila específica.
+        /// Garantiza que ninguna celda herede colores vivos de otro estilo.
+        private void ApplyTenueRowStyle(DataGridView dgv, int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= dgv.Rows.Count) return;
+            // Detectar por GridColor o SelectionMode si es un grid tenue
+            if (dgv.SelectionMode != DataGridViewSelectionMode.CellSelect) return;
+
+            var row = dgv.Rows[rowIndex];
+            var lightGray = System.Drawing.Color.FromArgb(200, 200, 200);
+            var bgGray = (rowIndex % 2 == 0) ? System.Drawing.Color.FromArgb(248, 248, 248) : System.Drawing.Color.FromArgb(242, 242, 242);
+
+            foreach (DataGridViewCell cell in row.Cells)
+            {
+                cell.Style.BackColor = bgGray;
+                cell.Style.ForeColor = lightGray;
+                cell.Style.SelectionBackColor = bgGray;
+                cell.Style.SelectionForeColor = lightGray;
+                cell.Style.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
+            }
         }
 
         private void PopulateFromObjects(ShadeExtractionResult shadeData, List<EngineRes> results)
@@ -459,6 +600,13 @@ namespace Color
                     var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, d65);
                     FillCorrectiveRecipeGrid(correctiveResult);
                 }
+
+                // Actualizar gráfico con D65
+                if (d65 != null) UpdateChart(d65);
+
+                // Limpiar selección para evitar filas azules resaltadas al inicio
+                dgvAnalysisRightTL84.ClearSelection();
+                dgvAnalysisRightA.ClearSelection();
             }
         }
 
@@ -532,24 +680,30 @@ namespace Color
             cell.Style.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             cell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            if (dgv.DefaultCellStyle.SelectionBackColor == System.Drawing.Color.White)
+            // Detectar si es un grid de iluminante secundario (tenue)
+            bool esTenue = dgv.SelectionMode == DataGridViewSelectionMode.CellSelect;
+
+            if (esTenue)
             {
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(160, 170, 180); // Light Gray
+                // Todos los ejes en gris muy suave — no compiten con D65
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(200, 200, 200);
+                cell.Style.Font = new Font("Segoe UI", 8.5f, FontStyle.Regular);
                 return;
             }
 
+            if (dgv.DefaultCellStyle.SelectionBackColor == System.Drawing.Color.White)
+            {
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(160, 170, 180);
+                return;
+            }
+
+            // Grid principal (D65) — colores vivos con jerarquía
             if (eje.StartsWith("DL"))
-            {
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(45, 45, 45); // Dark Gray
-            }
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(45, 45, 45);       // Casi negro
             else if (eje.StartsWith("DC"))
-            {
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100); // Medium Gray
-            }
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);    // Gris medio
             else if (eje.StartsWith("DH"))
-            {
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0); // Dark Red
-            }
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0);        // Rojo oscuro
         }
 
         private void FillCorrectiveRecipeGrid(CorrectiveRecipeResult result)
@@ -603,26 +757,49 @@ namespace Color
                 int i1 = dgv.Rows.Add("", (res.DeltaL * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "Normal");
                 int i2 = dgv.Rows.Add("", (res.DeltaChroma * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
                 int i3 = dgv.Rows.Add("", (res.DeltaHue * 10).ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "Normal");
-                ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
-                ApplyEjeStyle(dgv, i2, "DC (Brillo)");
-                ApplyEjeStyle(dgv, i3, "DH (Matiz)");
+                ApplyEjeStyle(dgv, i1, "DL (Fuerza)"); ApplyTenueRowStyle(dgv, i1);
+                ApplyEjeStyle(dgv, i2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, i2);
+                ApplyEjeStyle(dgv, i3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, i3);
             }
             else
             {
                 string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
-                string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
-                string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+                string imp  = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+                string rec  = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
 
                 int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", imp, diag, rec);
                 int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DescripcionC, res.DiagnosisC, res.RecommendationC);
                 int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
-                ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
-                ApplyEjeStyle(dgv, r2, "DC (Brillo)");
-                ApplyEjeStyle(dgv, r3, "DH (Matiz)");
+                ApplyEjeStyle(dgv, r1, "DL (Fuerza)"); ApplyTenueRowStyle(dgv, r1);
+                ApplyEjeStyle(dgv, r2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, r2);
+                ApplyEjeStyle(dgv, r3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, r3);
             }
         }
 
         // --- HELPERS DE MATIZ ---
+
+        private void UpdateChart(EngineRes res)
+        {
+            if (res == null || _cielabChart == null) return;
+            
+            _cielabChart.DeltaL = res.DeltaL;
+            _cielabChart.DeltaA = res.DeltaA;
+            _cielabChart.DeltaB = res.DeltaB;
+            _cielabChart.DeltaE = res.DeltaE;
+            _cielabChart.ToleranceDE = DE_MAX;
+            
+            // Si tenemos valores absolutos (AbsDelta no es el Abs del delta sino el valor absoluto del lote)
+            // Nota: En este motor, AbsDeltaL parece ser el valor absoluto.
+            _cielabChart.AbsoluteL = res.AbsDeltaL - res.DeltaL;
+            _cielabChart.AbsoluteA = res.AbsDeltaA - res.DeltaA;
+            _cielabChart.AbsoluteB = res.AbsDeltaB - res.DeltaB;
+            
+            _cielabChart.LotL = res.AbsDeltaL;
+            _cielabChart.LotA = res.AbsDeltaA;
+            _cielabChart.LotB = res.AbsDeltaB;
+
+            _cielabChart.Invalidate();
+        }
 
         private void PopulateFromReport(OcrReport report)
         {
@@ -755,6 +932,13 @@ namespace Color
                     var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, resD65);
                     FillCorrectiveRecipeGrid(correctiveResult);
                 }
+
+                // Actualizar gráfico con D65
+                UpdateChart(resD65);
+
+                // Limpiar selección para evitar filas azules resaltadas al inicio
+                dgvAnalysisRightTL84.ClearSelection();
+                dgvAnalysisRightA.ClearSelection();
             }
         }
 
@@ -773,9 +957,9 @@ namespace Color
                 int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "-");
                 int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
                 int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
-                ApplyEjeStyle(dgv, i1, "DL (Fuerza)");
-                ApplyEjeStyle(dgv, i2, "DC (Brillo)");
-                ApplyEjeStyle(dgv, i3, "DH (Matiz)");
+                ApplyEjeStyle(dgv, i1, "DL (Fuerza)"); ApplyTenueRowStyle(dgv, i1);
+                ApplyEjeStyle(dgv, i2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, i2);
+                ApplyEjeStyle(dgv, i3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, i3);
             }
             else
             {
@@ -799,13 +983,96 @@ namespace Color
                 int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", diag, imp, rec);
                 int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
                 int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
-                ApplyEjeStyle(dgv, r1, "DL (Fuerza)");
-                ApplyEjeStyle(dgv, r2, "DC (Brillo)");
-                ApplyEjeStyle(dgv, r3, "DH (Matiz)");
+                ApplyEjeStyle(dgv, r1, "DL (Fuerza)"); ApplyTenueRowStyle(dgv, r1);
+                ApplyEjeStyle(dgv, r2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, r2);
+                ApplyEjeStyle(dgv, r3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, r3);
             }
         }
 
-        private void BtnExportar_Click(object sender, EventArgs e)
+        private void BtnRegresar_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.Retry;
+            this.Close();
+        }
+
+        private void BtnGuardar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvCorrectiveRecipe.Rows.Count == 0)
+                {
+                    MessageBox.Show("No hay datos para guardar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // 1. Obtener Metadatos Maestro (Cabecera)
+                string shadeName = _shadeData?.ShadeName ?? "Unknown";
+                DateTime fechaActual = DateTime.Now;
+                
+                // Buscamos el análisis primario (D65) para los metadatos de eje
+                var primaryAnalysis = _resultsLegacy?.FirstOrDefault(x => x.Illuminant == "D65") ?? 
+                                     _resultsLegacy?.FirstOrDefault();
+                
+                double dlEje = primaryAnalysis?.DeltaL ?? 0;
+                double dcEje = primaryAnalysis?.DeltaChroma ?? 0;
+                double dhEje = primaryAnalysis?.DeltaHue ?? 0;
+                string iluminante = primaryAnalysis?.Illuminant ?? "D65";
+
+                // 2. Guardar en Base de Datos Unificada (Fila por componente)
+                foreach (DataGridViewRow row in dgvCorrectiveRecipe.Rows)
+                {
+                    if (row.IsNewRow) continue;
+
+                    string name = row.Cells[0].Value?.ToString() ?? "";
+                    string strOriginal = row.Cells[1].Value?.ToString() ?? "0";
+                    string strAdjDL = row.Cells[2].Value?.ToString() ?? "0";
+                    string strAdjDH = row.Cells[3].Value?.ToString() ?? "0"; // Mapeado a Ajuste LD/DH
+                    string strNueva = row.Cells[4].Value?.ToString() ?? "0";
+
+                    // Conversión numérica estricta (Decimal 5 decimales)
+                    decimal.TryParse(strOriginal.Replace("%",""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal concOriginal);
+                    decimal.TryParse(strAdjDL, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal adjDL);
+                    decimal.TryParse(strAdjDH, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal adjDH);
+                    decimal.TryParse(strNueva.Replace("%",""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal nuevaReceta);
+
+                    // Buscar el código en dgvShadeHistory
+                    string code = "";
+                    foreach (DataGridViewRow rShade in dgvShadeHistory.Rows) {
+                        if (rShade.Cells[1].Value?.ToString() == name) {
+                            code = rShade.Cells[0].Value?.ToString() ?? "";
+                            break;
+                        }
+                    }
+
+                    Color.Services.HistorialService.GuardarRegistroMaestro(
+                        shadeName, fechaActual, iluminante,
+                        dlEje, dcEje, dhEje,
+                        code, name, 
+                        concOriginal, adjDL, adjDH, nuevaReceta
+                    );
+                }
+
+                // 3. Notificación y Opción de Reporte
+                var result = MessageBox.Show($"Datos del Shade {shadeName} guardados exitosamente.\n\n¿Desea generar el reporte técnico detallado (.txt)?", 
+                                            "Finalización Exitosa", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                
+                // Bloquear botón para evitar duplicación por doble clic
+                btnGuardar.Enabled = false;
+                btnGuardar.Text = "✔ Guardado";
+                btnGuardar.BackColor = System.Drawing.Color.FromArgb(50, 160, 80);
+
+                if (result == DialogResult.Yes)
+                {
+                    GenerarReporteTexto();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error en la integridad de datos: " + ex.Message, "Error de Sistema", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void GenerarReporteTexto()
         {
             try
             {
@@ -836,36 +1103,17 @@ namespace Color
 
                         exportGrid("ANALISIS DE SHADE HISTORY REPORT", dgvShadeHistory);
                         exportGrid("ANALISIS ILUMINANTE D65 (IZQ)", dgvAnalysisLeft);
-                        
                         exportGrid("ANALISIS DE SAMPLE COMPARISON", dgvComparisonSummary);
                         exportGrid("ANALISIS ILUMINANTE D65 (DER)", dgvAnalysisRight);
                         exportGrid("ANALISIS ILUMINANTE TL84 (DER)", dgvAnalysisRightTL84);
                         exportGrid("ANALISIS ILUMINANTE A/CWF (DER)", dgvAnalysisRightA);
 
                         System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), System.Text.Encoding.UTF8);
-                        MessageBox.Show("Archivo de texto guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Reporte de texto guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error al exportar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void BtnHistorial_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                var frm = new Color.Forms.FormHistorial();
-                var dt = Color.Services.HistorialService.ObtenerHistorial();
-                frm.CargarHistorial(dt);
-                frm.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error al abrir el historial: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            catch (Exception ex) { MessageBox.Show("Error al exportar: " + ex.Message); }
         }
     }
 }

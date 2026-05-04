@@ -2,119 +2,141 @@ using System;
 using System.Data;
 using System.IO;
 using System.Text;
-using System.Windows.Forms;
-using System.Drawing;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Color.Services
 {
-    /// Servicio estático encargado de la persistencia de datos colorimétricos en un archivo local.
     public static class HistorialService
     {
-        /// Ruta absoluta del archivo de base de datos CSV, ubicado en el directorio de ejecución de la aplicación.
-        private static string rutaArchivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DB_Colorimetria.csv");
+        private static string rutaArchivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DB_Coats_Consolidado.csv");
 
-        /// Registra una nueva medición individual en el archivo de historial.
-        public static void GuardarMedicionDetallada(
-            DateTime fecha, string shadeName, string iluminante,
-            string lightnessPct, string chromaPct,
-            string diagL, string corrL,
-            string diagA, string corrA,
-            string diagB, string corrB)
+        // PK: ShadeName + DyeCode (evita duplicados en el historial)
+        public static void GuardarRegistroMaestro(
+            string shadeName, 
+            DateTime fecha, 
+            string iluminante,
+            double dlEje, double dcEje, double dhEje,
+            string dyeCode, string dyeName, 
+            decimal concOriginal, 
+            decimal ajusteDL, decimal ajusteDH, 
+            decimal nuevaReceta)
         {
             try
-            { // Verifica la existencia del archivo para escribir encabezados si es nuevo
+            {
+                var ci = CultureInfo.InvariantCulture;
+                string nuevaLinea = string.Format(ci, "{0};{1};{2};{3:F5};{4:F5};{5:F5};{6};{7};{8:F5};{9:F5};{10:F5};{11:F5}",
+                    shadeName ?? "N/A",
+                    fecha.ToString("dd/MM/yyyy HH:mm"),
+                    iluminante ?? "D65",
+                    dlEje, dcEje, dhEje,
+                    dyeCode ?? "0",
+                    dyeName ?? "Unknown",
+                    concOriginal,
+                    ajusteDL,
+                    ajusteDH,
+                    nuevaReceta);
+
+                // Si el archivo no existe, crearlo con encabezado y la nueva lÃ­nea
                 if (!File.Exists(rutaArchivo))
                 {
-                    string headers = "FechaHora;ShadeName;Iluminante;Lightness;Chroma;Diagnostico_L;Correccion_L;Diagnostico_a;Correccion_a;Diagnostico_b;Correccion_b" + Environment.NewLine;
-                    File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
+                    string header = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDH;NuevaReceta" + Environment.NewLine;
+                    File.WriteAllText(rutaArchivo, header + nuevaLinea + Environment.NewLine, Encoding.UTF8);
+                    return;
                 }
 
-                // Construye la línea formateada. Se utiliza "N/A" como valor por defecto para nulos.
-                string linea = string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10}",
-                    fecha.ToString("yyyy-MM-dd HH:mm"),
-                    shadeName ?? "N/A",
-                    iluminante ?? "N/A",
-                    lightnessPct ?? "N/A",
-                    chromaPct ?? "N/A",
-                    diagL ?? "N/A",
-                    corrL ?? "N/A",
-                    diagA ?? "N/A",
-                    corrA ?? "N/A",
-                    diagB ?? "N/A",
-                    corrB ?? "N/A");
+                // Leer todas las lÃ­neas existentes
+                string[] lineasExistentes = File.ReadAllLines(rutaArchivo, Encoding.UTF8);
+                bool registroActualizado = false;
+                var nuevasLineas = new List<string>();
 
-                // Agrega la línea al final del archivo existente
-                File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
+                // Preservar el encabezado
+                if (lineasExistentes.Length > 0)
+                    nuevasLineas.Add(lineasExistentes[0]);
+
+                // Clave de unicidad: ShadeName + DyeCode
+                string claveNueva = $"{(shadeName ?? "N/A").Trim().ToUpper()};{(dyeCode ?? "0").Trim().ToUpper()}";
+
+                for (int i = 1; i < lineasExistentes.Length; i++)
+                {
+                    if (string.IsNullOrWhiteSpace(lineasExistentes[i])) continue;
+                    string[] celdas = lineasExistentes[i].Split(';');
+                    if (celdas.Length >= 7)
+                    {
+                        string claveExistente = $"{celdas[0].Trim().ToUpper()};{celdas[6].Trim().ToUpper()}";
+                        if (claveExistente == claveNueva)
+                        {
+                            // Reemplazar con los datos mÃ¡s recientes
+                            nuevasLineas.Add(nuevaLinea);
+                            registroActualizado = true;
+                            continue;
+                        }
+                    }
+                    nuevasLineas.Add(lineasExistentes[i]);
+                }
+
+                // Si no existÃ­a, agregar como registro nuevo
+                if (!registroActualizado)
+                    nuevasLineas.Add(nuevaLinea);
+
+                File.WriteAllLines(rutaArchivo, nuevasLineas, Encoding.UTF8);
             }
             catch { }
         }
 
-        /// Carga todos los registros almacenados en el archivo CSV y los transforma en un objeto DataTable.
         public static DataTable ObtenerHistorial()
         {
             DataTable dt = new DataTable();
-            dt.Columns.Add("FechaHora");
             dt.Columns.Add("ShadeName");
+            dt.Columns.Add("FechaHora");
             dt.Columns.Add("Iluminante");
-            dt.Columns.Add("Lightness");
-            dt.Columns.Add("Chroma");
-            dt.Columns.Add("Diagnostico_L");
-            dt.Columns.Add("Correccion_L");
-            dt.Columns.Add("Diagnostico_a");
-            dt.Columns.Add("Correccion_a");
-            dt.Columns.Add("Diagnostico_b");
-            dt.Columns.Add("Correccion_b");
+            dt.Columns.Add("DLEje");
+            dt.Columns.Add("DCEje");
+            dt.Columns.Add("DHEje");
+            dt.Columns.Add("DyeCode");
+            dt.Columns.Add("DyeName");
+            dt.Columns.Add("ConcOriginal");
+            dt.Columns.Add("AjusteDL");
+            dt.Columns.Add("AjusteDH");
+            dt.Columns.Add("NuevaReceta");
 
             try
             {
                 if (File.Exists(rutaArchivo))
                 {
                     string[] lineas = File.ReadAllLines(rutaArchivo, Encoding.UTF8);
-
-                    // Empezamos en i = 1 para omitir la fila de encabezados
                     for (int i = 1; i < lineas.Length; i++) 
                     {
                         if (string.IsNullOrWhiteSpace(lineas[i])) continue;
                         string[] celdas = lineas[i].Split(';');
-
-                        // Validación de integridad: la fila debe tener exactamente 11 columnas
-                        if (celdas.Length == 11) dt.Rows.Add(celdas);
+                        if (celdas.Length == 12) dt.Rows.Add(celdas);
                     }
                 }
             }
-            catch 
-            {
-                // Manejo silencioso de errores según implementación original
-            }
-
+            catch { }
             return dt;
         }
 
-        /// Sobrescribe el archivo actual con la información contenida en un DataTable.
         public static void GuardarHistorialCompleto(DataTable dt)
         {
             try
             {
-                // Reinicia el archivo con los encabezados
-                string headers = "FechaHora;ShadeName;Iluminante;Lightness;Chroma;Diagnostico_L;Correccion_L;Diagnostico_a;Correccion_a;Diagnostico_b;Correccion_b" + Environment.NewLine;
+                string headers = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDH;NuevaReceta" + Environment.NewLine;
                 File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
 
+                var ci = CultureInfo.InvariantCulture;
                 foreach (DataRow row in dt.Rows)
                 {
-                    // Formateo de cada fila del DataTable a string delimitado por ";"
-                    string linea = string.Format("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10}",
-                        row["FechaHora"] ?? "N/A", row["ShadeName"] ?? "N/A", row["Iluminante"] ?? "N/A",
-                        row["Lightness"] ?? "N/A", row["Chroma"] ?? "N/A", row["Diagnostico_L"] ?? "N/A",
-                        row["Correccion_L"] ?? "N/A", row["Diagnostico_a"] ?? "N/A", row["Correccion_a"] ?? "N/A",
-                        row["Diagnostico_b"] ?? "N/A", row["Correccion_b"] ?? "N/A");
+                    string linea = string.Format(ci, "{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11}",
+                        row["ShadeName"], row["FechaHora"], row["Iluminante"],
+                        row["DLEje"], row["DCEje"], row["DHEje"],
+                        row["DyeCode"], row["DyeName"], 
+                        row["ConcOriginal"], row["AjusteDL"], row["AjusteDH"], row["NuevaReceta"]);
 
                     File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
                 }
             }
-            catch 
-            {
-                // Manejo silencioso de errores
-            }
+            catch { }
         }
     }
 }
