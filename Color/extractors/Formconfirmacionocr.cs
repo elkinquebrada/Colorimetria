@@ -260,17 +260,17 @@ namespace Colorimetria
             btnCancelar = new Button
             {
                 Text = "✕ Cancelar",
-                Size = new Size(160, 40),
+                Size = new Size(140, 40),
                 BackColor = SysColor.FromArgb(200, 30, 30),
                 ForeColor = SysColor.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                DialogResult = DialogResult.Cancel
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
             };
             btnCancelar.FlatAppearance.BorderSize = 0;
             btnCancelar.FlatAppearance.MouseOverBackColor = SysColor.FromArgb(170, 10, 10);
             btnCancelar.FlatAppearance.MouseDownBackColor = SysColor.FromArgb(140, 0, 0);
-            btnCancelar.Click += delegate { this.DialogResult = DialogResult.Cancel; this.Close(); };
+            btnCancelar.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
 
             btnConfirmar = new Button
             {

@@ -19,13 +19,13 @@ namespace Color.Services
             double dlEje, double dcEje, double dhEje,
             string dyeCode, string dyeName, 
             decimal concOriginal, 
-            decimal ajusteDL, decimal ajusteDH, 
+            decimal ajusteDL, decimal ajusteDC, decimal ajusteDH, 
             decimal nuevaReceta)
         {
             try
             {
                 var ci = CultureInfo.InvariantCulture;
-                string nuevaLinea = string.Format(ci, "{0};{1};{2};{3:F5};{4:F5};{5:F5};{6};{7};{8:F5};{9:F5};{10:F5};{11:F5}",
+                string nuevaLinea = string.Format(ci, "{0};{1};{2};{3:F5};{4:F5};{5:F5};{6};{7};{8:F5};{9:F5};{10:F5};{11:F5};{12:F5}",
                     shadeName ?? "N/A",
                     fecha.ToString("dd/MM/yyyy HH:mm"),
                     iluminante ?? "D65",
@@ -34,13 +34,14 @@ namespace Color.Services
                     dyeName ?? "Unknown",
                     concOriginal,
                     ajusteDL,
+                    ajusteDC,
                     ajusteDH,
                     nuevaReceta);
 
                 // Si el archivo no existe, crearlo con encabezado y la nueva línea
                 if (!File.Exists(rutaArchivo))
                 {
-                    string header = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDH;NuevaReceta" + Environment.NewLine;
+                    string header = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDC;AjusteDH;NuevaReceta" + Environment.NewLine;
                     File.WriteAllText(rutaArchivo, header + nuevaLinea + Environment.NewLine, Encoding.UTF8);
                     return;
                 }
@@ -97,6 +98,7 @@ namespace Color.Services
             dt.Columns.Add("DyeName");
             dt.Columns.Add("ConcOriginal");
             dt.Columns.Add("AjusteDL");
+            dt.Columns.Add("AjusteDC");
             dt.Columns.Add("AjusteDH");
             dt.Columns.Add("NuevaReceta");
 
@@ -109,7 +111,19 @@ namespace Color.Services
                     {
                         if (string.IsNullOrWhiteSpace(lineas[i])) continue;
                         string[] celdas = lineas[i].Split(';');
-                        if (celdas.Length == 12) dt.Rows.Add(celdas);
+                        
+                        // Compatibilidad con versiones anteriores (12 columnas) o actual (13 columnas)
+                        if (celdas.Length == 12)
+                        {
+                            // Insertar "0" en la posición de AjusteDC (índice 10)
+                            var lista = new List<string>(celdas);
+                            lista.Insert(10, "0");
+                            dt.Rows.Add(lista.ToArray());
+                        }
+                        else if (celdas.Length >= 13)
+                        {
+                            dt.Rows.Add(celdas);
+                        }
                     }
                 }
             }
@@ -121,17 +135,17 @@ namespace Color.Services
         {
             try
             {
-                string headers = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDH;NuevaReceta" + Environment.NewLine;
+                string headers = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDC;AjusteDH;NuevaReceta" + Environment.NewLine;
                 File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
 
                 var ci = CultureInfo.InvariantCulture;
                 foreach (DataRow row in dt.Rows)
                 {
-                    string linea = string.Format(ci, "{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11}",
+                    string linea = string.Format(ci, "{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11};{12}",
                         row["ShadeName"], row["FechaHora"], row["Iluminante"],
                         row["DLEje"], row["DCEje"], row["DHEje"],
                         row["DyeCode"], row["DyeName"], 
-                        row["ConcOriginal"], row["AjusteDL"], row["AjusteDH"], row["NuevaReceta"]);
+                        row["ConcOriginal"], row["AjusteDL"], row["AjusteDC"], row["AjusteDH"], row["NuevaReceta"]);
 
                     File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
                 }

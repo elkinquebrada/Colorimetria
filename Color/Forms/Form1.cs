@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Color.Services;
-using Color.Forms;
 
 namespace Color
 {
@@ -204,48 +203,38 @@ namespace Color
                 }
 
                 OcrReport.SetLastReport(ocrMediciones);
-
-                OcrReport.SetLastReport(ocrMediciones);
-                this.Hide();
-
-                bool seguir = true;
-                var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult);
-                dlgConfirm.MainFormOwner = this;
-
-                while (seguir)
+                using (var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult))
                 {
-                    if (dlgConfirm.ShowDialog() != DialogResult.OK)
-                    {
-                        seguir = false;
-                        break;
-                    }
+                    dlgConfirm.MainFormOwner = this;
 
-                    var correcciones = ColorimetricCalculator.Calculate(dlgConfirm.RowsConfirmed);
-                    var cmcRes = ColorimetricCalculator.CalculateCmc(correcciones, dlgConfirm.RowsConfirmed);
-                    foreach (var c in correcciones)
+                    bool volverAConfirmar = true;
+                    while (volverAConfirmar)
                     {
-                        var m = cmcRes.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
-                        if (m != null) c.CmcValue = m.CmcValue;
-                    }
-
-                    var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
-                    var deltas = RecipeCorrector.DeltasFromReport(dlgConfirm.Report);
-                    var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
-
-                    using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>, _lastShadeResult))
-                    {
-                        if (frmRes.ShowDialog() == DialogResult.Retry)
+                        volverAConfirmar = false;
+                        if (dlgConfirm.ShowDialog() == DialogResult.OK)
                         {
-                            continue;
-                        }
-                        else
-                        {
-                            seguir = false;
+                            var correcciones = ColorimetricCalculator.Calculate(dlgConfirm.RowsConfirmed);
+                            var cmcRes = ColorimetricCalculator.CalculateCmc(correcciones, dlgConfirm.RowsConfirmed);
+                            foreach (var c in correcciones)
+                            {
+                                var m = cmcRes.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
+                                if (m != null) c.CmcValue = m.CmcValue;
+                            }
+
+                            var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
+                            var deltas = RecipeCorrector.DeltasFromReport(dlgConfirm.Report);
+                            var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
+
+                            using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>, _lastShadeResult))
+                            {
+                                if (frmRes.ShowDialog() == DialogResult.Retry)
+                                {
+                                    volverAConfirmar = true; // El usuario pulsó "Nueva Lectura" para regresar al OCR
+                                }
+                            }
                         }
                     }
                 }
-                dlgConfirm.Dispose();
-                this.Show();
             }
             catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
             finally { Cursor = Cursors.Default; }

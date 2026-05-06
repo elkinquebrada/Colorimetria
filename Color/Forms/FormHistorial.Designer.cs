@@ -1,4 +1,4 @@
-namespace Color.Forms
+namespace Color
 {
     partial class FormHistorial
     {
@@ -42,6 +42,7 @@ namespace Color.Forms
             this.colDyeName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colConcentration = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colAjusteDL = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colAjusteDC = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colAjusteDH = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colNuevaReceta = new System.Windows.Forms.DataGridViewTextBoxColumn();
 
@@ -212,7 +213,11 @@ namespace Color.Forms
             this.colAjusteDL.Name = "colAjusteDL";
             this.colAjusteDL.HeaderText = "% Ajuste DL";
 
-            //  11. Ajuste DH
+            //  11. Ajuste DC
+            this.colAjusteDC.Name = "colAjusteDC";
+            this.colAjusteDC.HeaderText = "% Ajuste DC";
+
+            //  12. Ajuste DH
             this.colAjusteDH.Name = "colAjusteDH";
             this.colAjusteDH.HeaderText = "% Ajuste DH";
 
@@ -232,6 +237,7 @@ namespace Color.Forms
                 this.colDyeName,
                 this.colConcentration,
                 this.colAjusteDL,
+                this.colAjusteDC,
                 this.colAjusteDH,
                 this.colNuevaReceta
             });
@@ -260,7 +266,8 @@ namespace Color.Forms
 
             // btnBorrar — Rojo igual al btnCerrar de FormResultados
             this.btnBorrar.Size = new System.Drawing.Size(130, 34);
-            this.btnBorrar.Location = new System.Drawing.Point(530, 10);
+            this.btnBorrar.Location = new System.Drawing.Point(540, 10);
+            this.btnBorrar.Anchor = (System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right);
             this.btnBorrar.Text = "Borrar";
             this.btnBorrar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnBorrar.FlatAppearance.BorderSize = 0;
@@ -273,7 +280,8 @@ namespace Color.Forms
 
             // btnExportar — Azul igual al btnHistorial de FormResultados
             this.btnExportar.Size = new System.Drawing.Size(140, 34);
-            this.btnExportar.Location = new System.Drawing.Point(670, 10);
+            this.btnExportar.Location = new System.Drawing.Point(675, 10);
+            this.btnExportar.Anchor = (System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right);
             this.btnExportar.Text = "⬇ Exportar CSV";
             this.btnExportar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnExportar.FlatAppearance.BorderSize = 0;
@@ -288,7 +296,7 @@ namespace Color.Forms
 
             // btnCerrar — Rojo oscuro igual que FormResultados
             this.btnCerrar.Size = new System.Drawing.Size(100, 34);
-            this.btnCerrar.Location = new System.Drawing.Point(820, 10);
+            this.btnCerrar.Location = new System.Drawing.Point(825, 10);
             this.btnCerrar.Text = "Cerrar";
             this.btnCerrar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCerrar.FlatAppearance.BorderSize = 0;
@@ -299,6 +307,7 @@ namespace Color.Forms
             this.btnCerrar.Font = new System.Drawing.Font("Segoe UI", 9.5F,
                                            System.Drawing.FontStyle.Bold);
             this.btnCerrar.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnCerrar.Anchor = (System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right);
             this.btnCerrar.Click += new System.EventHandler(this.btnCerrar_Click);
 
             // ──────────────────────────────────────────────────────────────
@@ -357,6 +366,7 @@ namespace Color.Forms
         private System.Windows.Forms.DataGridViewTextBoxColumn colDyeName;
         private System.Windows.Forms.DataGridViewTextBoxColumn colConcentration;
         private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDL;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDC;
         private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDH;
         private System.Windows.Forms.DataGridViewTextBoxColumn colNuevaReceta;
     }

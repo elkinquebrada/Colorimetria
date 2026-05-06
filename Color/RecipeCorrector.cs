@@ -39,6 +39,7 @@ namespace Color
         public string Name { get; set; }
         public double Original { get; set; }
         public double FactorDL { get; set; }
+        public double FactorDC { get; set; }
         public double FactorDH { get; set; }
         public double NewConcentration { get; set; }
         public string Status { get; set; } // "OK", "SATURACIÓN", "REVISAR"
@@ -112,9 +113,9 @@ namespace Color
 
             foreach (var d in deltas)
             {
-                // Variación porcentual exacta de Excel: dL * 10
-                double varL = d.DeltaLightness * 10.0;
-                double varC = d.DeltaChroma * 10.0;
+                // Variación porcentual exacta de Excel: dL
+                double varL = d.DeltaLightness;
+                double varC = d.DeltaChroma;
 
                 var result = new IlluminantCorrectionResult
                 {
@@ -177,26 +178,34 @@ namespace Color
                 TotalOriginal = originalRecipe.Sum(i => i.Percentage)
             };
 
-            // 1. Factores de Entrada
-            double factorDL = 1.0 + (analysis.DeltaL * 10.0 / 100.0);
-            double factorDH = 1.0 + (analysis.DeltaHue * 10.0 / 100.0);
+            // 1. Factores de ajuste basados en la Variación Relativa Exacta
+            // Ajuste = Variación (ej: 0.00185)
+            // Nueva Conc = Original * (1 + VariacionL) * (1 + VariacionC) * (1 + VariacionH)
             
-            // 2. Identificación del Matizador
-            // Se asume que DH se aplica al colorante que necesita corregir el matiz.
-            // Según propuesta: "Factor_DH se aplica exclusivamente al colorante identificado como Principal/Matizador"
-            var matizador = IdentifyMatizador(originalRecipe, analysis.DeltaHue);
+            double adjL = analysis.PercentL;
+            double adjC = analysis.PercentChroma;
+            double adjH = analysis.PercentHue;
 
+            double fDL = 1.0 - adjL;
+            double fDC = 1.0 + adjC;
+            double fDH_val = 1.0 + adjH;
+
+            // 2. Identificación del Matizador
+            var matizador = IdentifyMatizador(originalRecipe, analysis.DeltaHue);
             bool incompatibility = (analysis.DeltaHue != 0 && matizador == null);
 
             foreach (var ing in originalRecipe)
             {
                 bool isMatizador = (matizador != null && ing.Code == matizador.Code);
-                double fDH = isMatizador ? factorDH : 1.0;
                 
-                double newConc = ing.Percentage * factorDL * fDH;
+                // El factor de matiz (DH) solo se aplica al matizador identificado
+                double currentFactorDH = isMatizador ? fDH_val : 1.0;
+                
+                // Aplicación secuencial de factores (Multiplicativa de reducción)
+                double newConc = ing.Percentage * fDL * fDC * currentFactorDH;
                 string status = "OK";
 
-                // Alerta de Saturación (Crítica)
+                // Alerta de Saturación (Crítica para Coats)
                 if (newConc > 4.5) status = "SATURACIÓN";
 
                 result.Ingredients.Add(new CorrectiveIngredientDetail
@@ -204,8 +213,9 @@ namespace Color
                     Code = ing.Code,
                     Name = ing.Name,
                     Original = ing.Percentage,
-                    FactorDL = factorDL,
-                    FactorDH = fDH,
+                    FactorDL = adjL,
+                    FactorDC = adjC,
+                    FactorDH = isMatizador ? adjH : 0,
                     NewConcentration = Math.Round(newConc, 5),
                     Status = status
                 });
@@ -213,8 +223,8 @@ namespace Color
 
             result.TotalNew = result.Ingredients.Sum(i => i.NewConcentration);
 
-            // 3. Sistema de Alertas
-            double combinedFactor = factorDL * factorDH;
+            // 3. Sistema de Alertas (Basado en impacto total de los 3 ejes)
+            double combinedFactor = fDL * fDC * fDH_val;
             if (incompatibility)
             {
                 result.AlertMessage = "Error: Incompatibilidad de matiz detectada";

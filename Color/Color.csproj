@@ -187,7 +187,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <None Include="LogicDocs\App.config" />
-    <Content Include="LogicDocs\calculos a realizar con el programa.xlsx">
+    <Content Include="LogicDocs\formulas y funciones .xlsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <None Include="LogicDocs\GUIA_INTEGRACION.md" />

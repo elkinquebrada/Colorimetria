@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -162,6 +162,10 @@ namespace Color
             this.mainArea.Name = "mainArea";
             this.mainArea.Size = new System.Drawing.Size(980, 720);
             this.mainArea.TabIndex = 1;
+
+            // Ocultar títulos redundantes
+            this.lblTitle.Visible = true;
+            this.lblSubtitle.Visible = true;
             // 
             // btnCancelarAccion
             // 
@@ -203,11 +207,7 @@ namespace Color
             this.lblStatus.TabIndex = 10;
             this.lblStatus.Text = "Cargue ambas imágenes para continuar";
             this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // contentBorder
-            // 
-            this.contentBorder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.contentBorder.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.contentBorder.BackColor = System.Drawing.Color.White;
             this.contentBorder.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.contentBorder.Controls.Add(this.btnCargarRight);
@@ -216,9 +216,9 @@ namespace Color
             this.contentBorder.Controls.Add(this.pnlLeftFrame);
             this.contentBorder.Controls.Add(this.lblRightTitle);
             this.contentBorder.Controls.Add(this.lblLeftTitle);
-            this.contentBorder.Location = new System.Drawing.Point(60, 160);
+            this.contentBorder.Location = new System.Drawing.Point(100, 100);
             this.contentBorder.Name = "contentBorder";
-            this.contentBorder.Size = new System.Drawing.Size(860, 430);
+            this.contentBorder.Size = new System.Drawing.Size(1000, 450);
             this.contentBorder.TabIndex = 9;
             // 
             // btnCargarRight
@@ -228,7 +228,7 @@ namespace Color
             this.btnCargarRight.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCargarRight.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnCargarRight.ForeColor = System.Drawing.Color.White;
-            this.btnCargarRight.Location = new System.Drawing.Point(548, 340);
+            this.btnCargarRight.Location = new System.Drawing.Point(620, 340);
             this.btnCargarRight.Name = "btnCargarRight";
             this.btnCargarRight.Size = new System.Drawing.Size(180, 36);
             this.btnCargarRight.TabIndex = 8;
@@ -242,7 +242,7 @@ namespace Color
             this.btnCargarLeft.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCargarLeft.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnCargarLeft.ForeColor = System.Drawing.Color.White;
-            this.btnCargarLeft.Location = new System.Drawing.Point(132, 340);
+            this.btnCargarLeft.Location = new System.Drawing.Point(200, 340);
             this.btnCargarLeft.Name = "btnCargarLeft";
             this.btnCargarLeft.Size = new System.Drawing.Size(180, 36);
             this.btnCargarLeft.TabIndex = 7;
@@ -255,9 +255,9 @@ namespace Color
             this.pnlRightFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlRightFrame.Controls.Add(this.lblRightHint);
             this.pnlRightFrame.Controls.Add(this.picRight);
-            this.pnlRightFrame.Location = new System.Drawing.Point(490, 80);
+            this.pnlRightFrame.Location = new System.Drawing.Point(550, 80);
             this.pnlRightFrame.Name = "pnlRightFrame";
-            this.pnlRightFrame.Size = new System.Drawing.Size(300, 240);
+            this.pnlRightFrame.Size = new System.Drawing.Size(320, 240);
             this.pnlRightFrame.TabIndex = 6;
             // 
             // lblRightHint
@@ -289,9 +289,9 @@ namespace Color
             this.pnlLeftFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlLeftFrame.Controls.Add(this.lblLeftHint);
             this.pnlLeftFrame.Controls.Add(this.picLeft);
-            this.pnlLeftFrame.Location = new System.Drawing.Point(74, 80);
+            this.pnlLeftFrame.Location = new System.Drawing.Point(130, 80);
             this.pnlLeftFrame.Name = "pnlLeftFrame";
-            this.pnlLeftFrame.Size = new System.Drawing.Size(300, 240);
+            this.pnlLeftFrame.Size = new System.Drawing.Size(320, 240);
             this.pnlLeftFrame.TabIndex = 5;
             // 
             // lblLeftHint

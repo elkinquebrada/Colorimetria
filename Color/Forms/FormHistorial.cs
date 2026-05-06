@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using Color.Services;
 
-namespace Color.Forms
+namespace Color
 {
     public partial class FormHistorial : Form
     {
@@ -13,6 +13,27 @@ namespace Color.Forms
         {
             InitializeComponent();
             this.WindowState = FormWindowState.Maximized;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.TopMost = false;
+
+            // Mostrar elementos de control
+            this.lblTitulo.Visible = true;
+            this.btnBorrar.Visible = true;
+            this.btnExportar.Visible = true;
+            this.btnCerrar.Visible = true;
+            
+            this.btnCerrar.Text = "← Regresar";
+            this.btnCerrar.Click += (s, e) => this.Close();
+
+            // Asegurar posición en el panel (fuerza bruta para evitar errores del diseñador)
+            this.btnCerrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            this.btnExportar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            this.btnBorrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            
+            this.btnCerrar.Location = new Point(this.pnlPie.Width - this.btnCerrar.Width - 10, 10);
+            this.btnExportar.Location = new Point(this.btnCerrar.Left - this.btnExportar.Width - 10, 10);
+            this.btnBorrar.Location = new Point(this.btnExportar.Left - this.btnBorrar.Width - 10, 10);
+
             ConfigurarColumnas();
             this.Resize += (s, e) => AjustarAnchoCabecerasAgrupadas();
             this.dgvHistorial.ColumnWidthChanged += (s, e) => AjustarAnchoCabecerasAgrupadas();
@@ -24,18 +45,19 @@ namespace Color.Forms
         {
             if (dgvHistorial.Columns.Count == 0) return;
 
-            // Ajuste de pesos para las 12 columnas (Estructura Unificada)
+            // Ajuste de pesos para las 13 columnas (Estructura Unificada)
             dgvHistorial.Columns["colShadeName"].FillWeight = 10;
             dgvHistorial.Columns["colFechaHora"].FillWeight = 10;
-            dgvHistorial.Columns["colIluminante"].FillWeight = 6;
-            dgvHistorial.Columns["colDLEje"].FillWeight = 8;
-            dgvHistorial.Columns["colDCEje"].FillWeight = 8;
-            dgvHistorial.Columns["colDHEje"].FillWeight = 8;
-            dgvHistorial.Columns["colDyeCode"].FillWeight = 8;
+            dgvHistorial.Columns["colIluminante"].FillWeight = 5;
+            dgvHistorial.Columns["colDLEje"].FillWeight = 7;
+            dgvHistorial.Columns["colDCEje"].FillWeight = 7;
+            dgvHistorial.Columns["colDHEje"].FillWeight = 7;
+            dgvHistorial.Columns["colDyeCode"].FillWeight = 7;
             dgvHistorial.Columns["colDyeName"].FillWeight = 12;
-            dgvHistorial.Columns["colConcentration"].FillWeight = 8;
-            dgvHistorial.Columns["colAjusteDL"].FillWeight = 8;
-            dgvHistorial.Columns["colAjusteDH"].FillWeight = 8;
+            dgvHistorial.Columns["colConcentration"].FillWeight = 7;
+            dgvHistorial.Columns["colAjusteDL"].FillWeight = 7;
+            dgvHistorial.Columns["colAjusteDC"].FillWeight = 7;
+            dgvHistorial.Columns["colAjusteDH"].FillWeight = 7;
             dgvHistorial.Columns["colNuevaReceta"].FillWeight = 10;
 
             DataGridViewCellStyle center = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter };
@@ -94,6 +116,7 @@ namespace Color.Forms
                 if (tabla.Columns.Contains("DyeName")) fila.Cells["colDyeName"].Value = row["DyeName"];
                 if (tabla.Columns.Contains("ConcOriginal")) fila.Cells["colConcentration"].Value = row["ConcOriginal"];
                 if (tabla.Columns.Contains("AjusteDL")) fila.Cells["colAjusteDL"].Value = row["AjusteDL"];
+                if (tabla.Columns.Contains("AjusteDC")) fila.Cells["colAjusteDC"].Value = row["AjusteDC"];
                 if (tabla.Columns.Contains("AjusteDH")) fila.Cells["colAjusteDH"].Value = row["AjusteDH"];
                 if (tabla.Columns.Contains("NuevaReceta")) fila.Cells["colNuevaReceta"].Value = row["NuevaReceta"];
             }
