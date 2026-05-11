@@ -21,7 +21,7 @@ namespace Color
         private readonly OcrReport _report;
         private readonly string _resumenLegacy;
         private readonly List<EngineRes> _resultsLegacy;
-        private List<Color.IlluminantCorrectionResult> _recipeResults;
+        private List<CorrectiveRecipeResult> _recipeResults;
         private ShadeExtractionResult _shadeData;
 
         // ======= Controles de la vista (Tablas) =======
@@ -65,7 +65,7 @@ namespace Color
             PopulateFromReport(_report);
         }
 
-        public FormResultados(string resumen, List<EngineRes> results, List<Color.IlluminantCorrectionResult> recipeResults = null, ShadeExtractionResult shadeData = null)
+        public FormResultados(string resumen, List<EngineRes> results, List<CorrectiveRecipeResult> recipeResults = null, ShadeExtractionResult shadeData = null)
         {
             _resumenLegacy = resumen ?? "";
             _resultsLegacy = results ?? new List<EngineRes>();
@@ -355,13 +355,12 @@ namespace Color
         private DataGridView CreateCorrectiveGrid()
         {
             var dgv = CreateStyledGrid();
-            dgv.ColumnCount = 6;
-            dgv.Columns[0].Name = "Colorante";         dgv.Columns[0].FillWeight = 25;
-            dgv.Columns[1].Name = "% Receta Original";     dgv.Columns[1].FillWeight = 12;
-            dgv.Columns[2].Name = "% Ajuste DL";      dgv.Columns[2].FillWeight = 12;
-            dgv.Columns[3].Name = "% Ajuste DC";      dgv.Columns[3].FillWeight = 12; // Nueva columna
-            dgv.Columns[4].Name = "% Ajuste DH";      dgv.Columns[4].FillWeight = 12;
-            dgv.Columns[5].Name = "% Nueva Receta"; dgv.Columns[5].FillWeight = 18;
+            dgv.ColumnCount = 5;
+            dgv.Columns[0].Name = "Colorante";            dgv.Columns[0].FillWeight = 25;
+            dgv.Columns[1].Name = "Receta Original";      dgv.Columns[1].FillWeight = 15;
+            dgv.Columns[2].Name = "Receta # 1";    dgv.Columns[2].FillWeight = 15;
+            dgv.Columns[3].Name = "Receta # 2";    dgv.Columns[3].FillWeight = 15;
+            dgv.Columns[4].Name = "Receta # 3";     dgv.Columns[4].FillWeight = 15;
             return dgv;
         }
 
@@ -432,10 +431,8 @@ namespace Color
             };
         }
 
-        /// <summary>
         /// Aplica estilo tenue (gris claro) a las grillas de iluminantes secundarios
-        /// para que no compitan visualmente con el iluminante principal D65.
-        /// </summary>
+        /// para que no compitan visualmente con el iluminante principal D65
         private void ApplyTenueGridStyle(DataGridView dgv)
         {
             var lightGray = System.Drawing.Color.FromArgb(200, 200, 200); // Texto muy claro
@@ -498,8 +495,25 @@ namespace Color
             };
         }
 
-        /// Aplica estilo tenue a todas las celdas de una fila específica.
+        private void HighlightChecks(DataGridView dgv, int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= dgv.Rows.Count) return;
+            var row = dgv.Rows[rowIndex];
+            foreach (DataGridViewCell cell in row.Cells)
+            {
+                if (cell.Value != null && cell.Value.ToString() == "✔")
+                {
+                    cell.Style.ForeColor = System.Drawing.Color.ForestGreen;
+                    cell.Style.Font = new Font(dgv.Font, FontStyle.Bold);
+                    cell.Style.SelectionForeColor = System.Drawing.Color.ForestGreen;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Aplica estilo tenue a todas las celdas de una fila específica. ✓
         /// Garantiza que ninguna celda herede colores vivos de otro estilo.
+        /// </summary>
         private void ApplyTenueRowStyle(DataGridView dgv, int rowIndex)
         {
             if (rowIndex < 0 || rowIndex >= dgv.Rows.Count) return;
@@ -648,9 +662,9 @@ namespace Color
             double pctB = (Math.Abs(stdB) > 0.1) ? (dB / Math.Abs(stdB)) : 0;
 
             // Variaciones Relativas (Fórmula Excel: Abs((Std - Lot) / Std))
-            double relL = (stdL > 0) ? Math.Abs((stdL - lotL) / stdL) : 0;
-            double relA = (stdA != 0) ? Math.Abs((stdA - lotA) / stdA) : 0;
-            double relB = (stdB != 0) ? Math.Abs((stdB - lotB) / stdB) : 0;
+            double relL = (stdL > 0) ? (stdL - lotL) / stdL : 0;
+            double relA = (stdA != 0) ? (stdA - lotA) / stdA : 0;
+            double relB = (stdB != 0) ? (stdB - lotB) / stdB : 0;
 
             // PRUEBA DE ESCRITORIO EN CONSOLA (DEBUG)
             System.Diagnostics.Debug.WriteLine("--- INICIO PRUEBA DE ESCRITORIO (D65 OCR) ---");
@@ -663,9 +677,9 @@ namespace Color
 
             if (dE > 0 && dE <= DE_MAX)
             {
-                int i1 = dgv.Rows.Add("", relL.ToString(), $"{(Math.Abs(relL) * 100):F1}%", "DENTRO DE TOLERANCIA", "Normal", "OK");
-                int i2 = dgv.Rows.Add("", relA.ToString(), $"{(Math.Abs(relA) * 100):F1}%", "DENTRO DE TOLERANCIA", "Normal", "OK");
-                int i3 = dgv.Rows.Add("", relB.ToString(), $"{(Math.Abs(relB) * 100):F1}%", "DENTRO DE TOLERANCIA", "Normal", "OK");
+                int i1 = dgv.Rows.Add("", relL.ToString("F5"), dL.ToString("F2"), "DENTRO DE TOLERANCIA", "Normal", "OK");
+                int i2 = dgv.Rows.Add("", relA.ToString("F5"), dA.ToString("F2"), "DENTRO DE TOLERANCIA", "Normal", "OK");
+                int i3 = dgv.Rows.Add("", relB.ToString("F5"), dB.ToString("F2"), "DENTRO DE TOLERANCIA", "Normal", "OK");
                 ApplyEjeStyle(dgv, i1, "dL Luminosidad");
                 ApplyEjeStyle(dgv, i2, "da (Rojo/Verde)");
                 ApplyEjeStyle(dgv, i3, "db (Amar/Azul)");
@@ -677,13 +691,13 @@ namespace Color
                     DeltaL = lotL - stdL,
                     DeltaChroma = toDbl(batch.DC),
                     DeltaHue = toDbl(batch.DH),
-                    PercentL = relL, 
+                    FactorL = (decimal)relL, 
                     DeltaA = dA,
                     DeltaB = dB,
-                    PercentA = relA,
-                    PercentB = relB,
-                    PercentChroma = (stdL > 0) ? (toDbl(batch.DC) / stdL) : 0,
-                    PercentHue = (stdL > 0) ? (toDbl(batch.DH) / stdL) : 0
+                    FactorA = (decimal)relA,
+                    FactorB = (decimal)relB,
+                    FactorC = (stdL > 0) ? (decimal)(toDbl(batch.DC) / stdL) : 0,
+                    FactorH = (decimal)toDbl(batch.DH)
                 };
 
                 string diag = res.DiagnosticoL;
@@ -692,15 +706,15 @@ namespace Color
 
                 // Mostrar valores base para transparencia total (Std vs Lot)
                 string valBase = $"[S:{stdL:F2} L:{lotL:F2}]";
-                int r1 = dgv.Rows.Add("dL Luminosidad", relL.ToString(), $"{res.PorcentajeRecetaL:F1}%", imp, diag, rec);
+                int r1 = dgv.Rows.Add("dL Luminosidad", ((double)res.FactorL).ToString("F5"), res.DeltaL.ToString("F2"), imp, diag, rec);
                 dgv.Rows[r1].Cells[0].ToolTipText = valBase; 
                 
                 string valBaseA = $"[S:{stdA:F2} L:{lotA:F2}]";
-                int r2 = dgv.Rows.Add("da (Rojo/Verde)", relA.ToString(), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+                int r2 = dgv.Rows.Add("da (Rojo/Verde)", ((double)res.FactorA).ToString("F5"), res.DeltaA.ToString("F2"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
                 dgv.Rows[r2].Cells[0].ToolTipText = valBaseA;
 
                 string valBaseB = $"[S:{stdB:F2} L:{lotB:F2}]";
-                int r3 = dgv.Rows.Add("db (Amar/Azul)", relB.ToString(), $"{Math.Abs(res.PercentHue * 100):F1}%", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
+                int r3 = dgv.Rows.Add("db (Amar/Azul)", ((double)res.FactorB).ToString("F5"), res.DeltaB.ToString("F2"), res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
                 dgv.Rows[r3].Cells[0].ToolTipText = valBaseB;
                 
                 ApplyEjeStyle(dgv, r1, "dL Luminosidad");
@@ -752,70 +766,49 @@ namespace Color
             {
                 int idx = dgvCorrectiveRecipe.Rows.Add(
                     ing.Name,
-                    ing.Original.ToString(),
-                    ing.FactorDL.ToString(),
-                    ing.FactorDC.ToString(), // Mapeo de DC
-                    ing.FactorDH.ToString(),
-                    ing.NewConcentration.ToString()
+                    ing.Original.ToString("F5"),
+                    ing.OptionL,
+                    ing.OptionC,
+                    ing.OptionH
                 );
 
-                if (ing.Status == "SATURACIÓN")
+                if (ing.IsCritical)
                 {
-                    dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.BackColor = System.Drawing.Color.MistyRose;
                     dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.ForeColor = System.Drawing.Color.Red;
+                    dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.Font = new Font(dgvCorrectiveRecipe.Font, FontStyle.Bold);
                 }
             }
 
             lblAlertCorrective.Text = result.AlertMessage;
-            switch (result.AlertSeverity)
-            {
-                case "Critical":
-                case "Error":
-                    lblAlertCorrective.BackColor = System.Drawing.Color.Firebrick;
-                    break;
-                case "Warning":
-                    lblAlertCorrective.BackColor = System.Drawing.Color.Goldenrod;
-                    break;
-                case "None":
-                    lblAlertCorrective.BackColor = System.Drawing.Color.ForestGreen;
-                    break;
-                default:
-                    lblAlertCorrective.BackColor = System.Drawing.Color.Gray;
-                    break;
-            }
+            lblAlertCorrective.BackColor = result.AlertSeverity == "None" ? System.Drawing.Color.ForestGreen : System.Drawing.Color.Firebrick;
         }
 
-        private void FillAnalysisGrid(DataGridView dgv, EngineRes res, bool isRecipe)
+        private void FillAnalysisGrid(DataGridView dgv, ColorCorrectionResult res, bool isRecipe)
         {
             dgv.Rows.Clear();
             if (res == null) return;
 
-            if (res.CmcValue <= DE_MAX || res.DeltaE <= DE_MAX)
-            {
-                int i1 = dgv.Rows.Add("", res.DL_Relativo.ToString(), $"{(Math.Abs(res.DL_Relativo) * 100):F1}%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "OK");
-                int i2 = dgv.Rows.Add("", res.DA_Relativo.ToString(), $"{(Math.Abs(res.DA_Relativo) * 100):F1}%", "DENTRO DE TOLERANCIA", "No requiere corrección", "OK");
-                int i3 = dgv.Rows.Add("", res.DB_Relativo.ToString(), $"{(Math.Abs(res.DB_Relativo) * 100):F1}%", "DENTRO DE TOLERANCIA", "No requiere corrección", "OK");
-                ApplyEjeStyle(dgv, i1, "dL Luminosidad"); ApplyTenueRowStyle(dgv, i1);
-                ApplyEjeStyle(dgv, i2, "da (Rojo/Verde)"); ApplyTenueRowStyle(dgv, i2);
-                ApplyEjeStyle(dgv, i3, "db (Amar/Azul)"); ApplyTenueRowStyle(dgv, i3);
-            }
-            else
-            {
-                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
-                string imp  = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
-                string rec  = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+            string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+            string imp  = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+            string rec  = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
 
-                // Mostrar valores base para transparencia total
-                string lblL = $"dL Luminosidad [S:{res.StdL:F2} L:{res.LotL:F2}]";
-                string lblA = $"da (Rojo/Verde) [S:{res.StdA:F2} L:{res.LotA:F2}]";
-                string lblB = $"db (Amar/Azul) [S:{res.StdB:F2} L:{res.LotB:F2}]";
+            int r1 = dgv.Rows.Add("dL Luminosidad", Math.Abs((double)res.FactorL).ToString("F5"), res.DeltaL.ToString("F2"), imp, diag, rec);
+            int r2 = dgv.Rows.Add("da (Rojo/Verde)", Math.Abs((double)res.FactorA).ToString("F5"), res.DeltaA.ToString("F2"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+            int r3 = dgv.Rows.Add("db (Amar/Azul)", Math.Abs((double)res.FactorB).ToString("F5"), res.DeltaB.ToString("F2"), res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
+            
+            ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
+            ApplyEjeStyle(dgv, r2, "da"); ApplyTenueRowStyle(dgv, r2);
+            ApplyEjeStyle(dgv, r3, "db"); ApplyTenueRowStyle(dgv, r3);
 
-                int r1 = dgv.Rows.Add(lblL, res.DL_Relativo.ToString(), $"{(Math.Abs(res.DL_Relativo) * 100):F1}%", imp, diag, rec);
-                int r2 = dgv.Rows.Add(lblA, res.DA_Relativo.ToString(), $"{(Math.Abs(res.DA_Relativo) * 100):F1}%", res.DescripcionC, res.DiagnosisC, res.RecommendationC);
-                int r3 = dgv.Rows.Add(lblB, res.DB_Relativo.ToString(), $"{(Math.Abs(res.DB_Relativo) * 100):F1}%", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
-                ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
-                ApplyEjeStyle(dgv, r2, "da"); ApplyTenueRowStyle(dgv, r2);
-                ApplyEjeStyle(dgv, r3, "db"); ApplyTenueRowStyle(dgv, r3);
+            // Resaltado de Checks Verdes
+            HighlightChecks(dgv, r1);
+            HighlightChecks(dgv, r2);
+            HighlightChecks(dgv, r3);
+
+            // Resaltar si cumple o no de forma visual pero sin ocultar datos
+            if (res.DeltaE <= DE_MAX)
+            {
+                foreach (DataGridViewRow row in dgv.Rows) ApplyTenueRowStyle(dgv, row.Index);
             }
         }
 
@@ -946,43 +939,28 @@ namespace Color
                 FillAnalysisGridFromCmc(dgvAnalysisRightA, illA, report.TolDE, false, pA, pB);
             }
 
-            // --- CALCULO DE RECETA CORRECTIVA (D65) ---
-            if (d65 != null)
+            // --- CALCULO DE RECETA CORRECTIVA FASE 2 (MOTOR EXPERTO) ---
+            var expertAnalysis = EngineCalc.CalculateIndustrialCorrection(report);
+            
+            if (expertAnalysis.Success)
             {
-                var stdD65 = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && m.Type.ToUpper().Contains("STD"));
-                var lotD65 = report.Measures.FirstOrDefault(m => m.Illuminant.Contains("D65") && (m.Type.ToUpper().Contains("SPL") || m.Type.ToUpper().Contains("LOT")));
-                double pA = 0, pB = 0;
-                if (stdD65 != null && lotD65 != null) {
-                    pA = (Math.Abs(stdD65.A) > 0.1) ? (lotD65.A - stdD65.A) / Math.Abs(stdD65.A) : 0;
-                    pB = (Math.Abs(stdD65.B) > 0.1) ? (lotD65.B - stdD65.B) / Math.Abs(stdD65.B) : 0;
-                }
-
-                var resD65 = new ColorCorrectionResult {
-                    Illuminant = "D65",
-                    DeltaL = d65.DeltaLightness,
-                    DeltaHue = d65.DeltaHue,
-                    PercentL = d65.DeltaLightness,
-                    PercentA = pA,
-                    PercentB = pB
-                };
-
                 var ingredients = RecipeCorrector.IngredientsFromShade(new ShadeExtractionResult { 
                     Recipe = report.Recipe
                 });
                 
                 if (ingredients.Count > 0)
                 {
-                    var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, resD65);
+                    var correctiveResult = RecipeCorrector.CalculateCorrectiveRecipe(ingredients, expertAnalysis);
                     FillCorrectiveRecipeGrid(correctiveResult);
                 }
 
-                // Actualizar gráfico con D65
-                UpdateChart(resD65);
-
-                // Limpiar selección para evitar filas azules resaltadas al inicio
-                dgvAnalysisRightTL84.ClearSelection();
-                dgvAnalysisRightA.ClearSelection();
+                _lastMainResult = expertAnalysis;
+                UpdateChart(expertAnalysis);
             }
+
+            // Limpiar selección para evitar filas azules resaltadas al inicio
+            dgvAnalysisRightTL84.ClearSelection();
+            dgvAnalysisRightA.ClearSelection();
         }
 
         private void FillAnalysisGridFromCmc(DataGridView dgv, CmcDifferenceRow cmc, double tolDE, bool isRecipe, double pctA = 0, double pctB = 0)
@@ -990,45 +968,39 @@ namespace Color
             dgv.Rows.Clear();
             if (cmc == null) return;
 
-            double dL = cmc.DeltaLightness;
-            double dC = cmc.DeltaChroma;
-            double dH = cmc.DeltaHue;
-            double dE = cmc.DeltaCMC ?? 0;
+            decimal fL = (decimal)cmc.DeltaLightness / 100m;
+            decimal fC = (decimal)cmc.DeltaChroma / 100m;
 
-            if (dE > 0 && dE <= tolDE)
+            // Crear objeto de resultado temporal para usar lógica dinámica del motor
+            var res = new ColorCorrectionResult {
+                DeltaL = cmc.DeltaLightness,
+                DeltaChroma = cmc.DeltaChroma,
+                DeltaHue = cmc.DeltaHue,
+                DeltaA = pctA * 50, 
+                DeltaB = pctB * 50
+            };
+
+            string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+            string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+            string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+
+            int r1 = dgv.Rows.Add("", Math.Abs((double)fL).ToString("F5"), res.DeltaL.ToString("F2"), diag, imp, rec);
+            int r2 = dgv.Rows.Add("", Math.Abs((double)fC).ToString("F5"), res.DeltaChroma.ToString("F2"), res.DiagnosisC, res.DescripcionC, res.RecommendationC);
+            int r3 = dgv.Rows.Add("", "0.00000", res.DeltaHue.ToString("F2"), res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
+            
+            ApplyEjeStyle(dgv, r1, "DL (Luminosidad)"); 
+            ApplyEjeStyle(dgv, r2, "DC (Brillo)"); 
+            ApplyEjeStyle(dgv, r3, "DH (Matiz)");
+
+            HighlightChecks(dgv, r1);
+            HighlightChecks(dgv, r2);
+            HighlightChecks(dgv, r3);
+
+            if (cmc.DeltaCMC <= tolDE)
             {
-                int i1 = dgv.Rows.Add("", dL.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "LOTE APROBADO", "-");
-                int i2 = dgv.Rows.Add("", dC.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
-                int i3 = dgv.Rows.Add("", dH.ToString("F1") + "%", "DENTRO DE TOLERANCIA", "No requiere corrección", "-");
-                ApplyEjeStyle(dgv, i1, "DL (Luminosidad)"); ApplyTenueRowStyle(dgv, i1);
-                ApplyEjeStyle(dgv, i2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, i2);
-                ApplyEjeStyle(dgv, i3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, i3);
-            }
-            else
-            {
-                // Crear objeto de resultado temporal para usar lógica dinámica del motor
-                var res = new ColorCorrectionResult {
-                    DeltaL = cmc.DeltaLightness,
-                    DeltaChroma = cmc.DeltaChroma,
-                    DeltaHue = cmc.DeltaHue,
-                    PercentL = cmc.DeltaLightness, 
-                    DeltaA = pctA * 50, 
-                    DeltaB = pctB * 50,
-                    PercentA = pctA,
-                    PercentB = pctB,
-                    PercentChroma = cmc.DeltaChroma
-                };
-
-                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
-                string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
-                string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
-
-                int r1 = dgv.Rows.Add("", res.DeltaL.ToString("F2"), $"{res.PorcentajeRecetaL:F1}%", diag, imp, rec);
-                int r2 = dgv.Rows.Add("", res.DeltaChroma.ToString("F2"), $"{Math.Abs(res.PercentChroma * 100):F1}%", res.DiagnosisC, res.DescripcionC, res.RecommendationC);
-                int r3 = dgv.Rows.Add("", res.DeltaHue.ToString("F2"), $"{Math.Abs(res.PercentHue * 100):F1}%", res.DiagnosisH, res.ImpactoMatiz, res.RecomendacionMatiz);
-                ApplyEjeStyle(dgv, r1, "DL (Luminosidad)"); ApplyTenueRowStyle(dgv, r1);
-                ApplyEjeStyle(dgv, r2, "DC (Brillo)"); ApplyTenueRowStyle(dgv, r2);
-                ApplyEjeStyle(dgv, r3, "DH (Matiz)"); ApplyTenueRowStyle(dgv, r3);
+                ApplyTenueRowStyle(dgv, r1);
+                ApplyTenueRowStyle(dgv, r2);
+                ApplyTenueRowStyle(dgv, r3);
             }
         }
 
@@ -1069,9 +1041,14 @@ namespace Color
                     string name = row.Cells[0].Value?.ToString() ?? "";
                     string strOriginal = row.Cells[1].Value?.ToString() ?? "0";
                     string strAdjDL = row.Cells[2].Value?.ToString() ?? "0";
-                    string strAdjDC = row.Cells[3].Value?.ToString() ?? "0"; // Nuevo
+                    string strAdjDC = row.Cells[3].Value?.ToString() ?? "0"; 
                     string strAdjDH = row.Cells[4].Value?.ToString() ?? "0"; 
-                    string strNueva = row.Cells[5].Value?.ToString() ?? "0";
+
+                    // Determinar la nueva receta (el valor que no sea "---" entre las opciones L, C, H)
+                    string strNueva = strOriginal;
+                    if (strAdjDL != "---") strNueva = strAdjDL;
+                    else if (strAdjDC != "---") strNueva = strAdjDC;
+                    else if (strAdjDH != "---") strNueva = strAdjDH;
 
                     // Conversión numérica estricta (Decimal 5 decimales)
                     decimal.TryParse(strOriginal.Replace("%",""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal concOriginal);
@@ -1116,6 +1093,8 @@ namespace Color
                 MessageBox.Show("Error en la integridad de datos: " + ex.Message, "Error de Sistema", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+
 
         private void GenerarReporteTexto()
         {

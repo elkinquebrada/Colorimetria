@@ -21,7 +21,7 @@ namespace OCR
             string excelPath,
             List<ColorimetricRow> ocrRows,
             List<CmcResult> cmcResults,
-            List<IlluminantCorrectionResult> recipeResults)
+            List<CorrectiveRecipeResult> recipeResults)
         {
             if (string.IsNullOrWhiteSpace(excelPath) || !File.Exists(excelPath))
                 return false;
@@ -138,7 +138,7 @@ namespace OCR
         private static bool WriteHoja2_CalculoReceta(
             IXLWorkbook wb,
             List<CmcResult> cmcResults,
-            List<IlluminantCorrectionResult> recipeResults,
+            List<CorrectiveRecipeResult> recipeResults,
             List<ColorimetricRow> ocrRows)
         {
             IXLWorksheet ws;

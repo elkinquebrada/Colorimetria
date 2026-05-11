@@ -26,6 +26,13 @@ namespace Color
             InitializeComponent();
             this.WindowState = FormWindowState.Maximized;
             this.TopMost = true;
+            
+            // Mantener siempre pantalla completa — evitar que el usuario la reduzca
+            this.Resize += (s, e) =>
+            {
+                if (this.WindowState == FormWindowState.Normal)
+                    this.WindowState = FormWindowState.Maximized;
+            };
 
             WireEvents();
             UpdateHints();
@@ -202,6 +209,11 @@ namespace Color
                     return;
                 }
 
+                // --- TRANSICIÓN FLUIDA ---
+                // Minimizamos JUSTO ANTES de abrir la siguiente ventana para evitar el vacío de 1 segundo
+                this.TopMost = false;
+                this.WindowState = FormWindowState.Minimized;
+
                 OcrReport.SetLastReport(ocrMediciones);
                 using (var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult))
                 {
@@ -213,19 +225,20 @@ namespace Color
                         volverAConfirmar = false;
                         if (dlgConfirm.ShowDialog() == DialogResult.OK)
                         {
-                            var correcciones = ColorimetricCalculator.Calculate(dlgConfirm.RowsConfirmed);
-                            var cmcRes = ColorimetricCalculator.CalculateCmc(correcciones, dlgConfirm.RowsConfirmed);
-                            foreach (var c in correcciones)
-                            {
-                                var m = cmcRes.FirstOrDefault(x => string.Equals(x.Illuminant, c.Illuminant, StringComparison.OrdinalIgnoreCase));
-                                if (m != null) c.CmcValue = m.CmcValue;
-                            }
+                            // Sincronizar reporte con ediciones del usuario
+                            dlgConfirm.Report.Measures = dlgConfirm.RowsConfirmed;
 
+                            // Motores Industriales (D65, TL84, A)
+                            var correcciones = ColorimetricCalculator.CalculateAllIlluminants(dlgConfirm.Report);
+                            var mainResult = correcciones.FirstOrDefault(r => r.Illuminant == "D65") ?? correcciones.FirstOrDefault();
+
+                            // Motor de Receta (Basado en D65)
                             var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
-                            var deltas = RecipeCorrector.DeltasFromReport(dlgConfirm.Report);
-                            var corrReceta = RecipeCorrector.Calculate(ingredientes, deltas);
+                            var corrReceta = new List<CorrectiveRecipeResult> { 
+                                RecipeCorrector.CalculateCorrectiveRecipe(ingredientes, mainResult) 
+                            };
 
-                            using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta as List<IlluminantCorrectionResult>, _lastShadeResult))
+                            using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta, _lastShadeResult))
                             {
                                 if (frmRes.ShowDialog() == DialogResult.Retry)
                                 {
@@ -237,7 +250,15 @@ namespace Color
                 }
             }
             catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
-            finally { Cursor = Cursors.Default; }
+            finally 
+            { 
+                Cursor = Cursors.Default;
+                lblStatus.Text = "";
+                // Restaurar pantalla completa al finalizar
+                this.WindowState = FormWindowState.Maximized;
+                this.TopMost = true;
+                this.BringToFront();
+            }
         }
 
         private void BtnCancelarAccion_Click(object sender, EventArgs e)

@@ -459,46 +459,59 @@ namespace Color
                 return NormalizeOCRLine(text);
             }
 
-            // Columnas numéricas: limpiar OCR manteniendo signo y punto
-            text = text
-                .Replace(',', '.')
-                .Replace('O', '0')
-                .Replace('o', '0')
-                .Replace('L', '1')
-                .Replace('l', '1')
-                .Replace('I', '1')
-                .Replace('|', '1')
-                .Replace('S', '5')
-                .Replace('s', '5')
-                .Replace('Z', '2')
-                .Replace('z', '2')
-                .Replace('`', ' ')
-                .Replace('\'', ' ');
-
-            // Capturar rastro de caracteres de confusión antes de limpiar símbolos especiales
-            bool hadConfusionChar = Regex.IsMatch(text, @"[LIl|SszZ]");
-
-            text = Regex.Replace(text, @"[^0-9\.\-\s]", "");
-            text = Regex.Replace(text, @"\s+", "");
-
-            // normalizar signo negativo
+            // Columnas numéricas de medición (L, a, b, Chroma, Hue) — limpieza estricta
+            if (col >= 2 && col <= 6)
             {
+                text = text
+                    .Replace(',', '.')
+                    .Replace('O', '0')
+                    .Replace('o', '0')
+                    .Replace('L', '1')
+                    .Replace('l', '1')
+                    .Replace('I', '1')
+                    .Replace('|', '1')
+                    .Replace('S', '5')
+                    .Replace('s', '5')
+                    .Replace('Z', '2')
+                    .Replace('z', '2')
+                    .Replace('`', ' ')
+                    .Replace('\'', ' ');
+
+                text = Regex.Replace(text, @"[^0-9\.\-]", "");
+
+                // normalizar signo negativo
                 int midMinus = text.IndexOf('-', 1);
                 if (midMinus > 0)
                     text = text.Substring(0, midMinus) + text.Substring(midMinus + 1);
+
+                // Si tiene múltiples puntos, quitar los extras
+                int firstDot = text.IndexOf('.');
+                if (firstDot >= 0)
+                {
+                    string before = text.Substring(0, firstDot + 1);
+                    string after = text.Substring(firstDot + 1).Replace(".", "");
+                    text = before + after;
+                }
+
+                return text;
             }
 
-            // Si tiene múltiples puntos, quitar los extras
-            int firstDot = text.IndexOf('.');
-            if (firstDot >= 0)
+            // Columnas CMC delta (cols 7+): preservar etiquetas técnicas (Thin, Duller, etc.)
+            text = text
+                .Replace(',', '.')
+                .Replace('`', ' ')
+                .Replace('\'', ' ');
+
+            // Preservar: dígitos, punto, signo negativo, letras y paréntesis para etiquetas
+            text = Regex.Replace(text, @"[^0-9\.\-\sA-Za-z\(\)]", "");
+            text = Regex.Replace(text, @"\s+", " ").Trim();
+
+            // normalizar signo negativo en la parte numérica
             {
-                string before = text.Substring(0, firstDot + 1);
-                string after = text.Substring(firstDot + 1).Replace(".", "");
-                text = before + after;
+                int midMinus = text.IndexOf('-', 1);
+                if (midMinus > 0 && char.IsDigit(text[midMinus - 1]))
+                    text = text.Substring(0, midMinus) + text.Substring(midMinus + 1);
             }
-
-            // Guardar marca de confusión si la tenía
-            if (hadConfusionChar && !text.Contains("CONF")) text += "!";
 
             return text;
         }
@@ -708,7 +721,7 @@ namespace Color
             }
             if (!anyNeeds) return;
 
-            // ✅ AQUÍ se crean mat y gray
+            // AQUÍ se crean mat y gray
             using (var mat = OpenCvSharp.Extensions.BitmapConverter.ToMat(original))
             using (var gray = new Mat())
             {
@@ -744,7 +757,7 @@ namespace Color
                             (int)(bRectScaled.Value.Height * invScale)
                         );
 
-                        // ✅ AQUÍ ES DONDE SE LLAMA CORRECTAMENTE
+                        // AQUÍ ES DONDE SE LLAMA CORRECTAMENTE
                         double newB = ExtractDoubleSafe(gray, bRect);
 
                         if (ColorimetryRanges.IsValidAB(newB))
@@ -2391,6 +2404,7 @@ namespace Color
             // Según el formato del reporte: (Lightness),// (Chroma) 
             if (Regex.IsMatch(normLine, @"\bFULLER\b")) row.LightnessFlagOcr = "Fuller";
             else if (Regex.IsMatch(normLine, @"\bFULL\b")) row.LightnessFlagOcr = "Full";
+            else if (Regex.IsMatch(normLine, @"\bTHIN\b")) row.LightnessFlagOcr = "Thin";   // ← Reporte físico Coats
             else if (Regex.IsMatch(normLine, @"\bDULLER\b")) row.LightnessFlagOcr = "Duller";
             else if (Regex.IsMatch(normLine, @"\bSAME\b")) row.LightnessFlagOcr = "Same";
 
@@ -2947,7 +2961,58 @@ namespace Color
                     else if (combined.Contains("LOT")) type = "Lot";
                 }
                 if (string.IsNullOrWhiteSpace(type))
-                { if (log != null) log.Add(string.Format("[PARSER] Fila {0}: tipo desconocido '{1}'", r, typeRaw)); continue; }
+                {
+                    // ETAPA 1: Verificar si esta fila contiene etiquetas CMC (Thin, Duller, etc.)
+                    // El reporte físico imprime etiquetas en fila separada, y pueden estar
+                    // desplazadas 1 columna respecto a los valores numéricos.
+                    // Estrategia: buscar la primera columna con texto en el rango 5-10
+                    int labelStartCol = -1;
+                    for (int sc = 5; sc <= 10; sc++)
+                    {
+                        string candidate = GetCell(row, sc);
+                        if (!string.IsNullOrWhiteSpace(candidate) && !IsNumericOnly(candidate))
+                        { labelStartCol = sc; break; }
+                    }
+
+                    bool hasTextLabels = labelStartCol >= 0;
+
+                    if (hasTextLabels && report.CmcDifferences.Count > 0)
+                    {
+                        // Buscar el último CmcDifferenceRow del iluminante actual
+                        CmcDifferenceRow lastCmc = null;
+                        for (int i = report.CmcDifferences.Count - 1; i >= 0; i--)
+                        {
+                            if (string.Equals(report.CmcDifferences[i].Illuminant, illuminant,
+                                StringComparison.OrdinalIgnoreCase))
+                            { lastCmc = report.CmcDifferences[i]; break; }
+                        }
+                        if (lastCmc != null)
+                        {
+                            // Asignar etiquetas en orden: L=base, C=base+1, H=base+2
+                            string lbl0 = GetCell(row, labelStartCol).Trim();
+                            string lbl1 = GetCell(row, labelStartCol + 1).Trim();
+                            string lbl2 = GetCell(row, labelStartCol + 2).Trim();
+
+                            if (!string.IsNullOrWhiteSpace(lbl0) && !IsNumericOnly(lbl0))
+                                lastCmc.LightnessFlagOcr = string.IsNullOrWhiteSpace(lastCmc.LightnessFlagOcr)
+                                    ? lbl0 : lastCmc.LightnessFlagOcr + " " + lbl0;
+                            if (!string.IsNullOrWhiteSpace(lbl1) && !IsNumericOnly(lbl1))
+                                lastCmc.ChromaFlagOcr = string.IsNullOrWhiteSpace(lastCmc.ChromaFlagOcr)
+                                    ? lbl1 : lastCmc.ChromaFlagOcr + " " + lbl1;
+                            if (!string.IsNullOrWhiteSpace(lbl2) && !IsNumericOnly(lbl2))
+                                lastCmc.HueFlagOcr = string.IsNullOrWhiteSpace(lastCmc.HueFlagOcr)
+                                    ? lbl2 : lastCmc.HueFlagOcr + " " + lbl2;
+
+                            if (log != null) log.Add(string.Format(
+                                "[PARSER] Fila {0}: etiquetas CMC (base col={1}) L='{2}' C='{3}' H='{4}'",
+                                r, labelStartCol, lastCmc.LightnessFlagOcr, lastCmc.ChromaFlagOcr, lastCmc.HueFlagOcr));
+                        }
+                    }
+                    else if (log != null)
+                        log.Add(string.Format("[PARSER] Fila {0}: tipo desconocido '{1}'", r, typeRaw));
+
+                    continue;
+                }
 
                 // Cols 2-6: L a b Chroma Hue
                 double vL = SafeParse(GetCell(row, 2)), vA = SafeParse(GetCell(row, 3));
@@ -2986,10 +3051,16 @@ namespace Color
                 if (hasDelta)
                 {
                     bool already = false;
+                    CmcDifferenceRow existingCmc = null;
                     foreach (var ex2 in report.CmcDifferences)
-                        if (string.Equals(ex2.Illuminant, illuminant, StringComparison.OrdinalIgnoreCase)) { already = true; break; }
+                    {
+                        if (string.Equals(ex2.Illuminant, illuminant, StringComparison.OrdinalIgnoreCase))
+                        { already = true; existingCmc = ex2; break; }
+                    }
+
                     if (!already)
                     {
+                        // Primera vez: crear registro con valores numéricos y posibles tags inline
                         double dL = SafeParse(dLr), dC = SafeParse(dCr), dH = SafeParse(dHr);
                         double dE = string.IsNullOrWhiteSpace(dEr) ? double.NaN : SafeParse(dEr);
                         report.CmcDifferences.Add(new CmcDifferenceRow
@@ -2999,12 +3070,86 @@ namespace Color
                             DeltaChroma = dC,
                             DeltaHue = dH,
                             DeltaCMC = double.IsNaN(dE) ? (double?)null : dE,
+                            LightnessFlagOcr = ExtractTag(dLr),
+                            ChromaFlagOcr = ExtractTag(dCr),
+                            HueFlagOcr = ExtractTag(dHr),
                             NeedsReview = !ColorimetryRanges.IsValidDL(dL) || !ColorimetryRanges.IsValidDC(dC) || !ColorimetryRanges.IsValidDH(dH)
                         });
+                        existingCmc = report.CmcDifferences[report.CmcDifferences.Count - 1];
+                    }
+
+                    // ETAPA 1 (FIX DEFINITIVO): Capturar etiquetas aunque ya exista el registro.
+                    // El reporte físico imprime números en la fila Std y etiquetas en la fila Lot.
+                    // Detectar dinámicamente la columna de inicio de etiquetas (scan 5-10).
+                    if (existingCmc != null)
+                    {
+                        int lsc = -1;
+                        for (int sc = 5; sc <= 10; sc++)
+                        {
+                            string cand = GetCell(row, sc);
+                            if (!string.IsNullOrWhiteSpace(cand) && !IsNumericOnly(cand))
+                            { lsc = sc; break; }
+                        }
+                        if (lsc >= 0)
+                        {
+                            string l0 = GetCell(row, lsc).Trim();
+                            string l1 = GetCell(row, lsc + 1).Trim();
+                            string l2 = GetCell(row, lsc + 2).Trim();
+                            if (!string.IsNullOrWhiteSpace(l0) && !IsNumericOnly(l0))
+                                existingCmc.LightnessFlagOcr = l0;
+                            if (!string.IsNullOrWhiteSpace(l1) && !IsNumericOnly(l1))
+                                existingCmc.ChromaFlagOcr = l1;
+                            if (!string.IsNullOrWhiteSpace(l2) && !IsNumericOnly(l2))
+                                existingCmc.HueFlagOcr = l2;
+                            if (log != null) log.Add(string.Format(
+                                "[PARSER-TAG] {0}: base_col={1} L='{2}' C='{3}' H='{4}'",
+                                illuminant, lsc, existingCmc.LightnessFlagOcr,
+                                existingCmc.ChromaFlagOcr, existingCmc.HueFlagOcr));
+                        }
                     }
                 }
             }
             return report;
+        }
+
+        private static string ExtractTag(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            // Captura inteligente: quitamos el número inicial y preservamos la etiqueta
+            string tag = Regex.Replace(raw, @"^\-?[0-9]+\.?[0-9]*", "").Trim();
+            
+            // ETAPA 1.3: Normalización de Descriptores (LookupTable)
+            return NormalizeDescriptor(tag);
+        }
+
+        private static string NormalizeDescriptor(string tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag)) return string.Empty;
+            string u = tag.ToUpperInvariant();
+            
+            // Mapeo técnico Coats Fase 2
+            if (u.Contains("THIN")) return "Weak";
+            if (u.Contains("DULLER")) return "Grayer";
+            if (u.Contains("GREENER")) return "Greenish";
+            if (u.Contains("REDDER")) return "Reddish";
+            if (u.Contains("BLUER")) return "Bluish";
+            if (u.Contains("YELLOWER")) return "Yellowish";
+            
+            return tag; // Retornar original si no hay match
+        }
+
+        /// <summary>
+        /// Devuelve true si la cadena contiene SOLO caracteres numéricos (dígitos, punto, signo negativo).
+        /// Usado para distinguir filas de valores CMC de filas de etiquetas (Thin, Duller, etc.).
+        /// </summary>
+        private static bool IsNumericOnly(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return true;
+            string trimmed = s.Trim();
+            // Si contiene cualquier letra → es una etiqueta de texto
+            foreach (char c in trimmed)
+                if (char.IsLetter(c)) return false;
+            return true;
         }
         private static string GetCell(Dictionary<int, string> row, int col)
         { if (col < 0) return string.Empty; string v; return row.TryGetValue(col, out v) ? (v ?? string.Empty) : string.Empty; }
@@ -3030,8 +3175,11 @@ namespace Color
         private static double SafeParse(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return 0.0;
-            s = s.Trim().Replace(',', '.');
-            double v; return double.TryParse(s, System.Globalization.NumberStyles.Any,
+            // ETAPA 1: Extraer solo el componente numérico (incluyendo punto y signo)
+            string numPart = Regex.Match(s.Replace(',', '.'), @"\-?\d+\.?\d*").Value;
+            if (string.IsNullOrEmpty(numPart)) return 0.0;
+
+            double v; return double.TryParse(numPart, System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0.0;
         }
     }

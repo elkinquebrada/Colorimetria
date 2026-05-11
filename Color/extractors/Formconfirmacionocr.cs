@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using SysColor = System.Drawing.Color;
 
@@ -259,7 +260,7 @@ namespace Colorimetria
             // ---- Botones y etiquetas inferiores ----
             btnCancelar = new Button
             {
-                Text = "✕ Cancelar",
+                Text = " Cancelar",
                 Size = new Size(140, 40),
                 BackColor = SysColor.FromArgb(200, 30, 30),
                 ForeColor = SysColor.White,
@@ -274,7 +275,7 @@ namespace Colorimetria
 
             btnConfirmar = new Button
             {
-                Text = "✅ Confirmar",
+                Text = " Confirmar",
                 Size = new Size(160, 40),
                 BackColor = SysColor.FromArgb(34, 139, 34),
                 ForeColor = SysColor.White,
@@ -458,31 +459,29 @@ namespace Colorimetria
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = SysColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = SysColor.White;
+            dgv.DefaultCellStyle.BackColor = SysColor.White;
+            dgv.DefaultCellStyle.ForeColor = SysColor.Black;
             dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.White;
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(240, 245, 255);
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaLightness", HeaderText = "ΔL (Lightness)" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaChroma", HeaderText = "ΔC (Chroma)" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaHue", HeaderText = "ΔH (Hue)" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaLightness", HeaderText = "lightness" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaChroma", HeaderText = "Chroma" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaHue", HeaderText = "Hue" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaCMC", HeaderText = "CMC(2:1)" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "LightnessFlag", HeaderText = "Claridad" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ChromaHueFlag", HeaderText = "Croma/Hue" });
 
-            // Formatos numéricos
+            // Evento para Alerta Visual (Texto Rojo si supera tolerancia)
+            dgv.CellFormatting += DgvCmc_CellFormatting;
+
+            // Formatos (ahora tratamos como string para concatenar etiquetas)
             DataGridViewColumn col;
-            col = dgv.Columns["DeltaLightness"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            col = dgv.Columns["DeltaChroma"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            col = dgv.Columns["DeltaHue"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            col = dgv.Columns["DeltaLightness"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            col = dgv.Columns["DeltaChroma"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            col = dgv.Columns["DeltaHue"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             col = dgv.Columns["DeltaCMC"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-
-            // Wrap en flags (textos largos)
-            dgv.Columns["LightnessFlag"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-            dgv.Columns["ChromaHueFlag"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
             // Mantener números en una sola línea
             dgv.Columns["Illuminant"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
@@ -584,14 +583,21 @@ namespace Colorimetria
                 CmcDifferenceRow r = cmc[i];
                 object cmcVal = r.DeltaCMC.HasValue ? (object)r.DeltaCMC.Value : null;
 
+                // ETAPA 1.2: Formato idéntico al reporte (Valor Etiqueta) sin paréntesis
+                string tagL = !string.IsNullOrWhiteSpace(r.LightnessFlagOcr) ? r.LightnessFlagOcr : r.LightnessFlag;
+                string tagC = !string.IsNullOrWhiteSpace(r.ChromaFlagOcr) ? r.ChromaFlagOcr : r.ChromaFlag;
+                string tagH = !string.IsNullOrWhiteSpace(r.HueFlagOcr) ? r.HueFlagOcr : r.HueFlag;
+
+                string dLStr = string.Format("{0:F2} {1}", r.DeltaLightness, tagL);
+                string dCStr = string.Format("{0:F2} {1}", r.DeltaChroma, tagC);
+                string dHStr = string.Format("{0:F2} {1}", r.DeltaHue, tagH);
+
                 dgvCmc.Rows.Add(
                     r.Illuminant,
-                    r.DeltaLightness,
-                    r.DeltaChroma,
-                    r.DeltaHue,
-                    cmcVal,
-                    r.LightnessFlag,
-                    r.ChromaHueFlag);
+                    dLStr,
+                    dCStr,
+                    dHStr,
+                    cmcVal);
 
                 SysColor rowColor = SysColor.White;
                 if (r.Illuminant == "D65") rowColor = SysColor.FromArgb(210, 225, 255);
@@ -613,12 +619,33 @@ namespace Colorimetria
             dgvCmc.Columns["DeltaHue"].FillWeight = 70f; dgvCmc.Columns["DeltaHue"].MinimumWidth = 80;
             dgvCmc.Columns["DeltaCMC"].FillWeight = 110f; dgvCmc.Columns["DeltaCMC"].MinimumWidth = 130;
 
-            // Flags (textos) con wrap y alto automático
-            dgvCmc.Columns["LightnessFlag"].FillWeight = 85f; dgvCmc.Columns["LightnessFlag"].MinimumWidth = 110;
-            dgvCmc.Columns["ChromaHueFlag"].FillWeight = 100f; dgvCmc.Columns["ChromaHueFlag"].MinimumWidth = 120;
-
-            // 3) Alto automático por celdas mostradas (solo necesario en CMC por el wrap)
+            // 3) Alto automático por celdas mostradas 
             dgvCmc.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
+        }
+
+        private void DgvCmc_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Value == null) return;
+            string colName = dgvCmc.Columns[e.ColumnIndex].Name;
+
+            // Columnas de interés para alerta visual
+            if (colName == "DeltaLightness" || colName == "DeltaChroma" || colName == "DeltaHue" || colName == "DeltaCMC")
+            {
+                double val = 0;
+                string strVal = e.Value.ToString();
+                
+                // Extraer número para comparación de límite (0.25)
+                string numPart = Regex.Match(strVal.Replace(',', '.'), @"\-?\d+\.?\d*").Value;
+                if (double.TryParse(numPart, NumberStyles.Any, CultureInfo.InvariantCulture, out val))
+                {
+                    if (Math.Abs(val) > 0.25)
+                    {
+                        e.CellStyle.ForeColor = SysColor.Black;
+                        e.CellStyle.SelectionForeColor = SysColor.Black;
+                        e.CellStyle.Font = new Font(dgvCmc.Font, FontStyle.Bold);
+                    }
+                }
+            }
         }
 
         private void SetTolerances(OcrReport rep)
