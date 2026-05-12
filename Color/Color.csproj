@@ -138,9 +138,10 @@
     <Compile Include="big_data\ExcelReader.cs" />
     <Compile Include="big_data\ExcelWriter.cs" />
     <Compile Include="big_data\ReportExtractor.cs" />
-    <Compile Include="ColorimetriaApiClient.cs" />
-    <Compile Include="Colorimetriccalculator.cs" />
-    <Compile Include="Dataextraxtor.cs" />
+    <Compile Include="Services\ColorimetriaApiClient.cs" />
+    <Compile Include="Services\Colorimetriccalculator.cs" />
+    <Compile Include="Services\AnalysisSession.cs" />
+    <Compile Include="extractors\Dataextraxtor.cs" />
     <Compile Include="extractors\Formconfirmacionocr.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -164,13 +165,19 @@
     <Compile Include="Forms\FormGraficoCielab.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\FormMainShell.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMainShell.Designer.cs">
+      <DependentUpon>FormMainShell.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CielabChartControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Services\Historialservices.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RecipeCorrector.cs" />
+    <Compile Include="Services\RecipeCorrector.cs" />
     <Compile Include="Tolerancias\FormConfigTolerancias.cs">
       <SubType>Form</SubType>
     </Compile>
