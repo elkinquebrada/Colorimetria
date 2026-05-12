@@ -66,22 +66,22 @@ namespace Color
         public double AbsDeltaB => Math.Abs(DeltaB);
 
         // --- Propiedades de Diagnóstico Dinámico ---
-        public string DiagnosticoL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("DL", DeltaL, ImpactoRecetaL);
-        public string DiagnosticoLoteL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("DL", DeltaL, ImpactoLoteL);
+        public string DiagnosticoL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoRecetaL);
+        public string DiagnosticoLoteL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoLoteL);
         public string ImpactoRecetaL => ColorimetricCalculator.GetImpactoLRecipe(DeltaL);
         public string ImpactoLoteL => ColorimetricCalculator.GetImpactoLLot(DeltaL);
         public string RecomendacionRecetaL => ColorimetricCalculator.GetInstLRecipe(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
         public string RecomendacionLoteL => ColorimetricCalculator.GetInstLLot(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
 
-        public string DiagnosisC => Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("DC", DeltaChroma, DescripcionC);
+        public string DiagnosisC => Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
         // Según Matriz Diagonal Coats: dC es informativo (no se corrige directamente)
         // oscuro(-) + dC>0 = brillante | claro(+) + dC<0 = opaco
         public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Brillante" : "Opaco");
         public string RecommendationC => (Math.Abs(DeltaChroma) < 0.1) ? "✔" : ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
-        public string DiagnosisH => Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("DH", DeltaHue, ImpactoMatiz);
+        public string DiagnosisH => Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
         public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetImpactH_Expert(DeltaHue);
-        public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"Ajustar {TonerDyeName} ({(DeltaHue > 0 ? "+" : "-")})";
+        public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "sumar" : "restar")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
 
         public bool Pass { get; set; }
     }
@@ -232,8 +232,8 @@ namespace Color
         public static string GetDiagL_Expert(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
         public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL > 0 ? "Más Claro" : "Más Oscuro");
         public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL > 0 ? "Falta Luminosidad" : "Exceso Luminosidad");
-        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "AUMENTAR" : "REDUCIR")} % RECETA EN {Math.Abs(varL):F2}%";
-        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "ADICIONAR" : "REDUCIR")} % RECETA EN {Math.Abs(varL):F2}%";
+        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "INCREMENTAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "ADICIONAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
         public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC > 0 ? "Saturado" : "Opaco");
         public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH > 0 ? "Viraje (+)" : "Viraje (-)");
         public static string GetImpactH_Expert(double dH) => Math.Abs(dH) < 0.1 ? "✔" : (dH > 0 ? "Más Amarillo" : "Más Azul");
@@ -243,7 +243,7 @@ namespace Color
         {
             switch (eje.ToUpper())
             {
-                case "DL": // Cambio: De Fuerza a Luminosidad
+                case "DL": 
                     if (delta > 0) 
                         return "ALTA LUMINOSIDAD: El lote se observa más claro que el estándar.";
                     else
@@ -257,7 +257,7 @@ namespace Color
                         return "SATURACIÓN DE GRIS: Exceso de matizador o contaminación del baño/fibra.";
 
                 case "DH":
-                case "DB": // Cambio: De Cálido/Frío a Amarillo/Azul
+                case "DB": 
                     if (delta > 0) 
                         return "DESVIACIÓN: El lote presenta una tendencia MÁS AMARILLA.";
                     else 

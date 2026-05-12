@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using System.IO;
+using System.Linq;
 using SysColor = System.Drawing.Color;
 
 namespace Colorimetria
@@ -55,9 +57,43 @@ namespace Colorimetria
             InitializeComponents();
             LoadData();
             HookSizingEvents();
+            AddBrandingLogo();
 
             // ===== NUEVO: Minimización diferida del MainForm =====
             this.Load += FormConfirmacionOCR_Load;
+        }
+
+        private void AddBrandingLogo()
+        {
+            try
+            {
+                string finalPath = null;
+                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                for (int i = 0; i < 5; i++)
+                {
+                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
+                    if (File.Exists(candidate)) { finalPath = candidate; break; }
+                    currentDir = Path.GetDirectoryName(currentDir);
+                    if (string.IsNullOrEmpty(currentDir)) break;
+                }
+
+                if (string.IsNullOrEmpty(finalPath)) return;
+
+                var logo = new PictureBox
+                {
+                    Image = Image.FromFile(finalPath),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Width = 45,
+                    Height = 45,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = System.Drawing.Color.Transparent
+                };
+                
+                logo.Location = new Point(this.Width - logo.Width - 15, 0);
+                this.Controls.Add(logo);
+                logo.BringToFront();
+            }
+            catch { }
         }
 
         public FormConfirmacionOCR(ColorimetricDataExtractor extractor, string imagePath)
@@ -73,6 +109,7 @@ namespace Colorimetria
             InitializeComponents();
             LoadData();
             HookSizingEvents();
+            AddBrandingLogo();
 
             // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
@@ -90,6 +127,7 @@ namespace Colorimetria
             InitializeComponents();
             LoadData();
             HookSizingEvents();
+            AddBrandingLogo();
             this.Load += FormConfirmacionOCR_Load;
         }
 
@@ -101,6 +139,7 @@ namespace Colorimetria
             InitializeComponents();
             LoadData();
             HookSizingEvents();
+            AddBrandingLogo();
 
             // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
@@ -468,9 +507,9 @@ namespace Colorimetria
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaLightness", HeaderText = "lightness" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaChroma", HeaderText = "Chroma" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaHue", HeaderText = "Hue" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadl", HeaderText = "dl" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltada", HeaderText = "da" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadb", HeaderText = "db" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaCMC", HeaderText = "CMC(2:1)" });
 
             // Evento para Alerta Visual (Texto Rojo si supera tolerancia)
@@ -478,16 +517,16 @@ namespace Colorimetria
 
             // Formatos (ahora tratamos como string para concatenar etiquetas)
             DataGridViewColumn col;
-            col = dgv.Columns["DeltaLightness"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            col = dgv.Columns["DeltaChroma"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            col = dgv.Columns["DeltaHue"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            col = dgv.Columns["Deltadl"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            col = dgv.Columns["Deltada"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            col = dgv.Columns["Deltadb"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             col = dgv.Columns["DeltaCMC"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             // Mantener números en una sola línea
             dgv.Columns["Illuminant"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-            dgv.Columns["DeltaLightness"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-            dgv.Columns["DeltaChroma"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-            dgv.Columns["DeltaHue"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            dgv.Columns["Deltadl"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            dgv.Columns["Deltada"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            dgv.Columns["Deltadb"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             dgv.Columns["DeltaCMC"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
             return dgv;
@@ -614,9 +653,9 @@ namespace Colorimetria
             // 2) Rellenar con Fill equilibrando pesos y mínimos
             dgvCmc.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvCmc.Columns["Illuminant"].FillWeight = 80f; dgvCmc.Columns["Illuminant"].MinimumWidth = 90;
-            dgvCmc.Columns["DeltaLightness"].FillWeight = 70f; dgvCmc.Columns["DeltaLightness"].MinimumWidth = 90;
-            dgvCmc.Columns["DeltaChroma"].FillWeight = 70f; dgvCmc.Columns["DeltaChroma"].MinimumWidth = 90;
-            dgvCmc.Columns["DeltaHue"].FillWeight = 70f; dgvCmc.Columns["DeltaHue"].MinimumWidth = 80;
+            dgvCmc.Columns["Deltadl"].FillWeight = 70f; dgvCmc.Columns["Deltadl"].MinimumWidth = 90;
+            dgvCmc.Columns["Deltada"].FillWeight = 70f; dgvCmc.Columns["Deltada"].MinimumWidth = 90;
+            dgvCmc.Columns["Deltadb"].FillWeight = 70f; dgvCmc.Columns["Deltadb"].MinimumWidth = 80;
             dgvCmc.Columns["DeltaCMC"].FillWeight = 110f; dgvCmc.Columns["DeltaCMC"].MinimumWidth = 130;
 
             // 3) Alto automático por celdas mostradas 
@@ -629,7 +668,7 @@ namespace Colorimetria
             string colName = dgvCmc.Columns[e.ColumnIndex].Name;
 
             // Columnas de interés para alerta visual
-            if (colName == "DeltaLightness" || colName == "DeltaChroma" || colName == "DeltaHue" || colName == "DeltaCMC")
+            if (colName == "Deltadl" || colName == "Deltada" || colName == "Deltadb" || colName == "DeltaCMC")
             {
                 double val = 0;
                 string strVal = e.Value.ToString();

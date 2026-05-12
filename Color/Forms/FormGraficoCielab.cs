@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -39,6 +40,40 @@ namespace Color
             
             txtAdvice.Text = advice;
             lblTitle.Text = $"Análisis Grafico — Lote vs Estándar";
+            AddBrandingLogo();
+        }
+
+        private void AddBrandingLogo()
+        {
+            try
+            {
+                string finalPath = null;
+                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                for (int i = 0; i < 5; i++)
+                {
+                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
+                    if (File.Exists(candidate)) { finalPath = candidate; break; }
+                    currentDir = Path.GetDirectoryName(currentDir);
+                    if (string.IsNullOrEmpty(currentDir)) break;
+                }
+
+                if (string.IsNullOrEmpty(finalPath)) return;
+
+                var logo = new PictureBox
+                {
+                    Image = Image.FromFile(finalPath),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Width = 50,
+                    Height = 50,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = System.Drawing.Color.Transparent
+                };
+                
+                logo.Location = new Point(this.lblTitle.Width - logo.Width - 15, 5);
+                this.lblTitle.Controls.Add(logo);
+                logo.BringToFront();
+            }
+            catch { }
         }
 
         private void InitializeComponents()

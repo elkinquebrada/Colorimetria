@@ -35,16 +35,11 @@ namespace Color
             this.colShadeName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colFechaHora = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colIluminante = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDLEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDCEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDHEje = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDyeCode = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colDyeName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colConcentration = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colAjusteDL = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colAjusteDC = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colAjusteDH = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colNuevaReceta = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colReceta1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colReceta2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colReceta3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
 
             ((System.ComponentModel.ISupportInitialize)(this.dgvHistorial)).BeginInit();
             this.pnlTitulo.SuspendLayout();
@@ -185,21 +180,6 @@ namespace Color
             this.colIluminante.Name = "colIluminante";
             this.colIluminante.HeaderText = "Ilum.";
 
-            //  4. DL Eje
-            this.colDLEje.Name = "colDLEje";
-            this.colDLEje.HeaderText = "%  Eje DL ";
-
-            //  5. DC Eje
-            this.colDCEje.Name = "colDCEje";
-            this.colDCEje.HeaderText = "% Eje DC";
-
-            //  6. DH Eje
-            this.colDHEje.Name = "colDHEje";
-            this.colDHEje.HeaderText = "% Eje DH";
-
-            //  7. Dye Code
-            this.colDyeCode.Name = "colDyeCode";
-            this.colDyeCode.HeaderText = "Dye Code";
 
             //  8. Dye Name
             this.colDyeName.Name = "colDyeName";
@@ -209,37 +189,30 @@ namespace Color
             this.colConcentration.Name = "colConcentration";
             this.colConcentration.HeaderText = "% Conc Original";
 
-            //  10. Ajuste DL
-            this.colAjusteDL.Name = "colAjusteDL";
-            this.colAjusteDL.HeaderText = "% Ajuste DL";
+            //  10. Receta 1
+            this.colReceta1.Name = "colReceta1";
+            this.colReceta1.HeaderText = "Receta # 1";
 
-            //  11. Ajuste DC
-            this.colAjusteDC.Name = "colAjusteDC";
-            this.colAjusteDC.HeaderText = "% Ajuste DC";
+            //  11. Receta 2
+            this.colReceta2.Name = "colReceta2";
+            this.colReceta2.HeaderText = "Receta # 2";
 
-            //  12. Ajuste DH
-            this.colAjusteDH.Name = "colAjusteDH";
-            this.colAjusteDH.HeaderText = "% Ajuste DH";
+            //  12. Receta 3
+            this.colReceta3.Name = "colReceta3";
+            this.colReceta3.HeaderText = "Receta # 3";
 
-            //  12. Nueva Receta
-            this.colNuevaReceta.Name = "colNuevaReceta";
-            this.colNuevaReceta.HeaderText = "% Nueva Receta";
+
 
             this.dgvHistorial.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[]
             {
                 this.colShadeName,
                 this.colFechaHora,
                 this.colIluminante,
-                this.colDLEje,
-                this.colDCEje,
-                this.colDHEje,
-                this.colDyeCode,
                 this.colDyeName,
                 this.colConcentration,
-                this.colAjusteDL,
-                this.colAjusteDC,
-                this.colAjusteDH,
-                this.colNuevaReceta
+                this.colReceta1,
+                this.colReceta2,
+                this.colReceta3
             });
 
             this.dgvHistorial.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -359,15 +332,10 @@ namespace Color
         private System.Windows.Forms.DataGridViewTextBoxColumn colShadeName;
         private System.Windows.Forms.DataGridViewTextBoxColumn colFechaHora;
         private System.Windows.Forms.DataGridViewTextBoxColumn colIluminante;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDLEje;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDCEje;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDHEje;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colDyeCode;
         private System.Windows.Forms.DataGridViewTextBoxColumn colDyeName;
         private System.Windows.Forms.DataGridViewTextBoxColumn colConcentration;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDL;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDC;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colAjusteDH;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colNuevaReceta;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colReceta1;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colReceta2;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colReceta3;
     }
 }

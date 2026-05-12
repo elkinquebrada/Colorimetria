@@ -15,10 +15,10 @@ namespace Color
     public class IlluminantCorrectionResult
     {
         public string Illuminant { get; set; }
-        public double dL { get; set; }
-        public double dC { get; set; }
-        public double VariacionL { get; set; }
-        public double VariacionC { get; set; }
+        public double dl { get; set; }
+        public double da { get; set; }
+        public double Variaciondl { get; set; }
+        public double Variacionda { get; set; }
         public double TotalOriginal { get; set; }
         public double DeltaE { get; set; }
     }
@@ -30,9 +30,9 @@ namespace Color
         public double Original { get; set; }
         
         // Los 3 Escenarios de Fase 2 (Diagonal Matrix Logic)
-        public string OptionL { get; set; }
-        public string OptionC { get; set; }
-        public string OptionH { get; set; }
+        public string Optiondl { get; set; }
+        public string Optionda { get; set; }
+        public string Optiondb { get; set; }
         
         public string Status { get; set; }
         public bool IsCritical { get; set; }
@@ -88,31 +88,31 @@ namespace Color
                     Status = "OK"
                 };
 
-                // ESCENARIO 1 (L): AJUSTE GLOBAL DE FUERZA (Afecta a todos simultáneamente)
+                // ESCENARIO 1 (dl): AJUSTE GLOBAL DE CARGA (Afecta a todos simultáneamente)
                 double valL = ing.Percentage * fL;
                 double diffL = ((valL - ing.Percentage) / ing.Percentage) * 100.0;
-                detail.OptionL = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%)";
+                detail.Optiondl = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%)";
                 if (Math.Abs(valL - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
 
-                // ESCENARIO 2 (C): Solo secundario (Brillo)
+                // ESCENARIO 2 (da): Solo secundario (Brillo)
                 if (secondary != null && ing.Code == secondary.Code)
                 {
                     double valC = ing.Percentage * fC;
                     double diffC = ((valC - ing.Percentage) / ing.Percentage) * 100.0;
-                    detail.OptionC = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%)";
+                    detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%)";
                     if (Math.Abs(valC - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
                 }
-                else detail.OptionC = "---";
+                else detail.Optionda = "---";
 
-                // ESCENARIO 3 (H): Solo toner
+                // ESCENARIO 3 (db): Solo toner
                 if (toner != null && ing.Code == toner.Code)
                 {
                     double valH = ing.Percentage * fH;
                     double diffH = ((valH - ing.Percentage) / ing.Percentage) * 100.0;
-                    detail.OptionH = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%)";
+                    detail.Optiondb = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%)";
                     if (Math.Abs(valH - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
                 }
-                else detail.OptionH = "---";
+                else detail.Optiondb = "---";
 
                 result.Ingredients.Add(detail);
             }

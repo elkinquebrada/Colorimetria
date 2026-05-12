@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.IO;
 using System.Windows.Forms;
 using Color;
 
@@ -21,6 +22,30 @@ namespace Color.Tolerancias
         {
             InitializeComponent();
             this.Load += FormConfigTolerancias_Load;
+            AddBrandingLogo();
+        }
+
+        private void AddBrandingLogo()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logicDocs", "Coats_logo.svg.png");
+                if (!File.Exists(path)) return;
+
+                var logo = new PictureBox
+                {
+                    Image = Image.FromFile(path),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Width = 40,
+                    Height = 40,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = System.Drawing.Color.Transparent
+                };
+                logo.Location = new Point(this.Width - logo.Width - 15, 10);
+                this.Controls.Add(logo);
+                logo.BringToFront();
+            }
+            catch { }
         }
 
         private void FormConfigTolerancias_Load(object sender, EventArgs e)

@@ -11,76 +11,43 @@ namespace Color.Services
     {
         private static string rutaArchivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DB_Coats_Consolidado.csv");
 
-        // PK: ShadeName + DyeCode (evita duplicados en el historial)
+        // PERSISTENCIA INDUSTRIAL: Guardado por anexado (Append-Only) para trazabilidad total
         public static void GuardarRegistroMaestro(
             string shadeName, 
             DateTime fecha, 
             string iluminante,
-            double dlEje, double dcEje, double dhEje,
-            string dyeCode, string dyeName, 
+            string dyeName, 
             decimal concOriginal, 
-            decimal ajusteDL, decimal ajusteDC, decimal ajusteDH, 
-            decimal nuevaReceta)
+            string r1, string r2, string r3,
+            string impL = "", string diagL = "", string recL = "",
+            string impC = "", string diagC = "", string recC = "",
+            string impH = "", string diagH = "", string recH = "",
+            string factorA = "0", string factorB = "0", string deltaE = "0")
         {
             try
             {
                 var ci = CultureInfo.InvariantCulture;
-                string nuevaLinea = string.Format(ci, "{0};{1};{2};{3:F5};{4:F5};{5:F5};{6};{7};{8:F5};{9:F5};{10:F5};{11:F5};{12:F5}",
+                string nuevaLinea = string.Format(ci, "{0};{1};{2};{3};{4:F5};{5};{6};{7};{8};{9};{10};{11};{12};{13};{14};{15};{16};{17};{18};{19}",
                     shadeName ?? "N/A",
                     fecha.ToString("dd/MM/yyyy HH:mm"),
                     iluminante ?? "D65",
-                    dlEje, dcEje, dhEje,
-                    dyeCode ?? "0",
                     dyeName ?? "Unknown",
                     concOriginal,
-                    ajusteDL,
-                    ajusteDC,
-                    ajusteDH,
-                    nuevaReceta);
+                    r1 ?? "---", r2 ?? "---", r3 ?? "---",
+                    impL ?? "", diagL ?? "", recL ?? "",
+                    impC ?? "", diagC ?? "", recC ?? "",
+                    impH ?? "", diagH ?? "", recH ?? "",
+                    factorA ?? "0", factorB ?? "0", deltaE ?? "0");
 
-                // Si el archivo no existe, crearlo con encabezado y la nueva línea
+                // Si el archivo no existe, crearlo con encabezado
                 if (!File.Exists(rutaArchivo))
                 {
-                    string header = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDC;AjusteDH;NuevaReceta" + Environment.NewLine;
-                    File.WriteAllText(rutaArchivo, header + nuevaLinea + Environment.NewLine, Encoding.UTF8);
-                    return;
+                    string header = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Diagdl;Recdl;Impactoda;Diagda;Recda;Impactodb;Diagdb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
+                    File.WriteAllText(rutaArchivo, header, Encoding.UTF8);
                 }
 
-                // Leer todas las líneas existentes
-                string[] lineasExistentes = File.ReadAllLines(rutaArchivo, Encoding.UTF8);
-                bool registroActualizado = false;
-                var nuevasLineas = new List<string>();
-
-                // Preservar el encabezado
-                if (lineasExistentes.Length > 0)
-                    nuevasLineas.Add(lineasExistentes[0]);
-
-                // Clave de unicidad: ShadeName + DyeCode
-                string claveNueva = $"{(shadeName ?? "N/A").Trim().ToUpper()};{(dyeCode ?? "0").Trim().ToUpper()}";
-
-                for (int i = 1; i < lineasExistentes.Length; i++)
-                {
-                    if (string.IsNullOrWhiteSpace(lineasExistentes[i])) continue;
-                    string[] celdas = lineasExistentes[i].Split(';');
-                    if (celdas.Length >= 7)
-                    {
-                        string claveExistente = $"{celdas[0].Trim().ToUpper()};{celdas[6].Trim().ToUpper()}";
-                        if (claveExistente == claveNueva)
-                        {
-                            // Reemplazar con los datos más recientes
-                            nuevasLineas.Add(nuevaLinea);
-                            registroActualizado = true;
-                            continue;
-                        }
-                    }
-                    nuevasLineas.Add(lineasExistentes[i]);
-                }
-
-                // Si no existía, agregar como registro nuevo
-                if (!registroActualizado)
-                    nuevasLineas.Add(nuevaLinea);
-
-                File.WriteAllLines(rutaArchivo, nuevasLineas, Encoding.UTF8);
+                // Anexar directamente (Permite múltiples registros por ShadeName - Paridad Industrial)
+                File.AppendAllText(rutaArchivo, nuevaLinea + Environment.NewLine, Encoding.UTF8);
             }
             catch { }
         }
@@ -91,16 +58,23 @@ namespace Color.Services
             dt.Columns.Add("ShadeName");
             dt.Columns.Add("FechaHora");
             dt.Columns.Add("Iluminante");
-            dt.Columns.Add("DLEje");
-            dt.Columns.Add("DCEje");
-            dt.Columns.Add("DHEje");
-            dt.Columns.Add("DyeCode");
             dt.Columns.Add("DyeName");
             dt.Columns.Add("ConcOriginal");
-            dt.Columns.Add("AjusteDL");
-            dt.Columns.Add("AjusteDC");
-            dt.Columns.Add("AjusteDH");
-            dt.Columns.Add("NuevaReceta");
+            dt.Columns.Add("Receta1");
+            dt.Columns.Add("Receta2");
+            dt.Columns.Add("Receta3");
+            dt.Columns.Add("Impactodl");
+            dt.Columns.Add("Diagdl");
+            dt.Columns.Add("Recdl");
+            dt.Columns.Add("Impactoda");
+            dt.Columns.Add("Diagda");
+            dt.Columns.Add("Recda");
+            dt.Columns.Add("Impactodb");
+            dt.Columns.Add("Diagdb");
+            dt.Columns.Add("Recdb");
+            dt.Columns.Add("FactorA");
+            dt.Columns.Add("FactorB");
+            dt.Columns.Add("DeltaE");
 
             try
             {
@@ -112,17 +86,34 @@ namespace Color.Services
                         if (string.IsNullOrWhiteSpace(lineas[i])) continue;
                         string[] celdas = lineas[i].Split(';');
                         
-                        // Compatibilidad con versiones anteriores (12 columnas) o actual (13 columnas)
-                        if (celdas.Length == 12)
-                        {
-                            // Insertar "0" en la posición de AjusteDC (índice 10)
-                            var lista = new List<string>(celdas);
-                            lista.Insert(10, "0");
-                            dt.Rows.Add(lista.ToArray());
-                        }
-                        else if (celdas.Length >= 13)
+                        var lista = new List<string>();
+                        
+                        if (celdas.Length == 20)
                         {
                             dt.Rows.Add(celdas);
+                        }
+                        else if (celdas.Length == 21)
+                        {
+                            // Migración: Omitir DyeCode (índice 3)
+                            for (int j = 0; j <= 2; j++) lista.Add(celdas[j]);
+                            for (int j = 4; j < celdas.Length; j++) lista.Add(celdas[j]);
+                            dt.Rows.Add(lista.ToArray());
+                        }
+                        else if (celdas.Length == 18)
+                        {
+                            // Formato antiguo de 18: [0:Shade, 1:Fecha, 2:Ilu, 3:Code, 4:Name, 5:Conc, 6:R1, 7:R2, 8:R3, ...]
+                            for (int j = 0; j <= 2; j++) lista.Add(celdas[j]);
+                            lista.Add(celdas[4]); // Name
+                            for (int j = 5; j < 18; j++) lista.Add(celdas[j]);
+                            lista.Add("0"); lista.Add("0"); lista.Add("0"); 
+                            dt.Rows.Add(lista.ToArray());
+                        }
+                        else
+                        {
+                            // Fallback genérico
+                            for (int j = 0; j < Math.Min(celdas.Length, 20); j++) lista.Add(celdas[j]);
+                            while (lista.Count < 20) lista.Add("0");
+                            dt.Rows.Add(lista.ToArray());
                         }
                     }
                 }
@@ -135,17 +126,20 @@ namespace Color.Services
         {
             try
             {
-                string headers = "ShadeName;FechaHora;Iluminante;DLEje;DCEje;DHEje;DyeCode;DyeName;ConcOriginal;AjusteDL;AjusteDC;AjusteDH;NuevaReceta" + Environment.NewLine;
+                string headers = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Diagdl;Recdl;Impactoda;Diagda;Recda;Impactodb;Diagdb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
                 File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
 
                 var ci = CultureInfo.InvariantCulture;
                 foreach (DataRow row in dt.Rows)
                 {
-                    string linea = string.Format(ci, "{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11};{12}",
+                    string linea = string.Format(ci, "{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11};{12};{13};{14};{15};{16};{17};{18};{19}",
                         row["ShadeName"], row["FechaHora"], row["Iluminante"],
-                        row["DLEje"], row["DCEje"], row["DHEje"],
-                        row["DyeCode"], row["DyeName"], 
-                        row["ConcOriginal"], row["AjusteDL"], row["AjusteDC"], row["AjusteDH"], row["NuevaReceta"]);
+                        row["DyeName"], 
+                        row["ConcOriginal"], row["Receta1"], row["Receta2"], row["Receta3"],
+                        row["Impactodl"], row["Diagdl"], row["Recdl"],
+                        row["Impactoda"], row["Diagda"], row["Recda"],
+                        row["Impactodb"], row["Diagdb"], row["Recdb"],
+                        row["FactorA"], row["FactorB"], row["DeltaE"]);
 
                     File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);
                 }

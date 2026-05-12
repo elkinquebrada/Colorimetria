@@ -25,20 +25,49 @@ namespace Color
         {
             InitializeComponent();
             this.WindowState = FormWindowState.Maximized;
-            this.TopMost = true;
-            
-            // Mantener siempre pantalla completa — evitar que el usuario la reduzca
-            this.Resize += (s, e) =>
-            {
-                if (this.WindowState == FormWindowState.Normal)
-                    this.WindowState = FormWindowState.Maximized;
-            };
+            this.TopMost = false;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
 
             WireEvents();
             UpdateHints();
             LayoutBottomArea();
             PositionExitButtonAtBottom();
             MinimizarNavegador();
+            AddBrandingLogo();
+        }
+
+        private void AddBrandingLogo()
+        {
+            try
+            {
+                string finalPath = null;
+                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
+                for (int i = 0; i < 5; i++)
+                {
+                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
+                    if (File.Exists(candidate)) { finalPath = candidate; break; }
+                    currentDir = Path.GetDirectoryName(currentDir);
+                    if (string.IsNullOrEmpty(currentDir)) break;
+                }
+
+                if (string.IsNullOrEmpty(finalPath)) return;
+
+                var logo = new PictureBox
+                {
+                    Image = Image.FromFile(finalPath),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    Width = 80,
+                    Height = 80,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = System.Drawing.Color.Transparent
+                };
+                
+                // Agregar al mainArea para que no lo cubra el panel lateral
+                logo.Location = new Point(this.mainArea.Width - logo.Width - 30, 20);
+                this.mainArea.Controls.Add(logo);
+                logo.BringToFront();
+            }
+            catch { }
         }
 
         #region Utilidades de Ventana
@@ -55,27 +84,7 @@ namespace Color
 
         private void MinimizarNavegador()
         {
-            try
-            {
-                this.TopMost = true;
-                var timer = new System.Windows.Forms.Timer { Interval = 100 };
-                int ticks = 0;
-                timer.Tick += (s, e) => {
-                    ticks++;
-                    string[] navs = { "chrome", "msedge", "edge", "firefox", "iexplore" };
-                    foreach (var proc in Process.GetProcesses())
-                    {
-                        if (navs.Any(n => proc.ProcessName.ToLower() == n) && proc.MainWindowHandle != IntPtr.Zero)
-                        {
-                            ShowWindow(proc.MainWindowHandle, SW_SHOWMINNOACTIVE);
-                            SetWindowPos(proc.MainWindowHandle, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
-                        }
-                    }
-                    if (ticks >= 30) { timer.Stop(); this.TopMost = false; }
-                };
-                timer.Start();
-            }
-            catch { }
+            // Desactivado para permitir multitasking según requerimiento del cliente.
         }
         #endregion
 
@@ -254,10 +263,8 @@ namespace Color
             { 
                 Cursor = Cursors.Default;
                 lblStatus.Text = "";
-                // Restaurar pantalla completa al finalizar
+                // Restaurar estado normal al finalizar sin bloquear el sistema
                 this.WindowState = FormWindowState.Maximized;
-                this.TopMost = true;
-                this.BringToFront();
             }
         }
 
