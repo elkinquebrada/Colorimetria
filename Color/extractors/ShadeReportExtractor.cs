@@ -94,11 +94,11 @@ namespace Color
 
         // Regex del archivo original
         private static readonly Regex RecipeRegex = new Regex(
-            @"(?mi)[^\d]*(\d{8})\s+(.+?)\s+([0-9OL\|Ll\s\.,]{2,})(?:\s*%)?",
+            @"(?mi)[| \s]*(\d{8})[| \s]+(.+?)[| \s]+([0-9OL\|Ll\s\.,]{2,})(?:\s*%)?",
             RegexOptions.Compiled);
 
         private static readonly Regex LabHeaderRegex = new Regex(
-            @"L\s+A\s+B\s+dL\s+(?:da|dC)\s+(?:dB|dH)\s+(?:cde|dE)\s+P\/F",
+            @"L[| \s]+A[| \s]+B[| \s]+dL[| \s]+(?:da|dC)[| \s]+(?:dB|dH)[| \s]+(?:cde|dE)[| \s]+P\/F",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex LabValuesRegex = new Regex(
@@ -110,9 +110,9 @@ namespace Color
             @"DT\s*Main[:\s]+([A-Z0-9]+)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // Regex para capturar Std L A B (Estándar) - Permite espacios opcionales alrededor del punto/coma
+        // Regex para capturar Std L A B (Estándar) - Maneja barras verticales y espacios
         private static readonly Regex StdLabRegex = new Regex(
-            @"(?i)Std\s?.*?\s*([-+]?\d+(?:\s?[.,]\s?\d+)?)\s+([-+]?\d+(?:\s?[.,]\s?\d+)?)\s+([-+]?\d+(?:\s?[.,]\s?\d+)?)",
+            @"(?i)Std[| \s]*.*?([-+]?\d+(?:\s?[.,]\s?\d+)?)[| \s]+([-+]?\d+(?:\s?[.,]\s?\d+)?)[| \s]+([-+]?\d+(?:\s?[.,]\s?\d+)?)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // Variable estática para modo de emergencia / compatibilidad cruzada entre ventanas
@@ -461,28 +461,30 @@ namespace Color
                 var line = raw.Trim();
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
-                // Buscamos P o F al final
+                // Buscamos P o F al final (opcional para Std)
                 var pfMatch = Regex.Match(line, @"\b([FfPp])\b\s*$");
-                if (!pfMatch.Success) continue;
+                bool isStd = line.ToUpper().Contains("STD");
+                if (!pfMatch.Success && !isStd) continue;
 
-                // Extraemos números
+                // Extraemos números (ahora permitimos barras verticales como delimitadores)
                 var nums = new List<string>();
-                foreach (Match m in Regex.Matches(line, @"-?\d+(?:\.\d+)?"))
+                string lineClean = line.Replace("|", " ");
+                foreach (Match m in Regex.Matches(lineClean, @"-?\d+(?:\.\d+)?"))
                     nums.Add(m.Value.Replace(',', '.'));
 
-                if (nums.Count < 7) continue;
+                if (nums.Count < 3) continue; // Al menos L A B
 
-                int start = nums.Count - 7;
+                int start = 0;
                 return new LabValues
                 {
-                    L = nums[start + 0],
-                    A = nums[start + 1],
-                    B = nums[start + 2],
-                    DL = nums[start + 3],
-                    DA = nums[start + 4],
-                    DB = nums[start + 5],
-                    CDE = nums[start + 6],
-                    PF = pfMatch.Groups[1].Value.ToUpper()
+                    L = nums.Count > 0 ? nums[0] : "0",
+                    A = nums.Count > 1 ? nums[1] : "0",
+                    B = nums.Count > 2 ? nums[2] : "0",
+                    DL = nums.Count > 3 ? nums[3] : "0",
+                    DA = nums.Count > 4 ? nums[4] : "0",
+                    DB = nums.Count > 5 ? nums[5] : "0",
+                    CDE = nums.Count > 6 ? nums[6] : "0",
+                    PF = pfMatch.Success ? pfMatch.Groups[1].Value.ToUpper() : (isStd ? "S" : "")
                 };
             }
 
@@ -647,9 +649,9 @@ namespace Color
         private (string L, string A, string B)? ExtractStdLabFromBitmap(Bitmap original)
         {
             // Localización de la banda Std L A B (mejorada con pre-procesamiento OpenCV)
-            // Ampliado: 18% a 45%
-            int top = (int)(original.Height * 0.18);
-            int bot = (int)(original.Height * 0.45);
+            // Ampliado: 15% a 95% (el Std puede estar arriba o abajo en la tabla de mediciones)
+            int top = (int)(original.Height * 0.15);
+            int bot = (int)(original.Height * 0.95);
             int h = bot - top;
             if (h <= 0) return null;
 

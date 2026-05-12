@@ -179,7 +179,8 @@ namespace Color
             };
             btnVerGrafico.Click += (s, e) => {
                 if (_lastMainResult == null) return;
-                var frm = new FormDetalleCielab(_lastMainResult.DeltaL, _lastMainResult.DeltaA, _lastMainResult.DeltaB, _lastMainResult.DeltaE, _lastMainResult.CmcValue, 1.20, "");
+                var frm = new FormDetalleCielab(_lastMainResult.DeltaL, _lastMainResult.DeltaA, _lastMainResult.DeltaB, _lastMainResult.DeltaE, _lastMainResult.CmcValue, 1.20, "",
+                    _lastMainResult.StdL, _lastMainResult.StdA, _lastMainResult.StdB);
                 frm.Show();
             };
 
@@ -234,8 +235,16 @@ namespace Color
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = System.Drawing.Color.White,
-                BackColor = System.Drawing.Color.Gray
+                BackColor = System.Drawing.Color.Gray,
+                Cursor = Cursors.Help
             };
+
+            // ToolTip aclaratorio de Protocolo de Seguridad
+            ToolTip ttProtocolo = new ToolTip { IsBalloon = true, ToolTipTitle = "Protocolo de Seguridad Industrial", AutoPopDelay = 15000 };
+            string msgProtocolo = "Nota sobre Alertas de Medición y Ajuste:\n\n" +
+                "1. Validación Multiluminante: El lote se evalúa bajo tres fuentes de luz (D65, TL84, A). El 'NO CUMPLE' se activa si existe riesgo de metamerismo en cualquier iluminante.\n\n" +
+                "2. Límite de Estabilidad (Umbral 15%): Ajustes superiores al 15% indican correcciones drásticas que pueden comprometer la estabilidad química y repetibilidad del tono.";
+            ttProtocolo.SetToolTip(lblAlertCorrective, msgProtocolo);
             
             var lblHeaderCorrective = CreateHeaderLabel(" FORMULACIÓN CORRECTIVA DE RECETA" +
                 "");
@@ -878,15 +887,14 @@ namespace Color
             _cielabChart.DeltaE = res.DeltaE;
             _cielabChart.ToleranceDE = DE_MAX;
             
-            // Si tenemos valores absolutos (AbsDelta no es el Abs del delta sino el valor absoluto del lote)
-            // Nota: En este motor, AbsDeltaL parece ser el valor absoluto.
-            _cielabChart.AbsoluteL = res.AbsDeltaL - res.DeltaL;
-            _cielabChart.AbsoluteA = res.AbsDeltaA - res.DeltaA;
-            _cielabChart.AbsoluteB = res.AbsDeltaB - res.DeltaB;
+            // Usar valores absolutos reales para la visualización del color
+            _cielabChart.AbsoluteL = res.StdL;
+            _cielabChart.AbsoluteA = res.StdA;
+            _cielabChart.AbsoluteB = res.StdB;
             
-            _cielabChart.LotL = res.AbsDeltaL;
-            _cielabChart.LotA = res.AbsDeltaA;
-            _cielabChart.LotB = res.AbsDeltaB;
+            _cielabChart.LotL = res.LotL;
+            _cielabChart.LotA = res.LotA;
+            _cielabChart.LotB = res.LotB;
 
             _cielabChart.Invalidate();
         }
@@ -1200,6 +1208,13 @@ namespace Color
                         exportGrid("ANALISIS ILUMINANTE D65 (DER)", dgvAnalysisRight);
                         exportGrid("ANALISIS ILUMINANTE TL84 (DER)", dgvAnalysisRightTL84);
                         exportGrid("ANALISIS ILUMINANTE A/CWF (DER)", dgvAnalysisRightA);
+                        
+                        sb.AppendLine("--- PROTOCOLO DE SEGURIDAD EN INGENIERÍA DE COLOR ---");
+                        sb.AppendLine("Nota sobre Alertas de Medición y Ajuste:");
+                        sb.AppendLine("El sistema implementa una capa de Inteligencia Preventiva que va más allá de la comparación visual simple.");
+                        sb.AppendLine("1. Validación Multiluminante: El lote se evalúa simultáneamente bajo tres fuentes de luz (D65, TL84, A). El estado 'NO CUMPLE' se activa si existe riesgo de metamerismo (desviación crítica) en al menos un iluminante.");
+                        sb.AppendLine("2. Límite de Estabilidad de Receta (Umbral 15%): La alerta roja de 'Ajustes > 15%' indica que la corrección química necesaria es drástica. Superar este umbral representa un riesgo para la estabilidad de la mezcla.");
+                        sb.AppendLine();
 
                         System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), System.Text.Encoding.UTF8);
                         MessageBox.Show("Reporte de texto guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);

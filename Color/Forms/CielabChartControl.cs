@@ -259,7 +259,7 @@ namespace Color
 
         private void DrawComparisonSamples(Graphics g, int x, int y)
         {
-            int sw = 60, sh = 60;
+            int sw = 80, sh = 80;
             Rectangle rStd = new Rectangle(x, y, sw, sh);
             Rectangle rLot = new Rectangle(x + sw + 10, y, sw, sh);
 

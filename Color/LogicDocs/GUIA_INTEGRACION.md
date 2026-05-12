@@ -80,4 +80,29 @@ Para que el sistema compile y funcione, se requieren los siguientes componentes 
 - **Resolución**: Se recomienda capturar imágenes a 300 DPI para maximizar la precisión del OCR.
 
 ---
-*Ultima actualización: Abril 2026*
+
+## 7. Motores Matemáticos y Paridad Excel
+
+Para asegurar la paridad 1:1 con los estándares de Coats en Excel, el sistema implementa las siguientes lógicas:
+
+### A. Variación Relativa (Motor de Decisión)
+Utilizada para determinar el impacto porcentual en la receta:
+- **Fórmula**: `Variación = (Estándar - Lote) / Estándar`
+- **Precisión**: Se maneja con 8 decimales en el motor (`decimal`) y se redondea para visualización.
+
+### B. Diferencias de Color (Deltas)
+Utilizados para la representación gráfica y diagnósticos visuales:
+- `ΔL = Lote_L - Estándar_L` (Luminosidad)
+- `Δa = Lote_a - Estándar_a` (Eje Rojo/Verde)
+- `Δb = Lote_b - Estándar_b` (Eje Amarillo/Azul)
+
+### C. Parámetros CMC (l:c)
+El sistema utiliza el estándar industrial CMC(2:1) para la evaluación de "Pasa/Falla":
+- **Semi-ejes (S_l, S_c, S_h)**:
+  - `S_l`: 0.511 (si L < 16) o `(0.040975 * L) / (1.0 + 0.01765 * L)`
+  - `S_c`: `(0.0638 * C) / (1.0 + 0.0131 * C) + 0.638`
+  - `S_h`: `S_c * (f * T + 1.0 - f)`
+  - Donde `f = √(C^4 / (C^4 + 1900))` y `T` depende del ángulo de matiz `h`.
+
+---
+*Ultima actualización: Mayo 2026*

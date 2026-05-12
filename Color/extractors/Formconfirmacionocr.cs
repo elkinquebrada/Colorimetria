@@ -236,12 +236,12 @@ namespace Colorimetria
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  // Título 1
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));   // Grid 1
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   // Grid 2
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  // Título 2
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   // Grid 3
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));   // Grid 4
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             // Fila 0: Título "DATOS DE MEDICIÓN"
@@ -285,7 +285,7 @@ namespace Colorimetria
             dgvReceta.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvReceta, 0, 4);
 
-            // Fila 5: LAB (Resultados Finales) - SOLO SE MOSTRARÁ LA FILA STD
+            // Fila 5: LAB (Resultados Finales)
             dgvLab = BuildLabGrid();
             dgvLab.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvLab, 0, 5);
@@ -314,7 +314,7 @@ namespace Colorimetria
 
             btnConfirmar = new Button
             {
-                Text = " Confirmar",
+                Text = " Continuar analisis ",
                 Size = new Size(160, 40),
                 BackColor = SysColor.FromArgb(34, 139, 34),
                 ForeColor = SysColor.White,
@@ -379,7 +379,7 @@ namespace Colorimetria
             int bottomY = this.ClientSize.Height - 60;
             int right = this.ClientSize.Width - margin;
 
-            // Botones a la derecha: Cancelar | Confirmar
+            // Botones a la derecha: Cancelar | Continuar analisis
             if (btnCancelar != null) btnCancelar.Location = new Point(right - btnCancelar.Width, bottomY);
             if (btnConfirmar != null && btnCancelar != null)
                 btnConfirmar.Location = new Point(btnCancelar.Left - 10 - btnConfirmar.Width, bottomY);
@@ -436,21 +436,22 @@ namespace Colorimetria
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 26 },
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                SelectionMode = DataGridViewSelectionMode.CellSelect,
                 Font = new Font("Consolas", 10.5f),
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersHeight = 34
             };
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(0, 120, 215);
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = SysColor.FromArgb(30, 90, 180);
             dgv.ColumnHeadersDefaultCellStyle.ForeColor = SysColor.White;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            dgv.DefaultCellStyle.BackColor = SysColor.FromArgb(55, 55, 55);
-            dgv.DefaultCellStyle.ForeColor = SysColor.White;
+            dgv.DefaultCellStyle.BackColor = SysColor.White;
+            dgv.DefaultCellStyle.ForeColor = SysColor.Black;
             dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
+            dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.White;
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(230, 240, 255);
 
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante", DataPropertyName = "Illuminant" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Type", HeaderText = "Tipo", DataPropertyName = "Type" });
@@ -503,7 +504,7 @@ namespace Colorimetria
             dgv.DefaultCellStyle.SelectionBackColor = SysColor.FromArgb(0, 90, 160);
             dgv.DefaultCellStyle.SelectionForeColor = SysColor.White;
             dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(240, 245, 255);
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(230, 240, 255);
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
@@ -770,28 +771,96 @@ namespace Colorimetria
         {
             if (dgvData.IsCurrentCellInEditMode) dgvData.EndEdit();
             if (dgvReceta != null && dgvReceta.IsCurrentCellInEditMode) dgvReceta.EndEdit();
+            if (dgvCmc != null && dgvCmc.IsCurrentCellInEditMode) dgvCmc.EndEdit();
+            if (dgvLab != null && dgvLab.IsCurrentCellInEditMode) dgvLab.EndEdit();
 
-            RowsConfirmed = new List<ColorimetricRow>();
-
+            // 1. Sincronizar Mediciones (dgvData -> _rows)
+            _rows = new List<ColorimetricRow>();
             foreach (DataGridViewRow row in dgvData.Rows)
             {
+                if (row.IsNewRow) continue;
                 try
                 {
-                    var r = new ColorimetricRow
+                    _rows.Add(new ColorimetricRow
                     {
-                        Illuminant = row.Cells["Illuminant"].Value != null ? row.Cells["Illuminant"].Value.ToString() : null,
-                        Type = row.Cells["Type"].Value != null ? row.Cells["Type"].Value.ToString() : null,
+                        Illuminant = row.Cells["Illuminant"].Value?.ToString(),
+                        Type = row.Cells["Type"].Value?.ToString(),
                         L = ParseCellDouble(row.Cells["L"].Value),
                         A = ParseCellDouble(row.Cells["A"].Value),
                         B = ParseCellDouble(row.Cells["B"].Value),
                         Chroma = ParseCellDouble(row.Cells["Chroma"].Value),
                         Hue = ParseCellInt(row.Cells["Hue"].Value)
-                    };
-                    RowsConfirmed.Add(r);
-                }
-                catch
+                    });
+                } catch { }
+            }
+            RowsConfirmed = _rows;
+            if (_report != null) _report.Measures = _rows;
+
+            // 2. Sincronizar CMC (dgvCmc -> _report.CmcDifferences)
+            if (_report != null && dgvCmc != null)
+            {
+                _report.CmcDifferences = new List<CmcDifferenceRow>();
+                foreach (DataGridViewRow row in dgvCmc.Rows)
                 {
-                    /* ignorar filas corruptas */
+                    if (row.IsNewRow) continue;
+                    try
+                    {
+                        _report.CmcDifferences.Add(new CmcDifferenceRow
+                        {
+                            Illuminant = row.Cells["Illuminante"].Value?.ToString(),
+                            DeltaLightness = ParseCellDouble(row.Cells["dl"].Value),
+                            DeltaChroma = ParseCellDouble(row.Cells["da"].Value),
+                            DeltaHue = ParseCellDouble(row.Cells["db"].Value),
+                            DeltaCMC = ParseCellDouble(row.Cells["cmc"].Value)
+                        });
+                    } catch { }
+                }
+            }
+
+            // 3. Sincronizar Receta (dgvReceta -> _shadeResult.Recipe)
+            if (_shadeResult != null && dgvReceta != null)
+            {
+                _shadeResult.Recipe = new List<RecipeItem>();
+                foreach (DataGridViewRow row in dgvReceta.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    try
+                    {
+                        _shadeResult.Recipe.Add(new RecipeItem
+                        {
+                            Code = row.Cells["Codigo"].Value?.ToString(),
+                            Name = row.Cells["Nombre"].Value?.ToString(),
+                            Percentage = row.Cells["Porcentaje"].Value?.ToString()
+                        });
+                    } catch { }
+                }
+            }
+
+            // 4. Sincronizar LAB/Std/Lot (dgvLab -> _shadeResult)
+            if (_shadeResult != null && dgvLab != null)
+            {
+                foreach (DataGridViewRow row in dgvLab.Rows)
+                {
+                    string tipo = row.Cells["Tipo"].Value?.ToString() ?? "";
+                    if (tipo.Equals("Std", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _shadeResult.StdL = row.Cells["L"].Value?.ToString();
+                        _shadeResult.StdA = row.Cells["A"].Value?.ToString();
+                        _shadeResult.StdB = row.Cells["B"].Value?.ToString();
+                    }
+                    else if (tipo.Equals("Lot", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (_shadeResult.Batch == null) _shadeResult.Batch = new BatchMeasure();
+                        var b = _shadeResult.Batch;
+                        b.L = row.Cells["L"].Value?.ToString();
+                        b.A = row.Cells["A"].Value?.ToString();
+                        b.B = row.Cells["B"].Value?.ToString();
+                        b.DL = row.Cells["dL"].Value?.ToString();
+                        b.DC = row.Cells["dC"].Value?.ToString();
+                        b.DH = row.Cells["dH"].Value?.ToString();
+                        b.DE = row.Cells["dE"].Value?.ToString();
+                        b.PF = row.Cells["PF"].Value?.ToString();
+                    }
                 }
             }
 
@@ -871,6 +940,9 @@ namespace Colorimetria
 
             dgv.Columns["Porcentaje"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
+            dgv.ReadOnly = false;
+            dgv.SelectionMode = DataGridViewSelectionMode.CellSelect;
+
             return dgv;
         }
 
@@ -915,7 +987,7 @@ namespace Colorimetria
                 Dock = DockStyle.Fill,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                ReadOnly = true,
+                ReadOnly = false,
                 RowHeadersVisible = false,
                 BackgroundColor = SysColor.White,
                 GridColor = SysColor.FromArgb(180, 180, 180),
@@ -923,7 +995,7 @@ namespace Colorimetria
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 26 },
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                SelectionMode = DataGridViewSelectionMode.CellSelect,
                 Font = new Font("Consolas", 10f),
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersHeight = 34
@@ -964,7 +1036,6 @@ namespace Colorimetria
                 dgvLab.Rows[sIdx].DefaultCellStyle.ForeColor = SysColor.Black;
                 dgvLab.Rows[sIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
             }
-
         }
 
         private double ParseCellDouble(object val)
