@@ -38,7 +38,6 @@ namespace Colorimetria
         private Button btnRegresar;
         private Label lblTitulo;
         private Label lblDatosReceta;
-        private Label lblStatus;
         private Label lblCount;
         private Label lblTol;
 

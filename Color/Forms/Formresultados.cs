@@ -37,8 +37,7 @@ namespace Color
         private DataGridView dgvCorrectiveRecipe;
         private Label lblAlertCorrective;
 
-        private RichTextBox txtReport;
-        private RichTextBox txtRecomendacion;
+
         private SplitContainer splitMedicionesCmc;
         private Button btnGuardar;
         private Button btnCerrar;

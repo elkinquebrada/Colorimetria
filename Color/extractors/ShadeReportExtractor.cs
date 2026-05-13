@@ -474,7 +474,7 @@ namespace Color
 
                 if (nums.Count < 3) continue; // Al menos L A B
 
-                int start = 0;
+
                 return new LabValues
                 {
                     L = nums.Count > 0 ? nums[0] : "0",
