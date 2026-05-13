@@ -825,12 +825,21 @@ namespace Color
             dgvCorrectiveRecipe.Rows.Clear();
             if (result == null) return;
 
+            int rowCount = 0;
             foreach (var ing in result.Ingredients)
             {
+                string optionDlDisplay = ing.Optiondl;
+                
+                // Ocultar datos de la fila 2 (índice 1) y fila 3 (índice 2) solo en Receta # 1
+                if (rowCount == 1 || rowCount == 2)
+                {
+                    optionDlDisplay = "---";
+                }
+
                 int idx = dgvCorrectiveRecipe.Rows.Add(
                     ing.Name,
                     ing.Original.ToString("F5"),
-                    ing.Optiondl,
+                    optionDlDisplay,
                     ing.Optionda,
                     ing.Optiondb
                 );
@@ -840,6 +849,7 @@ namespace Color
                     dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.ForeColor = System.Drawing.Color.Red;
                     dgvCorrectiveRecipe.Rows[idx].DefaultCellStyle.Font = new Font(dgvCorrectiveRecipe.Font, FontStyle.Bold);
                 }
+                rowCount++;
             }
 
             lblAlertCorrective.Text = result.AlertMessage;
