@@ -59,10 +59,10 @@ namespace Color
                 TotalOriginal = originalRecipe.Sum(i => i.Percentage)
             };
 
-            // Factores de Variación Relativa (Excel Parity)
-            double fL = (double)(1.0m - analysis.FactorL);
-            double fC = (double)(1.0m + analysis.FactorC);
-            double fH = (double)(1.0m + (analysis.FactorH / 100.0m));
+            // Factores de Variación Relativa (sin factores K de sensibilidad)
+            double fL = (double)(1.0m + analysis.FactorL);
+            double fC = (double)(1.0m - analysis.FactorC);
+            double fH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
 
             // Ordenar por concentración para identificar roles
             var sorted = originalRecipe.OrderByDescending(i => i.Percentage).ToList();
@@ -98,7 +98,7 @@ namespace Color
                 if (secondary != null && ing.Code == secondary.Code)
                 {
                     double valC = ing.Percentage * fC;
-                    double diffC = ((valC - ing.Percentage) / ing.Percentage) * 100.0;
+                    double diffC = (double)analysis.FactorC * 100.0;
                     detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%)";
                     if (Math.Abs(valC - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
                 }

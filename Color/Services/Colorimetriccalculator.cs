@@ -198,12 +198,12 @@ namespace Color
             if (dH_Raw < -180) dH_Raw += 360;
             res.FactorH = Math.Round(dH_Raw, 8);
 
-            // Deltas para UI y Gráficos
-            res.DeltaL = (double)(lL - sL);
-            res.DeltaA = (double)(lA - sA);
-            res.DeltaB = (double)(lB - sB);
-            res.DeltaChroma = (double)(lC - sC);
-            res.DeltaHue = (double)res.FactorH;
+            // Deltas para UI y Gráficos (PARIDAD EXCEL COATS: Std - Lot)
+            res.DeltaL = (double)(sL - lL);
+            res.DeltaA = (double)(sA - lA);
+            res.DeltaB = (double)(sB - lB);
+            res.DeltaChroma = (double)(sC - lC);
+            res.DeltaHue = (double)(-res.FactorH); // Hue invertido para consistencia con Std - Lot
             
             var cmc = report.CmcDifferences?.FirstOrDefault(c => c.Illuminant.ToUpper().Contains(illuminantName.ToUpper()));
             res.DeltaE = cmc?.DeltaCMC ?? Math.Sqrt(res.DeltaL*res.DeltaL + res.DeltaA*res.DeltaA + res.DeltaB*res.DeltaB);
@@ -230,13 +230,13 @@ namespace Color
         }
 
         public static string GetDiagL_Expert(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
-        public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL > 0 ? "Más Claro" : "Más Oscuro");
-        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL > 0 ? "Falta Luminosidad" : "Exceso Luminosidad");
-        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "INCREMENTAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
-        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL > 0 ? "ADICIONAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
-        public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC > 0 ? "Saturado" : "Opaco");
-        public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH > 0 ? "Viraje (+)" : "Viraje (-)");
-        public static string GetImpactH_Expert(double dH) => Math.Abs(dH) < 0.1 ? "✔" : (dH > 0 ? "Más Amarillo" : "Más Azul");
+        public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Más Claro" : "Más Oscuro");
+        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Falta Luminosidad" : "Exceso Luminosidad");
+        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "REDUCIR" : "INCREMENTAR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "REDUCIR" : "ADICIONAR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC < 0 ? "Saturado" : "Opaco");
+        public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH < 0 ? "Viraje (+)" : "Viraje (-)");
+        public static string GetImpactH_Expert(double dH) => Math.Abs(dH) < 0.1 ? "✔" : (dH < 0 ? "Más Amarillo" : "Más Azul");
 
         // --- MÓDULO DE INGENIERÍA TEXTIL (DIAGNÓSTICO FINAL) ---
         public static string GetEngineeringDiagnosis(string eje, double delta, string impacto)
@@ -244,7 +244,7 @@ namespace Color
             switch (eje.ToUpper())
             {
                 case "DL": 
-                    if (delta > 0) 
+                    if (delta < 0) 
                         return "ALTA LUMINOSIDAD: El lote se observa más claro que el estándar.";
                     else
                         return "BAJA LUMINOSIDAD: El lote se observa más oscuro que el estándar.";
@@ -258,7 +258,7 @@ namespace Color
 
                 case "DH":
                 case "DB": 
-                    if (delta > 0) 
+                    if (delta < 0) 
                         return "DESVIACIÓN: El lote presenta una tendencia MÁS AMARILLA.";
                     else 
                         return "DESVIACIÓN: El lote presenta una tendencia MÁS AZUL.";
@@ -272,15 +272,15 @@ namespace Color
         {
             if (Math.Abs(dC) < 0.05) return $"Verificar {priName}";
             
-            if (dL < 0) // Oscuro
+            if (dL > 0) // Oscuro (Std > Lot)
             {
-                return dC > 0 
+                return dC < 0 
                     ? $"restar {secName} {varC:F2}%" 
                     : $"restar {priName} {varC:F2}%";
             }
-            else // Claro
+            else // Claro (Std < Lot)
             {
-                return dC > 0 
+                return dC < 0 
                     ? $"sumar {priName} (opaco) {varC:F2}%" 
                     : $"sumar {secName} {varC:F2}%";
             }

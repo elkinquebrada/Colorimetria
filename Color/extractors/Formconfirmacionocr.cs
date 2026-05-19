@@ -507,9 +507,9 @@ namespace Colorimetria
 
             // Columnas (cabeceras)
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Illuminant", HeaderText = "Iluminante" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadl", HeaderText = "dl" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltada", HeaderText = "da" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadb", HeaderText = "db" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadl", HeaderText = "Lightness" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltada", HeaderText = "Chroma" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Deltadb", HeaderText = "Hue" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "DeltaCMC", HeaderText = "CMC(2:1)" });
 
             // Evento para Alerta Visual (Texto Rojo si supera tolerancia)
