@@ -74,13 +74,17 @@ namespace Color
         public string RecomendacionLoteL => ColorimetricCalculator.GetInstLLot(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
 
         public string DiagnosisC => Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
-        // Según Matriz Diagonal Coats: dC es informativo (no se corrige directamente)
-        // oscuro(-) + dC>0 = brillante | claro(+) + dC<0 = opaco
-        public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Brillante" : "Opaco");
+        // DeltaChroma = Std - Lot:
+        //   > 0 => Lot tiene MENOS croma que Std => el lote está más OPACO/APAGADO  => "Opaco"
+        //   < 0 => Lot tiene MÁS croma que Std  => el lote está más VIVO/BRILLANTE  => "Brillante"
+        public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Opaco" : "Brillante");
         public string RecommendationC => (Math.Abs(DeltaChroma) < 0.1) ? "✔" : ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
         public string DiagnosisH => Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
-        public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetImpactH_Expert(DeltaHue);
+        // Dirección del viraje: eje dominante (|da| vs |db|)
+        // DeltaA=Std-Lot: <0 → lot más Rojo | >0 → lot más Verde
+        // DeltaB=Std-Lot: <0 → lot más Amarillo | >0 → lot más Azul
+        public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
         public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "sumar" : "restar")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
 
         public bool Pass { get; set; }
@@ -231,12 +235,25 @@ namespace Color
 
         public static string GetDiagL_Expert(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
         public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Más Claro" : "Más Oscuro");
-        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Falta Luminosidad" : "Exceso Luminosidad");
-        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "REDUCIR" : "INCREMENTAR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
-        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "REDUCIR" : "ADICIONAR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Exceso Luminosidad" : "Falta Luminosidad");
+        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "INCREMENTAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "ADICIONAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
         public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC < 0 ? "Saturado" : "Opaco");
         public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH < 0 ? "Viraje (+)" : "Viraje (-)");
-        public static string GetImpactH_Expert(double dH) => Math.Abs(dH) < 0.1 ? "✔" : (dH < 0 ? "Más Amarillo" : "Más Azul");
+
+        /// <summary>
+        /// Determina la dirección visual del viraje de tono.
+        /// Usa el eje dominante (|da| vs |db|) con convención DeltaX = Std - Lot:
+        ///   dA &lt; 0 => lot más al Rojo  | dA &gt; 0 => lot más al Verde
+        ///   dB &lt; 0 => lot más al Amarillo | dB &gt; 0 => lot más al Azul
+        /// </summary>
+        public static string GetHueDirection(double dA, double dB)
+        {
+            if (Math.Abs(dA) >= Math.Abs(dB))
+                return dA < 0 ? " Virado al Rojo" : " Virado al Verde";
+            else
+                return dB < 0 ? " Virado al Amarillo" : " Virado al Azul";
+        }
 
         // --- MÓDULO DE INGENIERÍA TEXTIL (DIAGNÓSTICO FINAL) ---
         public static string GetEngineeringDiagnosis(string eje, double delta, string impacto)

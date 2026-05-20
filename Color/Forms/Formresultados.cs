@@ -145,7 +145,7 @@ namespace Color
             };
 
             // ---- Botones ----
-            btnGuardar = CreateStyledButton("💾 Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
+            btnGuardar = CreateStyledButton(" Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
             btnGuardar.Click += BtnGuardar_Click;
             
             btnRegresar = CreateStyledButton("← Regresar", System.Drawing.Color.FromArgb(180, 100, 30));
@@ -201,37 +201,31 @@ namespace Color
             dgvShadeHistory.Columns[3].FillWeight = 20;
             dgvShadeHistory.Columns[4].FillWeight = 15;
 
-            dgvAnalysisLeft = CreateAnalysisGrid();
             dgvAnalysisLeftTL84 = CreateAnalysisGrid();
             dgvAnalysisLeftA = CreateAnalysisGrid();
 
+            // TABLA 1: Ajuste de la Mezcla (Ejes dl, da, db)
             dgvCielabSummary = CreateStyledGrid();
             dgvCielabSummary.ColumnHeadersVisible = true;
-            dgvCielabSummary.ColumnCount = 7;
+            dgvCielabSummary.ColumnCount = 5;
             dgvCielabSummary.Columns[0].Name = "Eje";
-            dgvCielabSummary.Columns[1].Name = "Impacto";
-            dgvCielabSummary.Columns[2].Name = "Variacion";
-            dgvCielabSummary.Columns[3].Name = "CalculoBase";
-            dgvCielabSummary.Columns[4].Name = "EjeComp";
-            dgvCielabSummary.Columns[5].Name = "Diagnostico";
-            dgvCielabSummary.Columns[6].Name = "AjusteReal";
+            dgvCielabSummary.Columns[1].Name = "Variacion";
+            dgvCielabSummary.Columns[2].Name = "Impacto";
+            dgvCielabSummary.Columns[3].Name = "Diagnostico";
+            dgvCielabSummary.Columns[4].Name = "Ajuste";
 
-            dgvCielabSummary.Columns[0].HeaderText = "eje";
-            dgvCielabSummary.Columns[1].HeaderText = "2. Impacto";
-            dgvCielabSummary.Columns[2].HeaderText = "3. Variación (Δ) % ";
-            dgvCielabSummary.Columns[3].HeaderText = "4. Cálculo Base";
-            dgvCielabSummary.Columns[4].HeaderText = "5. Eje";
-            dgvCielabSummary.Columns[5].HeaderText = "6. Diagnóstico";
-            dgvCielabSummary.Columns[6].HeaderText = "7. Ajuste Real";
+            dgvCielabSummary.Columns[0].HeaderText = "EJE";
+            dgvCielabSummary.Columns[1].HeaderText = "Variacion (Δ)";
+            dgvCielabSummary.Columns[2].HeaderText = "Impacto";
+            dgvCielabSummary.Columns[3].HeaderText = "Diagnostico";
+            dgvCielabSummary.Columns[4].HeaderText = "AJUSTE (%)";
 
             foreach (DataGridViewColumn col in dgvCielabSummary.Columns) col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             dgvCielabSummary.Columns[0].FillWeight = 40f;
-            dgvCielabSummary.Columns[1].FillWeight = 85f;
-            dgvCielabSummary.Columns[2].FillWeight = 70f;
-            dgvCielabSummary.Columns[3].FillWeight = 80f;
-            dgvCielabSummary.Columns[4].FillWeight = 50f;
-            dgvCielabSummary.Columns[5].FillWeight = 80f;
-            dgvCielabSummary.Columns[6].FillWeight = 80f;
+            dgvCielabSummary.Columns[1].FillWeight = 60f;
+            dgvCielabSummary.Columns[2].FillWeight = 110f;
+            dgvCielabSummary.Columns[3].FillWeight = 110f;
+            dgvCielabSummary.Columns[4].FillWeight = 60f;
 
             dgvCielabSummary.EnableHeadersVisualStyles = false;
             dgvCielabSummary.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
@@ -240,6 +234,45 @@ namespace Color
             dgvCielabSummary.ColumnHeadersDefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
             dgvCielabSummary.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             foreach (DataGridViewColumn col in dgvCielabSummary.Columns)
+            {
+                col.SortMode = DataGridViewColumnSortMode.NotSortable;
+                col.HeaderCell.Style.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                col.HeaderCell.Style.ForeColor = System.Drawing.Color.White;
+                col.HeaderCell.Style.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                col.HeaderCell.Style.SelectionForeColor = System.Drawing.Color.White;
+                col.HeaderCell.Style.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            }
+
+            // TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
+            dgvAnalysisLeft = CreateStyledGrid();
+            dgvAnalysisLeft.ColumnHeadersVisible = true;
+            dgvAnalysisLeft.ColumnCount = 5;
+            dgvAnalysisLeft.Columns[0].Name = "Eje";
+            dgvAnalysisLeft.Columns[1].Name = "Variacion";
+            dgvAnalysisLeft.Columns[2].Name = "Impacto";
+            dgvAnalysisLeft.Columns[3].Name = "Dianostico";
+            dgvAnalysisLeft.Columns[4].Name = "Ajuste";
+
+            dgvAnalysisLeft.Columns[0].HeaderText = "EJE";
+            dgvAnalysisLeft.Columns[1].HeaderText = "Variacion (Δ)";
+            dgvAnalysisLeft.Columns[2].HeaderText = "Impacto";
+            dgvAnalysisLeft.Columns[3].HeaderText = "Diagnostico";
+            dgvAnalysisLeft.Columns[4].HeaderText = "AJUSTE (%)";
+
+            foreach (DataGridViewColumn col in dgvAnalysisLeft.Columns) col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            dgvAnalysisLeft.Columns[0].FillWeight = 40f;
+            dgvAnalysisLeft.Columns[1].FillWeight = 60f;
+            dgvAnalysisLeft.Columns[2].FillWeight = 110f;
+            dgvAnalysisLeft.Columns[3].FillWeight = 110f;
+            dgvAnalysisLeft.Columns[4].FillWeight = 60f;
+
+            dgvAnalysisLeft.EnableHeadersVisualStyles = false;
+            dgvAnalysisLeft.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvAnalysisLeft.ColumnHeadersDefaultCellStyle.ForeColor = System.Drawing.Color.White;
+            dgvAnalysisLeft.ColumnHeadersDefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            dgvAnalysisLeft.ColumnHeadersDefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+            dgvAnalysisLeft.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            foreach (DataGridViewColumn col in dgvAnalysisLeft.Columns)
             {
                 col.SortMode = DataGridViewColumnSortMode.NotSortable;
                 col.HeaderCell.Style.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
@@ -314,7 +347,7 @@ namespace Color
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Percent, 20));   
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
-            pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 110)); // Grid 8 columnas (Analisis Cielab)
+            pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 110)); 
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Percent, 35));   
             pnlLeftRecipe.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));  
@@ -322,9 +355,9 @@ namespace Color
 
             pnlLeftRecipe.Controls.Add(CreateHeaderLabel("ANALISIS DE SHADE HISTORY REPORT (RECETA)"), 0, 0);
             pnlLeftRecipe.Controls.Add(dgvShadeHistory, 0, 1);
-            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("analisis de cielab"), 0, 2);
+            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("TABLA 1: Ajuste de la Mezcla (Ejes dl, da, db)"), 0, 2);
             pnlLeftRecipe.Controls.Add(dgvCielabSummary, 0, 3);
-            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("ANALISIS ILUMINANTE D65 (RECETA)"), 0, 4);
+            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)"), 0, 4);
             pnlLeftRecipe.Controls.Add(dgvAnalysisLeft, 0, 5);
             
             var pnlCorrectiveContainer = new Panel { Dock = DockStyle.Fill };
@@ -337,14 +370,14 @@ namespace Color
 
             // --- Panel Derecho (LOTE / COMPARISON) ---
             var pnlRightLot = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 8 };
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // 0: Header Comparison
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   // 1: Comparison Grid
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // 2: Header D65
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   // 3: D65 Grid
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // 4: Header TL84
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   // 5: TL84 Grid
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // 6: Header A/CWF
-            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   // 7: A/CWF Grid
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   
+            pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));   
 
             pnlRightLot.Controls.Add(CreateHeaderLabel("ANALISIS DE SAMPLE COMPARISON (LOTE)"), 0, 0);
             
@@ -487,7 +520,7 @@ namespace Color
             dgv.ColumnCount = 6;
             dgv.Columns[0].Name = "Colorante";            dgv.Columns[0].FillWeight = 25;
             dgv.Columns[1].Name = "Receta Original";      dgv.Columns[1].FillWeight = 15;
-            dgv.Columns[1].Visible = false; // Ocultar por solicitud de usuario
+            dgv.Columns[1].Visible = false; // Ocultar 
             dgv.Columns[2].Name = "Receta # 1";    dgv.Columns[2].FillWeight = 15;
             dgv.Columns[3].Name = "Receta # 2";    dgv.Columns[3].FillWeight = 15;
             dgv.Columns[4].Name = "Receta # 3";     dgv.Columns[4].FillWeight = 15;
@@ -729,28 +762,53 @@ namespace Color
                 
                 FillComparisonSummary(results, DE_MAX);
                 
+                Func<string, double> toDbl = s => {
+                    if (string.IsNullOrEmpty(s)) return 0;
+                    string clean = Regex.Replace(s, @"[^\d\.\-eE,]+", "").Replace(',', '.');
+                    if (double.TryParse(clean, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double v)) return v;
+                    return 0;
+                };
+
                 dgvCielabSummary.Rows.Clear();
                 
-                // Eje dL
-                string impL = d65.DeltaL > 0 ? "Más claro" : "Más oscuro";
-                string baseL = Math.Abs(d65.PercentL).ToString("F2") + "%";
-                string diagL = d65.DeltaL > 0 ? "Claro" : "Oscuro";
-                string realL = Math.Abs(d65.PercentL).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("dL", impL, d65.DeltaL.ToString("F2"), baseL, "dL", diagL, realL);
-                
-                // Eje da
-                string impA = d65.DeltaA < 0 ? "Más rojo" : "Más verde";
-                string baseC = Math.Abs(d65.PercentChroma).ToString("F2") + "%";
-                string diagC = d65.DeltaChroma >= 0 ? "Brillante" : "Opaco";
-                string realC = Math.Abs(d65.PercentChroma).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("da", impA, d65.DeltaA.ToString("F2"), baseC, "dC", diagC, realC);
-                
-                // Eje db
-                string impB = d65.DeltaB < 0 ? "Más amarillo" : "Más azul";
-                string baseH = Math.Abs(d65.PercentHue).ToString("F2") + "%";
-                string diagH = d65.DeltaHue >= 0 ? "Azul" : "Amarillo";
-                string realH = Math.Abs(d65.PercentHue).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("db", impB, d65.DeltaB.ToString("F2"), baseH, "dH", diagH, realH);
+                // ERROR (Δ) values:
+                double errL = Math.Abs((double)d65.FactorL);
+                double errA = Math.Abs((double)d65.FactorA);
+                double errB = Math.Abs((double)d65.FactorB);
+
+                // Eje dl
+                string lotL = d65.DeltaL < 0 ? "Muy Claro" : "Muy Oscuro";
+                string actL = d65.DeltaL < 0 ? "Aumentar colorante" : "Disminuir colorante";
+                string adjL = (d65.DeltaL < 0 ? "+ " : "- ") + Math.Abs(d65.PercentL).ToString("F2") + "%";
+                int idxL = dgvCielabSummary.Rows.Add("dl", errL.ToString("F5"), lotL, actL, adjL);
+                ApplyEjeStyle(dgvCielabSummary, idxL, "dl"); ApplyTenueRowStyle(dgvCielabSummary, idxL);
+
+                // Eje da — DeltaA = Std - Lot
+                string lotA = d65.DeltaA < 0 ? " Mas Rojo" : " Mas Verde";
+                string actA = d65.DeltaA < 0 ? "Disminuir el Rojo" : "Aumentar el Rojo";
+
+                double stdA = shadeData != null ? toDbl(shadeData.StdA) : 0;
+                double stdB = shadeData != null ? toDbl(shadeData.StdB) : 0;
+                double dA = d65.DeltaA;
+                double dB = d65.DeltaB;
+                double pctA = (Math.Abs(stdA) > 0.1) ? (dA / Math.Abs(stdA)) : 0;
+                double pctB = (Math.Abs(stdB) > 0.1) ? (dB / Math.Abs(stdB)) : 0;
+
+                // Signo directo desde el delta: negativo→Disminuir→"-"  positivo→Aumentar→"+"
+                string adjA = (d65.DeltaA < 0 ? "- " : "+ ") + Math.Abs(pctA * 100).ToString("F2") + "%";
+                int idxA = dgvCielabSummary.Rows.Add("da", errA.ToString("F5"), lotA, actA, adjA);
+                ApplyEjeStyle(dgvCielabSummary, idxA, "da"); ApplyTenueRowStyle(dgvCielabSummary, idxA);
+
+                // Eje db — DeltaB = Std - Lot
+                string lotB = d65.DeltaB < 0 ? " Mas Amarillo" : " Mas Azul";
+                string actB = d65.DeltaB < 0 ? "Disminuir el Amarillo" : "Aumentar el Azul";
+                string adjB = "- " + Math.Abs(pctB * 100).ToString("F2") + "%";
+                int idxB = dgvCielabSummary.Rows.Add("db", errB.ToString("F5"), lotB, actB, adjB);
+                ApplyEjeStyle(dgvCielabSummary, idxB, "db"); ApplyTenueRowStyle(dgvCielabSummary, idxB);
+
+                HighlightChecks(dgvCielabSummary, idxL);
+                HighlightChecks(dgvCielabSummary, idxA);
+                HighlightChecks(dgvCielabSummary, idxB);
                 
                 // --- TABLA IZQUIERDA Y DERECHA: Sincronización Total con el Motor ---
                 // Forzamos que ambos paneles usen la misma fuente de datos (EngineRes)
@@ -925,11 +983,11 @@ namespace Color
 
             // Grid principal (D65) — colores vivos con jerarquía
             if (eje.StartsWith("dl"))
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(45, 45, 45);       // Casi negro
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(45, 45, 45);       
             else if (eje.StartsWith("da") || eje.StartsWith("dC"))
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);    // Gris medio
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);    
             else if (eje.StartsWith("db") || eje.StartsWith("dH"))
-                cell.Style.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0);        // Rojo oscuro
+                cell.Style.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0);       
         }
 
         private void FillCorrectiveRecipeGrid(CorrectiveRecipeResult result, bool allComply = false)
@@ -1054,28 +1112,59 @@ namespace Color
             dgv.Rows.Clear();
             if (res == null) return;
 
-            string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
-            string imp  = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
-            string rec  = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+            if (dgv.ColumnCount == 5)
+            {
+                // Poblado para TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
+                // dL — DeltaL = Std - Lot:
+                string impL = res.DeltaL > 0 ? " Muy Oscuro" : " Muy Claro";
+                string actL = res.DeltaL > 0 ? "(Disminuir carga )" : "(Aumentar carga )";
+                string adjL = (res.DeltaL > 0 ? "- " : "+ ") + Math.Abs(res.PercentL).ToString("F2") + "%";
+                int r1 = dgv.Rows.Add("dL", Math.Abs((double)res.FactorL).ToString("F5"), impL, actL, adjL);
+                ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
 
-            string labelL = isRecipe ? "dl (Claro/Oscuro)" : "dl (Intensidad Carga)";
-            string label2 = isRecipe ? "da (Rojo/Verde)" : "dC (Saturación/Limp)";
-            string label3 = isRecipe ? "db (Amar/Azul)" : "dH (Tono/Matiz)";
-            
-            double val2 = isRecipe ? res.DeltaA : res.DeltaChroma;
-            double val3 = isRecipe ? res.DeltaB : res.DeltaHue;
+                // dC — DeltaChroma = Std - Lot:
+                string impC = res.DeltaChroma > 0 ? " Muy Opaco / Apagado" : " Muy Vivo / brillante";
+                string actC = res.DeltaChroma > 0 ? "Avivar Tono" : "Opacar o Ensuciar";
+                string adjC = (res.DeltaChroma > 0 ? "+ " : "- ") + Math.Abs(res.PercentChroma).ToString("F2") + "%";
+                int r2 = dgv.Rows.Add("dC", Math.Abs((double)res.FactorC).ToString("F5"), impC, actC, adjC);
+                ApplyEjeStyle(dgv, r2, "dC"); ApplyTenueRowStyle(dgv, r2);
 
-            int r1 = dgv.Rows.Add(labelL, res.DeltaL.ToString("F2"), Math.Abs((double)res.FactorL).ToString("F5"), imp, diag, rec);
-            int r2 = dgv.Rows.Add(label2, val2.ToString("F2"), Math.Abs((double)res.FactorA).ToString("F5"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
-            int r3 = dgv.Rows.Add(label3, val3.ToString("F2"), Math.Abs((double)res.FactorB).ToString("F5"), res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
-            
-            ApplyEjeStyle(dgv, r1, labelL); ApplyTenueRowStyle(dgv, r1);
-            ApplyEjeStyle(dgv, r2, label2); ApplyTenueRowStyle(dgv, r2);
-            ApplyEjeStyle(dgv, r3, label3); ApplyTenueRowStyle(dgv, r3);
+                // dH — dirección del viraje por eje dominante (da vs db)
+                string impH = Math.Abs(res.DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetHueDirection(res.DeltaA, res.DeltaB);
+                string actH = res.DeltaHue > 0 ? "Aumentar Matizador" : "Disminuir Matizador";
+                string adjH = (res.DeltaHue > 0 ? "+ " : "- ") + Math.Abs(res.DeltaHue).ToString("F2") + "%";
+                int r3 = dgv.Rows.Add("dH", Math.Abs(res.DeltaHue).ToString("F5"), impH, actH, adjH);
+                ApplyEjeStyle(dgv, r3, "dH"); ApplyTenueRowStyle(dgv, r3);
 
-            HighlightChecks(dgv, r1);
-            HighlightChecks(dgv, r2);
-            HighlightChecks(dgv, r3);
+                HighlightChecks(dgv, r1);
+                HighlightChecks(dgv, r2);
+                HighlightChecks(dgv, r3);
+            }
+            else
+            {
+                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+                string imp  = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+                string rec  = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+
+                string labelL = isRecipe ? "dl (Claro/Oscuro)" : "dl (Intensidad Carga)";
+                string label2 = isRecipe ? "da (Rojo/Verde)" : "dC (Saturación/Limp)";
+                string label3 = isRecipe ? "db (Amar/Azul)" : "dH (Tono/Matiz)";
+                
+                double val2 = isRecipe ? res.DeltaA : res.DeltaChroma;
+                double val3 = isRecipe ? res.DeltaB : res.DeltaHue;
+
+                int r1 = dgv.Rows.Add(labelL, res.DeltaL.ToString("F2"), Math.Abs((double)res.FactorL).ToString("F5"), imp, diag, rec);
+                int r2 = dgv.Rows.Add(label2, val2.ToString("F2"), Math.Abs((double)res.FactorA).ToString("F5"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+                int r3 = dgv.Rows.Add(label3, val3.ToString("F2"), Math.Abs((double)res.FactorB).ToString("F5"), res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
+                
+                ApplyEjeStyle(dgv, r1, labelL); ApplyTenueRowStyle(dgv, r1);
+                ApplyEjeStyle(dgv, r2, label2); ApplyTenueRowStyle(dgv, r2);
+                ApplyEjeStyle(dgv, r3, label3); ApplyTenueRowStyle(dgv, r3);
+
+                HighlightChecks(dgv, r1);
+                HighlightChecks(dgv, r2);
+                HighlightChecks(dgv, r3);
+            }
 
             if (res.DeltaE <= DE_MAX)
             {
@@ -1170,27 +1259,41 @@ namespace Color
 
                 dgvCielabSummary.Rows.Clear();
                 
-                // Eje dL
-                double deltaL = d65.DeltaLightness;
-                string impL = deltaL > 0 ? "Más claro" : "Más oscuro";
-                string baseL = Math.Abs(expertAnalysis.PercentL).ToString("F2") + "%";
-                string diagL = deltaL > 0 ? "Claro" : "Oscuro";
-                string realL = Math.Abs(expertAnalysis.PercentL).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("dL", impL, deltaL.ToString("F2"), baseL, "dL", diagL, realL);
-                
-                // Eje da
-                string impA = dA < 0 ? "Más rojo" : "Más verde";
-                string baseC = Math.Abs(expertAnalysis.PercentChroma).ToString("F2") + "%";
-                string diagC = expertAnalysis.DeltaChroma >= 0 ? "Brillante" : "Opaco";
-                string realC = Math.Abs(expertAnalysis.PercentChroma).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("da", impA, dA.ToString("F2"), baseC, "dC", diagC, realC);
-                
-                // Eje db
-                string impB = dB < 0 ? "Más amarillo" : "Más azul";
-                string baseH = Math.Abs(expertAnalysis.PercentHue).ToString("F2") + "%";
-                string diagH = expertAnalysis.DeltaHue >= 0 ? "Azul" : "Amarillo";
-                string realH = Math.Abs(expertAnalysis.PercentHue).ToString("F1") + "%";
-                dgvCielabSummary.Rows.Add("db", impB, dB.ToString("F2"), baseH, "dH", diagH, realH);
+                // ERROR (Δ) values:
+                double errL = Math.Abs((double)expertAnalysis.FactorL);
+                double errA = Math.Abs((double)expertAnalysis.FactorA);
+                double errB = Math.Abs((double)expertAnalysis.FactorB);
+
+                // Eje dl — DeltaLightness (OCR) = Lot - Std
+                string lotLStr = d65.DeltaLightness < 0 ? " Muy Oscuro" : " Muy Claro";
+                string actLStr = d65.DeltaLightness < 0 ? "Aumentar colorante" : "Disminuir colorante";
+                string adjLStr = (d65.DeltaLightness < 0 ? "+ " : "- ") + Math.Abs(expertAnalysis.PercentL).ToString("F2") + "%";
+                int idxL = dgvCielabSummary.Rows.Add("dl", errL.ToString("F5"), lotLStr, actLStr, adjLStr);
+                ApplyEjeStyle(dgvCielabSummary, idxL, "dl"); ApplyTenueRowStyle(dgvCielabSummary, idxL);
+
+                // Eje da — REGLA: Bajar→"-"  Subir→"+"
+                // dA aquí = d65.DeltaA = Std - Lot (convención motor)
+                string lotAStr = dA < 0 ? " Mas Rojo" : " Mas Verde";
+                string actAStr = dA < 0 ? "Disminuir el Rojo" : "Aumentar el Rojo";
+                double stdA = std != null ? std.A : 0;
+                double pctA = (Math.Abs(stdA) > 0.1) ? (dA / Math.Abs(stdA)) : 0;
+                string adjAStr = (dA < 0 ? "- " : "+ ") + Math.Abs(pctA * 100).ToString("F2") + "%";
+                int idxA = dgvCielabSummary.Rows.Add("da", errA.ToString("F5"), lotAStr, actAStr, adjAStr);
+                ApplyEjeStyle(dgvCielabSummary, idxA, "da"); ApplyTenueRowStyle(dgvCielabSummary, idxA);
+
+                // Eje db — REGLA: Bajar→"-"  Subir→"+"
+                // dB aquí = d65.DeltaB = Std - Lot (convención motor)
+                string lotBStr = dB < 0 ? " Mas Amarillo" : " Mas Azul";
+                string actBStr = dB < 0 ? "Disminuir el Amarillo" : "Disminuir el Azul";
+                double stdB = std != null ? std.B : 0;
+                double pctB = (Math.Abs(stdB) > 0.1) ? (dB / Math.Abs(stdB)) : 0;
+                string adjBStr = "- " + Math.Abs(pctB * 100).ToString("F2") + "%";
+                int idxB = dgvCielabSummary.Rows.Add("db", errB.ToString("F5"), lotBStr, actBStr, adjBStr);
+                ApplyEjeStyle(dgvCielabSummary, idxB, "db"); ApplyTenueRowStyle(dgvCielabSummary, idxB);
+
+                HighlightChecks(dgvCielabSummary, idxL);
+                HighlightChecks(dgvCielabSummary, idxA);
+                HighlightChecks(dgvCielabSummary, idxB);
             }
 
             if (d65 != null)
@@ -1257,45 +1360,84 @@ namespace Color
             dgv.Rows.Clear();
             if (cmc == null) return;
 
-            decimal fL = (decimal)cmc.DeltaLightness / 100m;
-            decimal fC = (decimal)cmc.DeltaChroma / 100m;
-
-            var res = new ColorCorrectionResult {
-                DeltaL = cmc.DeltaLightness,
-                DeltaChroma = cmc.DeltaChroma,
-                DeltaHue = cmc.DeltaHue,
-                DeltaA = pctA * 50, 
-                DeltaB = pctB * 50
-            };
-
-            string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
-            string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
-            string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
-
-            string labelL = isRecipe ? "dl (Claro/Oscuro)" : "dl (Intensidad Carga)";
-            string label2 = isRecipe ? "da (Rojo/Verde)" : "dC (Saturación/Limp)";
-            string label3 = isRecipe ? "db (Amar/Azul)" : "dH (Tono/Matiz)";
-
-            double val2 = isRecipe ? res.DeltaA : res.DeltaChroma;
-            double val3 = isRecipe ? res.DeltaB : res.DeltaHue;
-
-            int r1 = dgv.Rows.Add(labelL, res.DeltaL.ToString("F2"), Math.Abs((double)fL).ToString("F5"), imp, diag, rec);
-            int r2 = dgv.Rows.Add(label2, val2.ToString("F2"), Math.Abs((double)fC).ToString("F5"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
-            int r3 = dgv.Rows.Add(label3, val3.ToString("F2"), "0.00000", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
-            
-            ApplyEjeStyle(dgv, r1, labelL); 
-            ApplyEjeStyle(dgv, r2, label2); 
-            ApplyEjeStyle(dgv, r3, label3);
-
-            HighlightChecks(dgv, r1);
-            HighlightChecks(dgv, r2);
-            HighlightChecks(dgv, r3);
-
-            if (cmc.DeltaCMC <= tolDE)
+            if (dgv.ColumnCount == 5)
             {
-                ApplyTenueRowStyle(dgv, r1);
-                ApplyTenueRowStyle(dgv, r2);
-                ApplyTenueRowStyle(dgv, r3);
+                // Poblado para TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
+                string impL = cmc.DeltaLightness < 0 ? " Muy Oscuro" : " Muy Claro";
+                string actL = cmc.DeltaLightness < 0 ? "(Aumentar carga )" : "(Disminuir carga )";
+                string adjL = (cmc.DeltaLightness < 0 ? "+ " : "- ") + Math.Abs(cmc.DeltaLightness).ToString("F2") + "%";
+                double fL = cmc.DeltaLightness / 100.0;
+                int r1 = dgv.Rows.Add("dL", Math.Abs(fL).ToString("F5"), impL, actL, adjL);
+                ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
+
+                // dC
+                string impC = cmc.DeltaChroma >= 0 ? " Muy Vivo / Brillante" : " Muy Opaco / Apagado";
+                string actC = cmc.DeltaChroma >= 0 ? "Opacar o Ensuciar" : "Avivar Tono";
+                string adjC = (cmc.DeltaChroma >= 0 ? "- " : "+ ") + Math.Abs(cmc.DeltaChroma).ToString("F2") + "%";
+                double fC = cmc.DeltaChroma / 100.0;
+                int r2 = dgv.Rows.Add("dC", Math.Abs(fC).ToString("F5"), impC, actC, adjC);
+                ApplyEjeStyle(dgv, r2, "dC"); ApplyTenueRowStyle(dgv, r2);
+
+                // dH — dirección del viraje por eje dominante (pctA vs pctB pasados como parámetros)
+                string impH = Math.Abs(cmc.DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetHueDirection(pctA, pctB);
+                string actH = cmc.DeltaHue >= 0 ? "Aumentar Matizador" : "Disminuir Matizador";
+                string adjH = (cmc.DeltaHue >= 0 ? "+ " : "- ") + Math.Abs(cmc.DeltaHue).ToString("F2") + "%";
+                int r3 = dgv.Rows.Add("dH", Math.Abs(cmc.DeltaHue).ToString("F5"), impH, actH, adjH);
+                ApplyEjeStyle(dgv, r3, "dH"); ApplyTenueRowStyle(dgv, r3);
+
+                HighlightChecks(dgv, r1);
+                HighlightChecks(dgv, r2);
+                HighlightChecks(dgv, r3);
+
+                if (cmc.DeltaCMC <= tolDE)
+                {
+                    ApplyTenueRowStyle(dgv, r1);
+                    ApplyTenueRowStyle(dgv, r2);
+                    ApplyTenueRowStyle(dgv, r3);
+                }
+            }
+            else
+            {
+                decimal fL = (decimal)cmc.DeltaLightness / 100m;
+                decimal fC = (decimal)cmc.DeltaChroma / 100m;
+
+                var res = new ColorCorrectionResult {
+                    DeltaL = cmc.DeltaLightness,
+                    DeltaChroma = cmc.DeltaChroma,
+                    DeltaHue = cmc.DeltaHue,
+                    DeltaA = pctA * 50, 
+                    DeltaB = pctB * 50
+                };
+
+                string diag = isRecipe ? res.DiagnosticoL : res.DiagnosticoLoteL;
+                string imp = isRecipe ? res.ImpactoRecetaL : res.ImpactoLoteL;
+                string rec = isRecipe ? res.RecomendacionRecetaL : res.RecomendacionLoteL;
+
+                string labelL = isRecipe ? "dl (Claro/Oscuro)" : "dl (Intensidad Carga)";
+                string label2 = isRecipe ? "da (Rojo/Verde)" : "dC (Saturación/Limp)";
+                string label3 = isRecipe ? "db (Amar/Azul)" : "dH (Tono/Matiz)";
+
+                double val2 = isRecipe ? res.DeltaA : res.DeltaChroma;
+                double val3 = isRecipe ? res.DeltaB : res.DeltaHue;
+
+                int r1 = dgv.Rows.Add(labelL, res.DeltaL.ToString("F2"), Math.Abs((double)fL).ToString("F5"), imp, diag, rec);
+                int r2 = dgv.Rows.Add(label2, val2.ToString("F2"), Math.Abs((double)fC).ToString("F5"), res.DescripcionC, res.DiagnosisC, res.RecommendationC);
+                int r3 = dgv.Rows.Add(label3, val3.ToString("F2"), "0.00000", res.ImpactoMatiz, res.DiagnosisH, res.RecomendacionMatiz);
+                
+                ApplyEjeStyle(dgv, r1, labelL); 
+                ApplyEjeStyle(dgv, r2, label2); 
+                ApplyEjeStyle(dgv, r3, label3);
+
+                HighlightChecks(dgv, r1);
+                HighlightChecks(dgv, r2);
+                HighlightChecks(dgv, r3);
+
+                if (cmc.DeltaCMC <= tolDE)
+                {
+                    ApplyTenueRowStyle(dgv, r1);
+                    ApplyTenueRowStyle(dgv, r2);
+                    ApplyTenueRowStyle(dgv, r3);
+                }
             }
         }
 

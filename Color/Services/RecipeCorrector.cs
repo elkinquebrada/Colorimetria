@@ -60,8 +60,8 @@ namespace Color
             };
 
             // Factores de Variación Relativa (sin factores K de sensibilidad)
-            double fL = (double)(1.0m + analysis.FactorL);
-            double fC = (double)(1.0m - analysis.FactorC);
+            double fL = (double)(1.0m - analysis.FactorL);
+            double fC = (double)(1.0m + analysis.FactorC);
             double fH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
 
             // Ordenar por concentración para identificar roles
