@@ -12,7 +12,7 @@ using System.Web.Http.Description;
 namespace ColorimetriaAPI.Models
 {
     [RoutePrefix("api/colorimetry")]
-    public class IOcrReportRequest
+    public class ColorimetryController : ApiController
     {
         private readonly ColorimetryService _claude;
 
