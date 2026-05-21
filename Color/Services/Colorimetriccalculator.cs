@@ -13,11 +13,11 @@ namespace Color
         public string ShadeName { get; set; } = "";
 
         // Escenarios de Corrección (Fase 2 - Paridad Excel Coats)
-        public decimal FactorL { get; set; } // Variación L: (Std - Lot) / Std
-        public decimal FactorA { get; set; } // Variación a: (Std - Lot) / Std
-        public decimal FactorB { get; set; } // Variación b: (Std - Lot) / Std
-        public decimal FactorC { get; set; } // Variación C: (Std - Lot) / Std
-        public decimal FactorH { get; set; } // Variación H (Matiz Raw)
+        public decimal FactorL { get; set; } 
+        public decimal FactorA { get; set; } 
+        public decimal FactorB { get; set; } 
+        public decimal FactorC { get; set; } 
+        public decimal FactorH { get; set; } 
 
         // Valores Base (Auditoría)
         public double StdL { get; set; }
@@ -85,7 +85,7 @@ namespace Color
         // DeltaA=Std-Lot: <0 → lot más Rojo | >0 → lot más Verde
         // DeltaB=Std-Lot: <0 → lot más Amarillo | >0 → lot más Azul
         public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
-        public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "sumar" : "restar")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
+        public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "Aumentar" : "Disminuir")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
 
         public bool Pass { get; set; }
     }
@@ -191,16 +191,20 @@ namespace Color
             decimal lC = (decimal)lot.Chroma;
             decimal lH = (decimal)lot.Hue;
 
-            // Variaciones Relativas (PARIDAD EXCEL COATS)
-            res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
-            res.FactorA = sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0;
-            res.FactorB = sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0;
-            res.FactorC = sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0;
+            // Variaciones Relativas (PARIDAD EXCEL COATS) con límite 15% (Protocolo de Seguridad Industrial)
+            decimal Limit15(decimal f) => Math.Max(-0.15m, Math.Min(0.15m, f));
+
+            res.FactorL = Limit15(sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0);
+            res.FactorA = Limit15(sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0);
+            res.FactorB = Limit15(sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0);
+            res.FactorC = Limit15(sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0);
             
             decimal dH_Raw = lH - sH;
             if (dH_Raw > 180) dH_Raw -= 360;
             if (dH_Raw < -180) dH_Raw += 360;
-            res.FactorH = Math.Round(dH_Raw, 8);
+            
+            // FactorH (Hue) differs conceptually, limits equivalent limit 15% applied to degrees
+            res.FactorH = Limit15(Math.Round(dH_Raw, 8) / 100.0m) * 100.0m;
 
             // Deltas para UI y Gráficos (PARIDAD EXCEL COATS: Std - Lot)
             res.DeltaL = (double)(sL - lL);
@@ -235,18 +239,14 @@ namespace Color
 
         public static string GetDiagL_Expert(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
         public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Más Claro" : "Más Oscuro");
-        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Exceso Luminosidad" : "Falta Luminosidad");
-        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "INCREMENTAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
-        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "ADICIONAR" : "REDUCIR")} CARGA DE COLORANTE EN {Math.Abs(varL):F2}%";
+        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Brillante" : "");
+        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "INCREMENTAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
+        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "ADICIONAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
         public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC < 0 ? "Saturado" : "Opaco");
         public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH < 0 ? "Viraje (+)" : "Viraje (-)");
 
-        /// <summary>
-        /// Determina la dirección visual del viraje de tono.
-        /// Usa el eje dominante (|da| vs |db|) con convención DeltaX = Std - Lot:
-        ///   dA &lt; 0 => lot más al Rojo  | dA &gt; 0 => lot más al Verde
-        ///   dB &lt; 0 => lot más al Amarillo | dB &gt; 0 => lot más al Azul
-        /// </summary>
+
+        /// Determina la dirección visual del viraje de tono
         public static string GetHueDirection(double dA, double dB)
         {
             if (Math.Abs(dA) >= Math.Abs(dB))
@@ -260,28 +260,31 @@ namespace Color
         {
             switch (eje.ToUpper())
             {
-                case "DL": 
+                case "DL":
+                case "L":
                     if (delta < 0) 
-                        return "ALTA LUMINOSIDAD: El lote se observa más claro que el estándar.";
+                        return " Mas Claro ";
                     else
-                        return "BAJA LUMINOSIDAD: El lote se observa más oscuro que el estándar.";
+                        return "Mas Oscuro";
 
                 case "DC": 
-                case "DA": 
-                    if (impacto.Contains("Brillante"))
-                        return "BAJA OPACIDAD: Falta de componente de contraste o matizador en la tríada.";
+                case "DA":
+                case "C":
+                    if (impacto.Contains("Brillante") || delta > 0) 
+                        return "Mas Brillante";
                     else
-                        return "SATURACIÓN DE GRIS: Exceso de matizador o contaminación del baño/fibra.";
+                        return "Mas Opaco";
 
                 case "DH":
-                case "DB": 
+                case "DB":
+                case "H":
                     if (delta < 0) 
-                        return "DESVIACIÓN: El lote presenta una tendencia MÁS AMARILLA.";
+                        return "Tendecia al  Amarillo.";
                     else 
-                        return "DESVIACIÓN: El lote presenta una tendencia MÁS AZUL.";
+                        return "Tendencia al AZul.";
             }
 
-            return "DENTRO DE TOLERANCIA: Estabilidad de color óptima.";
+            return "DENTRO DE TOLERANCIA:";
         }
 
         // Lógica de Ciclo Industrial (Matriz Diagonal)

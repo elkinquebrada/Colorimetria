@@ -60,9 +60,14 @@ namespace Color
             };
 
             // Factores de Variación Relativa (sin factores K de sensibilidad)
-            double fL = (double)(1.0m - analysis.FactorL);
-            double fC = (double)(1.0m + analysis.FactorC);
-            double fH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
+            double rawFL = (double)(1.0m - analysis.FactorL);
+            double rawFC = (double)(1.0m + analysis.FactorC);
+            double rawFH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
+            
+            // Límite Protocolo Seguridad Industrial (+/- 15%)
+            double fL = Math.Max(0.85, Math.Min(1.15, rawFL));
+            double fC = Math.Max(0.85, Math.Min(1.15, rawFC));
+            double fH = Math.Max(0.85, Math.Min(1.15, rawFH));
 
             // Ordenar por concentración para identificar roles
             var sorted = originalRecipe.OrderByDescending(i => i.Percentage).ToList();
@@ -78,8 +83,13 @@ namespace Color
                 if (toner != null) analysis.TonerDyeName = toner.Name.Trim();
             }
 
+            double totalRecipePct = originalRecipe.Sum(i => i.Percentage);
+
             foreach (var ing in originalRecipe)
             {
+                double partPct = totalRecipePct > 0 ? (ing.Percentage / totalRecipePct) * 100.0 : 0;
+                bool isLowPart = partPct < 2.0;
+
                 var detail = new CorrectiveIngredientDetail
                 {
                     Code = ing.Code,
@@ -91,16 +101,20 @@ namespace Color
                 // ESCENARIO 1 (dl): AJUSTE GLOBAL DE CARGA (Afecta a todos simultáneamente)
                 double valL = ing.Percentage * fL;
                 double diffL = ((valL - ing.Percentage) / ing.Percentage) * 100.0;
-                detail.Optiondl = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%)";
-                if (Math.Abs(valL - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
+                bool capL = Math.Abs(rawFL - 1.0) > 0.15;
+                string flagL = (capL && isLowPart) ? "\n* Sensibilidad Limitada" : "";
+                detail.Optiondl = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%){flagL}";
+                if (capL) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
 
                 // ESCENARIO 2 (da): Solo secundario (Brillo)
                 if (secondary != null && ing.Code == secondary.Code)
                 {
                     double valC = ing.Percentage * fC;
-                    double diffC = (double)analysis.FactorC * 100.0;
-                    detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%)";
-                    if (Math.Abs(valC - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
+                    double diffC = ((valC - ing.Percentage) / ing.Percentage) * 100.0;
+                    bool capC = Math.Abs(rawFC - 1.0) > 0.15;
+                    string flagC = (capC && isLowPart) ? "\n* Sensibilidad Limitada" : "";
+                    detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%){flagC}";
+                    if (capC) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
                 }
                 else detail.Optionda = "---";
 
@@ -109,16 +123,34 @@ namespace Color
                 {
                     double valH = ing.Percentage * fH;
                     double diffH = ((valH - ing.Percentage) / ing.Percentage) * 100.0;
-                    detail.Optiondb = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%)";
-                    if (Math.Abs(valH - ing.Percentage) / ing.Percentage > 0.15) { detail.IsCritical = true; detail.Status = "REVISAR"; }
+                    bool capH = Math.Abs(rawFH - 1.0) > 0.15;
+                    string flagH = (capH && isLowPart) ? "\n* Sensibilidad Limitada" : "";
+                    detail.Optiondb = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%){flagH}";
+                    if (capH) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
                 }
                 else detail.Optiondb = "---";
 
                 result.Ingredients.Add(detail);
             }
 
-            result.AlertMessage = result.Ingredients.Any(i => i.IsCritical) ? "ALERTA: Ajustes > 15%" : "Escenarios OK";
-            result.AlertSeverity = result.Ingredients.Any(i => i.IsCritical) ? "Warning" : "None";
+            bool isCritical = result.Ingredients.Any(i => i.IsCritical);
+            bool requiresAnyAdjustment = Math.Abs(rawFL - 1.0) > 0.001 || Math.Abs(rawFC - 1.0) > 0.001 || Math.Abs(rawFH - 1.0) > 0.001;
+
+            if (isCritical)
+            {
+                result.AlertMessage = "Ajuste Requerido - Límite de Seguridad Alcanzado";
+                result.AlertSeverity = "Critical";
+            }
+            else if (requiresAnyAdjustment)
+            {
+                result.AlertMessage = "Revisar Ajustes Sugeridos";
+                result.AlertSeverity = "Warning";
+            }
+            else
+            {
+                result.AlertMessage = "Lote Cumple Tolerancia - Sin Ajustes";
+                result.AlertSeverity = "None";
+            }
 
             return result;
         }
