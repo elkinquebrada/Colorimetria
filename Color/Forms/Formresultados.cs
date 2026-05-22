@@ -356,9 +356,9 @@ namespace Color
 
             pnlLeftRecipe.Controls.Add(CreateHeaderLabel("ANALISIS DE SHADE HISTORY REPORT (RECETA)"), 0, 0);
             pnlLeftRecipe.Controls.Add(dgvShadeHistory, 0, 1);
-            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("TABLA 1: Revision (Ejes dl, da, db)"), 0, 2);
+            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("Iluminante D65: (Ejes dl, da, db)"), 0, 2);
             pnlLeftRecipe.Controls.Add(dgvCielabSummary, 0, 3);
-            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("TABLA 2: Revisión (Ejes dL, dC, dH)"), 0, 4);
+            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("Iluminante D65: (Ejes dL, dC, dH)"), 0, 4);
             pnlLeftRecipe.Controls.Add(dgvAnalysisLeft, 0, 5);
 
             var pnlCorrectiveContainer = new Panel { Dock = DockStyle.Fill };
@@ -366,7 +366,7 @@ namespace Color
             pnlCorrectiveContainer.Controls.Add(lblAlertCorrective);
             dgvCorrectiveRecipe.Dock = DockStyle.Fill;
             lblAlertCorrective.Dock = DockStyle.Bottom;
-            pnlLeftRecipe.Controls.Add(CreateHeaderLabel("RESUMEN DE FORMULACIÓN CORRECTIVA (D65)"), 0, 6);
+            pnlLeftRecipe.Controls.Add(CreateHeaderLabel(" FORMULACIÓN CORRECTIVA (D65)"), 0, 6);
             pnlLeftRecipe.Controls.Add(pnlCorrectiveContainer, 0, 7);
 
             // --- Panel Derecho (LOTE / COMPARISON) ---
@@ -489,13 +489,13 @@ namespace Color
         private DataGridView CreateAnalysisGrid()
         {
             var dgv = CreateStyledGrid();
-            dgv.ColumnCount = 6;
-            dgv.Columns[0].Name = "EJE"; dgv.Columns[0].FillWeight = 10;
-            dgv.Columns[1].Name = "Variacion(Δ)"; dgv.Columns[1].FillWeight = 10;
+            dgv.ColumnCount = 5;
+            dgv.Columns[0].Name = "EJE";          dgv.Columns[0].FillWeight = 8;
+            dgv.Columns[1].Name = "Variacion(Δ)"; dgv.Columns[1].FillWeight = 15;
             dgv.Columns[1].HeaderCell.ToolTipText = "(Std - Lot)";
-            dgv.Columns[2].Name = "Impacto"; dgv.Columns[2].FillWeight = 12;
-            dgv.Columns[3].Name = "Diagnostico"; dgv.Columns[3].FillWeight = 18;
-            dgv.Columns[4].Name = "Ajuste"; dgv.Columns[4].FillWeight = 25;
+            dgv.Columns[2].Name = "Impacto";      dgv.Columns[2].FillWeight = 22;
+            dgv.Columns[3].Name = "Diagnostico";  dgv.Columns[3].FillWeight = 30;
+            dgv.Columns[4].Name = "Ajuste";       dgv.Columns[4].FillWeight = 25;
             return dgv;
         }
 
@@ -715,7 +715,7 @@ namespace Color
 
                 // Eje dl
                 string lotL = d65.DeltaL < 0 ? " Claro" : " Oscuro";
-                string actL = d65.DeltaL < 0 ? "Aumentar colorante" : "Disminuir colorante";
+                string actL = d65.DeltaL < 0 ? "Aumentar colorante" : "Reducir colorante";
                 string adjL = (d65.DeltaL < 0 ? "+ " : "- ") + Math.Abs(d65.PercentL).ToString("F2") + "%";
                 if (Math.Abs(d65.PercentL) <= 0.1)
                 {
@@ -728,7 +728,7 @@ namespace Color
 
                 // Eje da — DeltaA = Std - Lot
                 string lotA = d65.DeltaA < 0 ? " Mas Rojo" : " Mas Verde";
-                string actA = d65.DeltaA < 0 ? "Disminuir el Rojo" : "Aumentar el Rojo";
+                string actA = d65.DeltaA < 0 ? "Reducir el Rojo" : "Aumentar el Rojo";
 
                 double stdA = shadeData != null ? toDbl(shadeData.StdA) : 0;
                 double stdB = shadeData != null ? toDbl(shadeData.StdB) : 0;
@@ -752,7 +752,7 @@ namespace Color
 
                 // Eje db — DeltaB = Std - Lot
                 string lotB = d65.DeltaB < 0 ? " Mas Amarillo" : " Mas Azul";
-                string actB = d65.DeltaB < 0 ? "Disminuir el Amarillo" : "Aumentar el Azul";
+                string actB = d65.DeltaB < 0 ? "Reducir el Amarillo" : "Aumentar el Azul";
                 string adjB = "- " + Math.Abs(pctB * 100).ToString("F2") + "%";
                 if (Math.Abs(pctB * 100) <= 0.1)
                 {
@@ -996,7 +996,7 @@ namespace Color
                 // Poblado para TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
                 // dL — DeltaL = Std - Lot:
                 string impL = res.DeltaL > 0 ? " Oscuro" : " Claro";
-                string actL = res.DeltaL > 0 ? "(Disminuir carga )" : "(Aumentar carga )";
+                string actL = res.DeltaL > 0 ? "(Reducir carga )" : "(Aumentar carga )";
                 string adjL = (res.DeltaL > 0 ? "- " : "+ ") + Math.Abs(res.PercentL).ToString("F2") + "%";
                 if (Math.Abs(res.PercentL) <= 0.1)
                 {
@@ -1022,7 +1022,7 @@ namespace Color
 
                 // dH — dirección del viraje por eje dominante (da vs db)
                 string impH;
-                string actH = res.DeltaHue > 0 ? "Aumentar Matizador" : "Disminuir Matizador";
+                string actH = res.DeltaHue > 0 ? "Aumentar Matizador" : "Reducir Matizador";
                 string adjH = (res.DeltaHue > 0 ? "+ " : "- ") + Math.Abs(res.DeltaHue).ToString("F2") + "%";
                 if (Math.Abs(res.DeltaHue) <= 0.1)
                 {
@@ -1086,12 +1086,12 @@ namespace Color
             string impL, diagL, ajusteL;
             if (Math.Abs(pctL) <= 0.1)
             {
-                impL = "✔"; diagL = "En Tolerancia"; ajusteL = "✔";
+                impL = "✔"; diagL = "✔"; ajusteL = "✔";
             }
             else
             {
                 impL  = res.DeltaL > 0 ? "Oscuro" : "Claro";
-                diagL = res.DeltaL > 0 ? "(Disminuir carga )" : "(Aumentar carga )";
+                diagL = res.DeltaL > 0 ? "(Reducir carga )" : "(Aumentar carga )";
                 ajusteL = (pctL < 0 ? "- " : "+ ") + Math.Abs(pctL).ToString("F2") + "%";
             }
             int rL = dgv.Rows.Add("dL", res.DeltaL.ToString("F5"), impL, diagL, ajusteL);
@@ -1118,7 +1118,7 @@ namespace Color
             string impH, diagH, ajusteH;
             if (Math.Abs(pctH) <= 0.1)
             {
-                impH = "✔"; diagH = "En Tolerancia"; ajusteH = "✔";
+                impH = "✔"; diagH = "✔"; ajusteH = "✔";
             }
             else
             {
@@ -1127,7 +1127,7 @@ namespace Color
                 else
                     impH = res.DeltaB < 0 ? "Virado a Amarillo" : "Virado a Azul";
 
-                diagH   = res.DeltaHue > 0 ? "Aumentar Matizador" : "Disminuir Matizador";
+                diagH   = res.DeltaHue > 0 ? "Aumentar Matizador" : "Reducir Matizador";
                 ajusteH = (pctH > 0 ? "+ " : "- ") + Math.Abs(pctH).ToString("F2") + "%";
             }
             int rH = dgv.Rows.Add("dH", res.DeltaHue.ToString("F5"), impH, diagH, ajusteH);
@@ -1233,7 +1233,7 @@ namespace Color
 
                 // Eje dl — DeltaLightness (OCR) = Lot - Std
                 string lotLStr = d65.DeltaLightness < 0 ? " Oscuro" : " Claro";
-                string actLStr = d65.DeltaLightness < 0 ? "Aumentar colorante" : "Disminuir colorante";
+                string actLStr = d65.DeltaLightness < 0 ? "Aumentar colorante" : "Reducir colorante";
                 string adjLStr = (d65.DeltaLightness < 0 ? "+ " : "- ") + Math.Abs(expertAnalysis.PercentL).ToString("F2") + "%";
                 if (Math.Abs(expertAnalysis.PercentL) <= 0.1)
                 {
@@ -1247,7 +1247,7 @@ namespace Color
                 // Eje da — REGLA: Bajar→"-"  Subir→"+"
                 // dA aquí = d65.DeltaA = Std - Lot (convención motor)
                 string lotAStr = dA < 0 ? " Mas Rojo" : " Mas Verde";
-                string actAStr = dA < 0 ? "Disminuir el Rojo" : "Aumentar el Rojo";
+                string actAStr = dA < 0 ? "Reducir el Rojo" : "Aumentar el Rojo";
                 double stdA = std != null ? std.A : 0;
                 double pctA_raw = (Math.Abs(stdA) > 0.1) ? (dA / Math.Abs(stdA)) : 0;
                 double pctA = Math.Max(-0.15, Math.Min(0.15, pctA_raw));
@@ -1264,7 +1264,7 @@ namespace Color
                 // Eje db — REGLA: Bajar→"-"  Subir→"+"
                 // dB aquí = d65.DeltaB = Std - Lot (convención motor)
                 string lotBStr = dB < 0 ? " Mas Amarillo" : " Mas Azul";
-                string actBStr = dB < 0 ? "Disminuir el Amarillo" : "Disminuir el Azul";
+                string actBStr = dB < 0 ? "Reducir el Amarillo" : "Reducir el Azul";
                 double stdB = std != null ? std.B : 0;
                 double pctB_raw = (Math.Abs(stdB) > 0.1) ? (dB / Math.Abs(stdB)) : 0;
                 double pctB = Math.Max(-0.15, Math.Min(0.15, pctB_raw));
@@ -1361,7 +1361,7 @@ namespace Color
             {
                 // Poblado para TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
                 string impL = cmc.DeltaLightness < 0 ? " Oscuro" : " Claro";
-                string actL = cmc.DeltaLightness < 0 ? "(Aumentar carga )" : "(Disminuir carga )";
+                string actL = cmc.DeltaLightness < 0 ? "(Aumentar carga )" : "(Reducir carga )";
                 string adjL = (cmc.DeltaLightness < 0 ? "+ " : "- ") + Math.Abs(cmc.DeltaLightness).ToString("F2") + "%";
                 if (Math.Abs(cmc.DeltaLightness) <= 0.1)
                 {
@@ -1389,7 +1389,7 @@ namespace Color
 
                 // dH — dirección del viraje por eje dominante (pctA vs pctB pasados como parámetros)
                 string impH;
-                string actH = cmc.DeltaHue >= 0 ? "Aumentar Matizador" : "Disminuir Matizador";
+                string actH = cmc.DeltaHue >= 0 ? "Aumentar Matizador" : "Reducir Matizador";
                 string adjH = (cmc.DeltaHue >= 0 ? "+ " : "- ") + Math.Abs(cmc.DeltaHue).ToString("F2") + "%";
                 if (Math.Abs(cmc.DeltaHue) <= 0.1)
                 {

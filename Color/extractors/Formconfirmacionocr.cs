@@ -246,7 +246,7 @@ namespace Colorimetria
             // Fila 0: Título "DATOS DE MEDICIÓN"
             var lblDatosMedicion = new Label
             {
-                Text = "SAMPLE COMPARISION",
+                Text = "SAMPLE COMPARISION (LOTE)",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = SysColor.FromArgb(0, 120, 215),
                 BackColor = SysColor.White,
@@ -269,7 +269,7 @@ namespace Colorimetria
             // Fila 3: Título "DATOS DE RECETA"
             lblDatosReceta = new Label
             {
-                Text = "SHADE HISTORY REPORT",
+                Text = "SHADE HISTORY REPORT (RECETA)",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = SysColor.FromArgb(0, 120, 215),
                 BackColor = SysColor.White,
@@ -953,11 +953,11 @@ namespace Colorimetria
             // Actualizar título con el Número de Lote si se encontró
             if (!string.IsNullOrWhiteSpace(shade.LotNo))
             {
-                lblDatosReceta.Text = $"SHADE HISTORY REPORT";
+                lblDatosReceta.Text = $"SHADE HISTORY REPORT (RECETA)";
             }
             else
             {
-                lblDatosReceta.Text = "SHADE HISTORY REPORT";
+                lblDatosReceta.Text = "SHADE HISTORY REPORT (RECETA)";
             }
 
             // ✔ CORREGIDO: ya no evaluamos shade.Success
