@@ -311,13 +311,14 @@ namespace Color
         public List<RecipeItem> ExtractRecipe(string ocrText)
         {
             var list = new List<RecipeItem>();
+
             // --- PASO 0: ANCLAJE DE BLOQUE (Para evitar capturar datos de la tabla Batch) ---
             string recipeArea = ocrText;
             int startIdx = ocrText.IndexOf("Recipe Version", StringComparison.OrdinalIgnoreCase);
-            if (startIdx < 0) startIdx = ocrText.IndexOf("Recipe Number", StringComparison.OrdinalIgnoreCase); // fallback
+            if (startIdx < 0) startIdx = ocrText.IndexOf("Recipe Number", StringComparison.OrdinalIgnoreCase); 
 
             int endIdx = ocrText.IndexOf("Dyelots for Recipe", StringComparison.OrdinalIgnoreCase);
-            if (endIdx < 0) endIdx = ocrText.IndexOf("Prescreening", StringComparison.OrdinalIgnoreCase); // fallback
+            if (endIdx < 0) endIdx = ocrText.IndexOf("Prescreening", StringComparison.OrdinalIgnoreCase); 
 
             if (startIdx >= 0 && endIdx > startIdx)
             {
@@ -429,6 +430,7 @@ namespace Color
             if (string.IsNullOrWhiteSpace(name)) return true;
 
             string n = name.ToLower();
+
             // Palabras clave de encabezado o etiquetas de reporte que NO son ingredientes
             if (n.Contains("to:") || n.Contains("de:") || n.Contains("d e:") || n.Contains("period:") ||
                 n.Contains("dyehouse") || n.Contains("database") || n.Contains("server") ||
@@ -436,11 +438,11 @@ namespace Color
                 n.Contains("accuracy") || n.Contains("thread") || n.Contains("lot no"))
                 return true;
 
-            // Si el nombre contiene patrones de hilos (ej: "133x2", "G000")
+            // Si el nombre contiene patrones de hilos 
             if (n.Contains("x") && Regex.IsMatch(n, @"\d+x\d+")) return true;
             if (n.Contains("g000")) return true;
 
-            // Si el nombre es muy corto y contiene dos puntos (ej: "To:", "To :")
+            // Si el nombre es muy corto y contiene dos puntos 
             if (name.Length <= 4 && name.Contains(":")) return true;
 
             return false;
@@ -472,7 +474,7 @@ namespace Color
                 foreach (Match m in Regex.Matches(lineClean, @"-?\d+(?:\.\d+)?"))
                     nums.Add(m.Value.Replace(',', '.'));
 
-                if (nums.Count < 3) continue; // Al menos L A B
+                if (nums.Count < 3) continue; 
 
 
                 return new LabValues
@@ -649,7 +651,6 @@ namespace Color
         private (string L, string A, string B)? ExtractStdLabFromBitmap(Bitmap original)
         {
             // Localización de la banda Std L A B (mejorada con pre-procesamiento OpenCV)
-            // Ampliado: 15% a 95% (el Std puede estar arriba o abajo en la tabla de mediciones)
             int top = (int)(original.Height * 0.15);
             int bot = (int)(original.Height * 0.95);
             int h = bot - top;
@@ -712,7 +713,7 @@ namespace Color
 
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)
         {
-            // MEJORA: Uso de OpenCV para pre-procesamiento avanzado (Estilo Dataextraxtor)
+            // MEJORA: Uso de OpenCV para pre-procesamiento avanzado
             string ocrText = string.Empty;
             try
             {
@@ -767,7 +768,6 @@ namespace Color
         private BatchMeasure ExtractBatchMeasureFromBitmap(Bitmap original)
         {
             // La fila de Batch Measure está en la parte inferior (aprox 65% a 95% de la altura).
-            // Ampliado: 55% a 98%
             int top = (int)(original.Height * 0.55);
             int h = (int)(original.Height * 0.43);
 
@@ -841,7 +841,7 @@ namespace Color
                 {
                     int start = nums.Count - 7;
 
-                    // Función local para restaurar el decimal si OCR lo ignoró (ej: 3224 -> 32.24)
+                    // Función local para restaurar el decimal si OCR lo ignoró
                     string FixNum(string s)
                     {
                         if (s.Contains(".")) return s;

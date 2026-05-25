@@ -235,18 +235,18 @@ namespace Colorimetria
                 BackColor = SysColor.White,
                 Padding = new Padding(0)
             };
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  // Título 1
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));   // Grid 1
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   // Grid 2
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  // Título 2
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   // Grid 3
-            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));   // Grid 4
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 32f));   
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 30f));  
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 22f));   
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));   
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             // Fila 0: Título "DATOS DE MEDICIÓN"
             var lblDatosMedicion = new Label
             {
-                Text = "SAMPLE COMPARISION (LOTE)",
+                Text = "PASS / FAIL (LOTE)",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = SysColor.FromArgb(0, 120, 215),
                 BackColor = SysColor.White,
@@ -341,7 +341,7 @@ namespace Colorimetria
 
             lblCount = new Label
             {
-                Text = "Filas detectadas (Sample Comparison): 0",
+                Text = "Filas detectadas (PASS / FAIL): 0",
                 ForeColor = SysColor.FromArgb(60, 60, 60),
                 Font = new Font("Segoe UI", 9),
                 AutoSize = true
@@ -547,7 +547,7 @@ namespace Colorimetria
 
             if (_shadeResult != null)
             {
-                // SINCRONIZACIÓN: Si el ShadeResult tiene valores Std nulos o incorrectos, 
+                
                 // intentamos rescatarlos de las mediciones (D65 Std) que suelen ser más precisas
                 if (_report != null && _report.Measures != null)
                 {
@@ -593,7 +593,7 @@ namespace Colorimetria
 
             }
 
-            lblCount.Text = "Filas detectadas (Sample Comparison): " + _rows.Count;
+            lblCount.Text = "Filas detectadas (PASS / FAIL): " + _rows.Count;
 
             // Ajuste por contenido visible y luego rellenar sin aplastar
             dgvData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);

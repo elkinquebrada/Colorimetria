@@ -113,6 +113,7 @@ namespace Color
         private List<ApiCorrectionResult> ParseCorrections(string json)
         {
             var list = new List<ApiCorrectionResult>();
+
             // Extraer array "corrections"
             var corrMatch = Regex.Match(json, "\"corrections\"\\s*:\\s*(\\[[^\\]]*\\])", RegexOptions.Singleline);
             if (!corrMatch.Success) return list;

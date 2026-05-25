@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization; // Necesario para manejar puntos y comas
+using System.Globalization;
 using ClosedXML.Excel;
 using Color;
 
@@ -108,7 +108,7 @@ namespace OCR
                         var cellDE = ws.Cell(2, col);
                         if (cellDE.IsEmpty()) continue;
 
-                        // CORRECCIÓN: Usamos GetCellValueSafe para manejar fórmulas con referencias externas (evita error "References from other files")
+                        // CORRECCIÓN: Usamos GetCellValueSafe para manejar fórmulas con referencias externas 
                         double de = GetCellValueAsDouble(cellDE);
                         double dl = GetCellValueAsDouble(ws.Cell(3, col));
                         double dc = GetCellValueAsDouble(ws.Cell(4, col));
@@ -164,7 +164,7 @@ namespace OCR
             }
             catch (Exception ex) when (ex.Message.Contains("References from other files"))
             {
-                // Si hay referencias externas que ClosedXML no puede resolver, usamos el último valor guardado (caché)
+                // Si hay referencias externas que ClosedXML no puede resolver.
                 return cell.CachedValue.ToString();
             }
             catch
@@ -175,7 +175,7 @@ namespace OCR
             }
         }
 
-        /// MÉTODO AUXILIAR CLAVE: Convierte texto a número sin importar el separador decimal (punto o coma).
+        /// MÉTODO AUXILIAR CLAVE: Convierte texto a número sin importar el separador decimal.
         private static double ParseDoubleSafe(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return 0;

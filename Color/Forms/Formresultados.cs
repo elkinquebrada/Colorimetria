@@ -192,8 +192,8 @@ namespace Color
             dgvShadeHistory.Columns[0].Name = "Dye Code";
             dgvShadeHistory.Columns[1].Name = "Dye Names";
             dgvShadeHistory.Columns[2].Name = "Concentration";
-            dgvShadeHistory.Columns[3].Name = "% Participación";
-            dgvShadeHistory.Columns[4].Name = "% Ajuste dL";
+            dgvShadeHistory.Columns[3].Name = " Participación";
+            dgvShadeHistory.Columns[4].Name = " Ajuste dL";
             dgvShadeHistory.Columns[4].Visible = false;
             dgvShadeHistory.Columns[0].FillWeight = 15;
             dgvShadeHistory.Columns[1].FillWeight = 50;
@@ -211,14 +211,14 @@ namespace Color
             dgvCielabSummary.Columns[0].Name = "Eje";
             dgvCielabSummary.Columns[1].Name = "Variacion";
             dgvCielabSummary.Columns[2].Name = "Impacto";
-            dgvCielabSummary.Columns[3].Name = "Diagnostico";
+            dgvCielabSummary.Columns[3].Name = "Accion";
             dgvCielabSummary.Columns[4].Name = "Ajuste";
 
             dgvCielabSummary.Columns[0].HeaderText = "EJE";
             dgvCielabSummary.Columns[1].HeaderText = "Variacion (Δ)";
             dgvCielabSummary.Columns[2].HeaderText = "Impacto";
-            dgvCielabSummary.Columns[3].HeaderText = "Diagnostico";
-            dgvCielabSummary.Columns[4].HeaderText = "AJUSTE (%)";
+            dgvCielabSummary.Columns[3].HeaderText = "Accion";
+            dgvCielabSummary.Columns[4].HeaderText = "AJUSTE ";
 
             foreach (DataGridViewColumn col in dgvCielabSummary.Columns) col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             dgvCielabSummary.Columns[0].FillWeight = 40f;
@@ -250,14 +250,14 @@ namespace Color
             dgvAnalysisLeft.Columns[0].Name = "Eje";
             dgvAnalysisLeft.Columns[1].Name = "Variacion";
             dgvAnalysisLeft.Columns[2].Name = "Impacto";
-            dgvAnalysisLeft.Columns[3].Name = "Dianostico";
+            dgvAnalysisLeft.Columns[3].Name = "Accion";
             dgvAnalysisLeft.Columns[4].Name = "Ajuste";
 
             dgvAnalysisLeft.Columns[0].HeaderText = "EJE";
             dgvAnalysisLeft.Columns[1].HeaderText = "Variacion (Δ)";
             dgvAnalysisLeft.Columns[2].HeaderText = "Impacto";
-            dgvAnalysisLeft.Columns[3].HeaderText = "Diagnostico";
-            dgvAnalysisLeft.Columns[4].HeaderText = "AJUSTE (%)";
+            dgvAnalysisLeft.Columns[3].HeaderText = "Accion";
+            dgvAnalysisLeft.Columns[4].HeaderText = "AJUSTE ";
 
             foreach (DataGridViewColumn col in dgvAnalysisLeft.Columns) col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             dgvAnalysisLeft.Columns[0].FillWeight = 40f;
@@ -380,7 +380,7 @@ namespace Color
             pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
             pnlRightLot.RowStyles.Add(new RowStyle(SizeType.Percent, 26f));
 
-            pnlRightLot.Controls.Add(CreateHeaderLabel("ANALISIS DE SAMPLE COMPARISON (LOTE)"), 0, 0);
+            pnlRightLot.Controls.Add(CreateHeaderLabel("ANALISIS DE PASS / FAIL (LOTE)"), 0, 0);
 
             var pnlComparison = new Panel { Dock = DockStyle.Fill };
             var pnlShade = new TableLayoutPanel { Dock = DockStyle.Top, Height = 22, ColumnCount = 2, RowCount = 1 };
@@ -477,7 +477,7 @@ namespace Color
             dgv.ColumnCount = 6;
             dgv.Columns[0].Name = "Colorante"; dgv.Columns[0].FillWeight = 25;
             dgv.Columns[1].Name = "Receta Original"; dgv.Columns[1].FillWeight = 15;
-            dgv.Columns[1].Visible = false; // Ocultar 
+            dgv.Columns[1].Visible = false; 
             dgv.Columns[2].Name = "Receta # 1"; dgv.Columns[2].FillWeight = 15;
             dgv.Columns[3].Name = "Receta # 2"; dgv.Columns[3].FillWeight = 15;
             dgv.Columns[4].Name = "Receta # 3"; dgv.Columns[4].FillWeight = 15;
@@ -494,7 +494,7 @@ namespace Color
             dgv.Columns[1].Name = "Variacion(Δ)"; dgv.Columns[1].FillWeight = 15;
             dgv.Columns[1].HeaderCell.ToolTipText = "(Std - Lot)";
             dgv.Columns[2].Name = "Impacto";      dgv.Columns[2].FillWeight = 22;
-            dgv.Columns[3].Name = "Diagnostico";  dgv.Columns[3].FillWeight = 30;
+            dgv.Columns[3].Name = "Accion";  dgv.Columns[3].FillWeight = 30;
             dgv.Columns[4].Name = "Ajuste";       dgv.Columns[4].FillWeight = 25;
             return dgv;
         }
@@ -529,7 +529,6 @@ namespace Color
         }
 
         /// Aplica estilo tenue (gris claro) a las grillas de iluminantes secundarios
-        /// para que no compitan visualmente con el iluminante principal D65
         private void ApplyTenueGridStyle(DataGridView dgv)
         {
             var lightGray = System.Drawing.Color.FromArgb(200, 200, 200);
@@ -570,7 +569,7 @@ namespace Color
                 if (e.RowIndex >= 0)
                 {
                     var row = dgv.Rows[e.RowIndex];
-                    row.DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204); // Azul Coats
+                    row.DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 102, 204); 
                     row.DefaultCellStyle.ForeColor = System.Drawing.Color.White;
                     foreach (DataGridViewCell cell in row.Cells)
                     {
@@ -613,7 +612,6 @@ namespace Color
         }
 
         /// Aplica estilo tenue a todas las celdas de una fila específica. ✓
-        /// Garantiza que ninguna celda herede colores vivos de otro estilo.
         private void ApplyTenueRowStyle(DataGridView dgv, int rowIndex)
         {
             if (rowIndex < 0 || rowIndex >= dgv.Rows.Count) return;
@@ -656,7 +654,7 @@ namespace Color
                 dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
                 dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
 
-                int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration", "% Participación", "% Ajuste dL");
+                int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration", "Participación", " Ajuste dL");
                 dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
                 dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
 
@@ -768,7 +766,6 @@ namespace Color
                 HighlightChecks(dgvCielabSummary, idxB);
 
                 // --- TABLA IZQUIERDA Y DERECHA: Sincronización Total con el Motor ---
-                // Forzamos que ambos paneles usen la misma fuente de datos (EngineRes)
                 FillAnalysisGrid(dgvAnalysisLeft, d65, true);
                 FillRightPanelGrid_LCH(dgvAnalysisRight, d65);
 
@@ -994,7 +991,6 @@ namespace Color
             if (dgv.ColumnCount == 5)
             {
                 // Poblado para TABLA 2: Revisión de Apariencia (Ejes dL, dC, dH)
-                // dL — DeltaL = Std - Lot:
                 string impL = res.DeltaL > 0 ? " Oscuro" : " Claro";
                 string actL = res.DeltaL > 0 ? "(Reducir carga )" : "(Aumentar carga )";
                 string adjL = (res.DeltaL > 0 ? "- " : "+ ") + Math.Abs(res.PercentL).ToString("F2") + "%";
@@ -1176,7 +1172,7 @@ namespace Color
             dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(0, 102, 204);
             dgvShadeHistory.Rows[idxShade].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
 
-            int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration", "% Participación", "% Ajuste dL");
+            int idxHdr1 = dgvShadeHistory.Rows.Add("Dye Code", "Dye Names", "Concentration", " Participación", " Ajuste dL");
             dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
             dgvShadeHistory.Rows[idxHdr1].DefaultCellStyle.Font = new Font("Segoe UI", 9, FontStyle.Bold);
 
@@ -1245,7 +1241,6 @@ namespace Color
                 ApplyEjeStyle(dgvCielabSummary, idxL, "dl"); ApplyTenueRowStyle(dgvCielabSummary, idxL);
 
                 // Eje da — REGLA: Bajar→"-"  Subir→"+"
-                // dA aquí = d65.DeltaA = Std - Lot (convención motor)
                 string lotAStr = dA < 0 ? " Mas Rojo" : " Mas Verde";
                 string actAStr = dA < 0 ? "Reducir el Rojo" : "Aumentar el Rojo";
                 double stdA = std != null ? std.A : 0;
@@ -1262,7 +1257,6 @@ namespace Color
                 ApplyEjeStyle(dgvCielabSummary, idxA, "da"); ApplyTenueRowStyle(dgvCielabSummary, idxA);
 
                 // Eje db — REGLA: Bajar→"-"  Subir→"+"
-                // dB aquí = d65.DeltaB = Std - Lot (convención motor)
                 string lotBStr = dB < 0 ? " Mas Amarillo" : " Mas Azul";
                 string actBStr = dB < 0 ? "Reducir el Amarillo" : "Reducir el Azul";
                 double stdB = std != null ? std.B : 0;
@@ -1609,7 +1603,7 @@ namespace Color
 
                         exportGrid("ANALISIS DE SHADE HISTORY REPORT", dgvShadeHistory);
                         exportGrid("ANALISIS ILUMINANTE D65 (IZQ)", dgvAnalysisLeft);
-                        exportGrid("ANALISIS DE SAMPLE COMPARISON", dgvComparisonSummary);
+                        exportGrid("ANALISIS DE PASS / FAIL", dgvComparisonSummary);
                         exportGrid("ANALISIS ILUMINANTE D65 (DER)", dgvAnalysisRight);
                         exportGrid("ANALISIS ILUMINANTE TL84 (DER)", dgvAnalysisRightTL84);
                         exportGrid("ANALISIS ILUMINANTE A/CWF (DER)", dgvAnalysisRightA);

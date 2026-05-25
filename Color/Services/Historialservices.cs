@@ -42,7 +42,7 @@ namespace Color.Services
                 // Si el archivo no existe, crearlo con encabezado
                 if (!File.Exists(rutaArchivo))
                 {
-                    string header = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Diagdl;Recdl;Impactoda;Diagda;Recda;Impactodb;Diagdb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
+                    string header = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Acciondl;Recdl;Impactoda;Accionda;Recda;Impactodb;Acciondb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
                     File.WriteAllText(rutaArchivo, header, Encoding.UTF8);
                 }
 
@@ -64,13 +64,13 @@ namespace Color.Services
             dt.Columns.Add("Receta2");
             dt.Columns.Add("Receta3");
             dt.Columns.Add("Impactodl");
-            dt.Columns.Add("Diagdl");
+            dt.Columns.Add("Acciondl");
             dt.Columns.Add("Recdl");
             dt.Columns.Add("Impactoda");
-            dt.Columns.Add("Diagda");
+            dt.Columns.Add("Accionda");
             dt.Columns.Add("Recda");
             dt.Columns.Add("Impactodb");
-            dt.Columns.Add("Diagdb");
+            dt.Columns.Add("Acciondb");
             dt.Columns.Add("Recdb");
             dt.Columns.Add("FactorA");
             dt.Columns.Add("FactorB");
@@ -126,7 +126,7 @@ namespace Color.Services
         {
             try
             {
-                string headers = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Diagdl;Recdl;Impactoda;Diagda;Recda;Impactodb;Diagdb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
+                string headers = "ShadeName;FechaHora;Iluminante;DyeName;ConcOriginal;Receta1;Receta2;Receta3;Impactodl;Acciondl;Recdl;Impactoda;Accionda;Recda;Impactodb;Acciondb;Recdb;FactorA;FactorB;DeltaE" + Environment.NewLine;
                 File.WriteAllText(rutaArchivo, headers, Encoding.UTF8);
 
                 var ci = CultureInfo.InvariantCulture;
@@ -136,9 +136,9 @@ namespace Color.Services
                         row["ShadeName"], row["FechaHora"], row["Iluminante"],
                         row["DyeName"], 
                         row["ConcOriginal"], row["Receta1"], row["Receta2"], row["Receta3"],
-                        row["Impactodl"], row["Diagdl"], row["Recdl"],
-                        row["Impactoda"], row["Diagda"], row["Recda"],
-                        row["Impactodb"], row["Diagdb"], row["Recdb"],
+                        row["Impactodl"], row["Acciondl"], row["Recdl"],
+                        row["Impactoda"], row["Accionda"], row["Recda"],
+                        row["Impactodb"], row["Acciondb"], row["Recdb"],
                         row["FactorA"], row["FactorB"], row["DeltaE"]);
 
                     File.AppendAllText(rutaArchivo, linea + Environment.NewLine, Encoding.UTF8);

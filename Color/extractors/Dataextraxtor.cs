@@ -287,7 +287,7 @@ namespace Color
                 {
                     openCvSuccess = true;
                     report.ParseLog.Add(string.Format(
-                        "[OPENCV] Extracción exitosa: {0} mediciones", report.Measures.Count));
+                        "[OPENCV] Extracción exitosa: {0} PASS / FAIL", report.Measures.Count));
                 }
                 else
                 {
@@ -2047,7 +2047,6 @@ namespace Color
                         && cand2 >= 0 && cand2 <= 360)
                         return cand2;
                 }
-                // Fallback: módulo 360
                 v = v % 360;
             }
             // FIX: Hue = 0 cuando debería ser ~200: el OCR perdió dígitos.
@@ -2404,7 +2403,7 @@ namespace Color
             // Según el formato del reporte: (Lightness),// (Chroma) 
             if (Regex.IsMatch(normLine, @"\bFULLER\b")) row.LightnessFlagOcr = "Fuller";
             else if (Regex.IsMatch(normLine, @"\bFULL\b")) row.LightnessFlagOcr = "Full";
-            else if (Regex.IsMatch(normLine, @"\bTHIN\b")) row.LightnessFlagOcr = "Thin";   // ← Reporte físico Coats
+            else if (Regex.IsMatch(normLine, @"\bTHIN\b")) row.LightnessFlagOcr = "Thin";   
             else if (Regex.IsMatch(normLine, @"\bDULLER\b")) row.LightnessFlagOcr = "Duller";
             else if (Regex.IsMatch(normLine, @"\bSAME\b")) row.LightnessFlagOcr = "Same";
 
@@ -2601,7 +2600,7 @@ namespace Color
             // ── Otros ────────────────────────────────────────────────────────────
             t = Regex.Replace(t, @"\[LLUMINANT\b", "ILLUMINANT");
 
-            // Limpieza conservadora (letras, dígitos, punto, guión, espacio)
+            // Limpieza conservadora 
             t = Regex.Replace(t, @"[^A-Z0-9\.\-\s]", " ");
             t = Regex.Replace(t, @"\s+", " ").Trim();
             return t;
@@ -2963,9 +2962,7 @@ namespace Color
                 if (string.IsNullOrWhiteSpace(type))
                 {
                     // ETAPA 1: Verificar si esta fila contiene etiquetas CMC (Thin, Duller, etc.)
-                    // El reporte físico imprime etiquetas en fila separada, y pueden estar
-                    // desplazadas 1 columna respecto a los valores numéricos.
-                    // Estrategia: buscar la primera columna con texto en el rango 5-10
+
                     int labelStartCol = -1;
                     for (int sc = 5; sc <= 10; sc++)
                     {
@@ -3079,8 +3076,6 @@ namespace Color
                     }
 
                     // ETAPA 1 (FIX DEFINITIVO): Capturar etiquetas aunque ya exista el registro.
-                    // El reporte físico imprime números en la fila Std y etiquetas en la fila Lot.
-                    // Detectar dinámicamente la columna de inicio de etiquetas (scan 5-10).
                     if (existingCmc != null)
                     {
                         int lsc = -1;
@@ -3138,14 +3133,13 @@ namespace Color
             return tag; // Retornar original si no hay match
         }
 
-        /// <summary>
         /// Devuelve true si la cadena contiene SOLO caracteres numéricos (dígitos, punto, signo negativo).
         /// Usado para distinguir filas de valores CMC de filas de etiquetas (Thin, Duller, etc.).
-        /// </summary>
         private static bool IsNumericOnly(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return true;
             string trimmed = s.Trim();
+
             // Si contiene cualquier letra → es una etiqueta de texto
             foreach (char c in trimmed)
                 if (char.IsLetter(c)) return false;
@@ -3175,7 +3169,7 @@ namespace Color
         private static double SafeParse(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return 0.0;
-            // ETAPA 1: Extraer solo el componente numérico (incluyendo punto y signo)
+            // ETAPA 1: Extraer solo el componente numérico 
             string numPart = Regex.Match(s.Replace(',', '.'), @"\-?\d+\.?\d*").Value;
             if (string.IsNullOrEmpty(numPart)) return 0.0;
 

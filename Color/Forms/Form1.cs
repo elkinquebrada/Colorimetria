@@ -90,18 +90,18 @@ namespace Color
 
         private void WireEvents()
         {
-            btnCargarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Sample Comparison");
+            btnCargarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "PASS / FAIL");
             btnCargarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Shade History Report");
 
             btnCambiarLeft = CrearBotonCambiar();
-            btnCambiarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "Sample Comparison");
+            btnCambiarLeft.Click += (s, e) => SelectAndLoadPng(picLeft, lblLeftHint, "PASS / FAIL");
             contentBorder.Controls.Add(btnCambiarLeft);
 
             btnCambiarRight = CrearBotonCambiar();
             btnCambiarRight.Click += (s, e) => SelectAndLoadPng(picRight, lblRightHint, "Shade History Report");
             contentBorder.Controls.Add(btnCambiarRight);
 
-            EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "Sample Comparison");
+            EnableDragDrop(pnlLeftFrame, picLeft, lblLeftHint, "PASS / FAIL");
             EnableDragDrop(pnlRightFrame, picRight, lblRightHint, "Shade History Report");
 
             btnTolerancias.Click += (s, e) => { using (var f = new Color.Tolerancias.FormConfigTolerancias()) f.ShowDialog(this); };
@@ -117,7 +117,7 @@ namespace Color
 
         private Button CrearBotonCambiar() => new Button
         {
-            Text = "🔄 Cambiar imagen",
+            Text = " Cambiar imagen",
             Size = new Size(160, 32),
             BackColor = System.Drawing.Color.FromArgb(30, 90, 180),
             ForeColor = System.Drawing.Color.White,
@@ -251,7 +251,7 @@ namespace Color
                             {
                                 if (frmRes.ShowDialog() == DialogResult.Retry)
                                 {
-                                    volverAConfirmar = true; // El usuario pulsó "Nueva Lectura" para regresar al OCR
+                                    volverAConfirmar = true; 
                                 }
                             }
                         }
@@ -263,6 +263,7 @@ namespace Color
             { 
                 Cursor = Cursors.Default;
                 lblStatus.Text = "";
+
                 // Restaurar estado normal al finalizar sin bloquear el sistema
                 this.WindowState = FormWindowState.Maximized;
             }
@@ -276,6 +277,7 @@ namespace Color
             if (lblLeftLoaded != null) lblLeftLoaded.Visible = false;
             if (lblRightLoaded != null) lblRightLoaded.Visible = false;
             btnCambiarLeft.Visible = btnCambiarRight.Visible = false;
+
             lblStatus.Text = "Cargue imágenes";
             lblStatus.ForeColor = System.Drawing.Color.Black;
             UpdateHints();

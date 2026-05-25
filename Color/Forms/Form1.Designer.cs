@@ -303,7 +303,7 @@ namespace Color
             this.lblLeftHint.Name = "lblLeftHint";
             this.lblLeftHint.Size = new System.Drawing.Size(298, 238);
             this.lblLeftHint.TabIndex = 1;
-            this.lblLeftHint.Text = "Cargar Sample Comparison";
+            this.lblLeftHint.Text = "Cargar PASS / FAIL";
             this.lblLeftHint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // picLeft
@@ -335,7 +335,7 @@ namespace Color
             this.lblLeftTitle.Name = "lblLeftTitle";
             this.lblLeftTitle.Size = new System.Drawing.Size(111, 25);
             this.lblLeftTitle.TabIndex = 3;
-            this.lblLeftTitle.Text = "Sample Comparison";
+            this.lblLeftTitle.Text = "PASS / FAIL";
             // 
             // lblSubtitle
             // 

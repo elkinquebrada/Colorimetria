@@ -91,20 +91,20 @@ namespace Color
             if (!dgvHistorial.Columns.Contains("colImpactodl"))
             {
                 dgvHistorial.Columns.Add("colImpactodl", "Impacto dl");
-                dgvHistorial.Columns.Add("colDiagdl", "Diagnóstico dl");
+                dgvHistorial.Columns.Add("colAcciondl", "Accion dl");
                 dgvHistorial.Columns.Add("colRecdl", "Recomendación dl");
                 
                 dgvHistorial.Columns.Add("colImpactoda", "Impacto da");
-                dgvHistorial.Columns.Add("colDiagda", "Diagnóstico da");
+                dgvHistorial.Columns.Add("colAccionda", "Accion da");
                 dgvHistorial.Columns.Add("colRecda", "Recomendación da");
                 
                 dgvHistorial.Columns.Add("colImpactodb", "Impacto db");
-                dgvHistorial.Columns.Add("colDiagdb", "Diagnóstico db");
+                dgvHistorial.Columns.Add("colAcciondb", "Accion db");
                 dgvHistorial.Columns.Add("colRecdb", "Recomendación db");
 
 
                 // Estilo suave para las columnas de texto largo
-                foreach (string col in new[] { "colDiagdl", "colRecdl", "colDiagda", "colRecda", "colDiagdb", "colRecdb" })
+                foreach (string col in new[] { "colAcciondl", "colRecdl", "colAccionda", "colRecda", "colAcciondb", "colRecdb" })
                 {
                     dgvHistorial.Columns[col].FillWeight = 20;
                     dgvHistorial.Columns[col].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
@@ -194,15 +194,15 @@ namespace Color
 
                 // Datos de Ingeniería
                 if (tabla.Columns.Contains("Impactodl")) fila.Cells["colImpactodl"].Value = row["Impactodl"];
-                if (tabla.Columns.Contains("Diagdl")) fila.Cells["colDiagdl"].Value = row["Diagdl"];
+                if (tabla.Columns.Contains("Diagdl")) fila.Cells["colAcciondl"].Value = row["Acciondl"];
                 if (tabla.Columns.Contains("Recdl")) fila.Cells["colRecdl"].Value = row["Recdl"];
                 
                 if (tabla.Columns.Contains("Impactoda")) fila.Cells["colImpactoda"].Value = row["Impactoda"];
-                if (tabla.Columns.Contains("Diagda")) fila.Cells["colDiagda"].Value = row["Diagda"];
+                if (tabla.Columns.Contains("Diagda")) fila.Cells["colAccionda"].Value = row["Accionda"];
                 if (tabla.Columns.Contains("Recda")) fila.Cells["colRecda"].Value = row["Recda"];
                 
                 if (tabla.Columns.Contains("Impactodb")) fila.Cells["colImpactodb"].Value = row["Impactodb"];
-                if (tabla.Columns.Contains("Diagdb")) fila.Cells["colDiagdb"].Value = row["Diagdb"];
+                if (tabla.Columns.Contains("Diagdb")) fila.Cells["colAcciondb"].Value = row["Acciondb"];
                 if (tabla.Columns.Contains("Recdb")) fila.Cells["colRecdb"].Value = row["Recdb"];
 
             }
@@ -278,9 +278,9 @@ namespace Color
                     dt.Columns.Add("ShadeName"); dt.Columns.Add("FechaHora"); dt.Columns.Add("Iluminante");
                     dt.Columns.Add("DyeName"); dt.Columns.Add("ConcOriginal");
                     dt.Columns.Add("Receta1"); dt.Columns.Add("Receta2"); dt.Columns.Add("Receta3");
-                    dt.Columns.Add("Impactodl"); dt.Columns.Add("Diagdl"); dt.Columns.Add("Recdl");
-                    dt.Columns.Add("Impactoda"); dt.Columns.Add("Diagda"); dt.Columns.Add("Recda");
-                    dt.Columns.Add("Impactodb"); dt.Columns.Add("Diagdb"); dt.Columns.Add("Recdb");
+                    dt.Columns.Add("Impactodl"); dt.Columns.Add("Acciondl"); dt.Columns.Add("Recdl");
+                    dt.Columns.Add("Impactoda"); dt.Columns.Add("Accionda"); dt.Columns.Add("Recda");
+                    dt.Columns.Add("Impactodb"); dt.Columns.Add("Acciondb"); dt.Columns.Add("Recdb");
 
                     foreach (DataGridViewRow r in dgvHistorial.Rows)
                     {
@@ -288,9 +288,9 @@ namespace Color
                             r.Cells["colShadeName"].Value, r.Cells["colFechaHora"].Value, r.Cells["colIluminante"].Value,
                             r.Cells["colDyeName"].Value, r.Cells["colConcentration"].Value,
                             r.Cells["colReceta1"].Value, r.Cells["colReceta2"].Value, r.Cells["colReceta3"].Value,
-                            r.Cells["colImpactodl"].Value, r.Cells["colDiagdl"].Value, r.Cells["colRecdl"].Value,
-                            r.Cells["colImpactoda"].Value, r.Cells["colDiagda"].Value, r.Cells["colRecda"].Value,
-                            r.Cells["colImpactodb"].Value, r.Cells["colDiagdb"].Value, r.Cells["colRecdb"].Value
+                            r.Cells["colImpactodl"].Value, r.Cells["colAcciondl"].Value, r.Cells["colRecdl"].Value,
+                            r.Cells["colImpactoda"].Value, r.Cells["colAccionda"].Value, r.Cells["colRecda"].Value,
+                            r.Cells["colImpactodb"].Value, r.Cells["colAcciondb"].Value, r.Cells["colRecdb"].Value
                         );
                     }
                     HistorialService.GuardarHistorialCompleto(dt);

@@ -74,16 +74,14 @@ namespace Color
         public string RecomendacionLoteL => ColorimetricCalculator.GetInstLLot(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
 
         public string DiagnosisC => Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
+
         // DeltaChroma = Std - Lot:
-        //   > 0 => Lot tiene MENOS croma que Std => el lote está más OPACO/APAGADO  => "Opaco"
-        //   < 0 => Lot tiene MÁS croma que Std  => el lote está más VIVO/BRILLANTE  => "Brillante"
         public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Opaco" : "Brillante");
         public string RecommendationC => (Math.Abs(DeltaChroma) < 0.1) ? "✔" : ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
         public string DiagnosisH => Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
+       
         // Dirección del viraje: eje dominante (|da| vs |db|)
-        // DeltaA=Std-Lot: <0 → lot más Rojo | >0 → lot más Verde
-        // DeltaB=Std-Lot: <0 → lot más Amarillo | >0 → lot más Azul
         public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
         public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "Aumentar" : "Disminuir")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
 
@@ -130,10 +128,8 @@ namespace Color
     // ========================================================================
     public static class ColorimetricCalculator
     {
-        /// <summary>
-        /// Motor de Decisión Coats: Paridad absoluta con Excel (Variación Relativa)
+        /// Motor de Decisión.
         /// Fórmula: (Std - Lot) / Std
-        /// </summary>
         public static ColorCorrectionResult CalculateIndustrialCorrection(OcrReport report)
         {
             var all = CalculateAllIlluminants(report);
@@ -191,7 +187,7 @@ namespace Color
             decimal lC = (decimal)lot.Chroma;
             decimal lH = (decimal)lot.Hue;
 
-            // Variaciones Relativas (PARIDAD EXCEL COATS) con límite 15% (Protocolo de Seguridad Industrial)
+            // Variaciones Relativas con límite 15% (Protocolo de Seguridad Industrial)
             decimal Limit15(decimal f) => Math.Max(-0.15m, Math.Min(0.15m, f));
 
             res.FactorL = Limit15(sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0);
@@ -211,7 +207,7 @@ namespace Color
             res.DeltaA = (double)(sA - lA);
             res.DeltaB = (double)(sB - lB);
             res.DeltaChroma = (double)(sC - lC);
-            res.DeltaHue = (double)(-res.FactorH); // Hue invertido para consistencia con Std - Lot
+            res.DeltaHue = (double)(-res.FactorH); 
             
             var cmc = report.CmcDifferences?.FirstOrDefault(c => c.Illuminant.ToUpper().Contains(illuminantName.ToUpper()));
             res.DeltaE = cmc?.DeltaCMC ?? Math.Sqrt(res.DeltaL*res.DeltaL + res.DeltaA*res.DeltaA + res.DeltaB*res.DeltaB);

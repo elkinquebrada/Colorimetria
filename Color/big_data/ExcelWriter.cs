@@ -9,7 +9,6 @@ namespace OCR
 {
     
     /// REGLA DE ORO: El Excel recibe EXCLUSIVAMENTE los valores numéricos del OCR.
-    ///               Las fórmulas derivadas (deltas, %, diagnóstico) las calcula Excel solo.
     public static class ExcelWriter
     {
         // ──────────────────────────────────────────────────────────────────────
@@ -49,7 +48,7 @@ namespace OCR
         }
 
         // ──────────────────────────────────────────────────────────────────────
-        // HOJA 1: CALCULO SAMPLE COMPARISON
+        // HOJA 1: CALCULO PASS / FAIL
         // Celdas azules: L/A/B del Estándar y Lote por iluminante
         // ──────────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,7 @@ namespace OCR
             try { ws = wb.Worksheet(1); }
             catch { return false; }
 
-            // --- Limpieza previa de celdas azules (Regla de oro) ---
+            // --- Limpieza previa de celdas azules ---
             ClearCell(ws, 3, 2); ClearCell(ws, 3, 3); 
             ClearCell(ws, 4, 2); ClearCell(ws, 4, 3); 
             ClearCell(ws, 5, 2); ClearCell(ws, 5, 3); 
@@ -124,7 +123,7 @@ namespace OCR
                     SetNumericCell(ws, baseRow + 1, 6, lot.B); 
                 }
 
-                baseRow += 2; // Siguiente par Std/Lot
+                baseRow += 2; 
             }
 
             return true;
@@ -275,21 +274,21 @@ namespace OCR
             // 1. Ruta estándar del ejecutable
             string path1 = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
-                @"LogicDocs\calculos a realizar con el programa.xlsx");
+                @"LogicDocs\formulas y funciones.xlsx");
 
             if (File.Exists(path1)) return path1;
 
             // 2. Fallback para depuración en Visual Studio
             string path2 = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
-                @"..\..\LogicDocs\calculos a realizar con el programa.xlsx");
+                @"..\..\LogicDocs\formulas y funciones.xlsx");
 
             if (File.Exists(path2)) return path2;
 
             // 3. Directorio de trabajo
             string path3 = Path.Combine(
                 Directory.GetCurrentDirectory(),
-                @"LogicDocs\calculos a realizar con el programa.xlsx");
+                @"LogicDocs\formulas y funciones.xlsx");
 
             if (File.Exists(path3)) return path3;
 
