@@ -119,7 +119,7 @@ namespace Color.Tolerancias
                         Width = 70,
                         Location = new Point(20, 45),
                         TextAlign = HorizontalAlignment.Center,
-                        Text = "", // Mantenemos vacío para evitar confusiones con las estáticas
+                        Text = "",
                         Font = new Font("Segoe UI", 9F, FontStyle.Bold)
                     };
 
@@ -127,22 +127,28 @@ namespace Color.Tolerancias
                         string input = txtDE.Text.Replace(',', '.');
                         if (double.TryParse(input, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
                         {
-                            // Cálculo matemático basado en el ingreso
-                            double factor = val / 1.732;
+                            // 1. Asignamos el valor ingresado al Delta E global
                             _manualProfile.DE = val;
-                            _manualProfile.DL = Math.Round(factor, 3);
-                            _manualProfile.DC = Math.Round(factor, 3);
-                            _manualProfile.DH = Math.Round(factor, 3);
 
-                            // SELECCIÓN AUTOMÁTICA: Al escribir, esta se vuelve la tarjeta activa
+                            // 2. IMPLEMENTACIÓN OBLIGATORIA DE LA FÓRMULA DE EXCEL (COATS)
+                            double ejeCalculado = Math.Sqrt(Math.Pow(val, 2) / 3);
+
+                            _manualProfile.DL = ejeCalculado;
+                            _manualProfile.DC = ejeCalculado;
+                            _manualProfile.DH = ejeCalculado;
+
+                            // Seleccionamos la tarjeta automáticamente al escribir
                             SelectCard(pnlCard, _manualProfile);
                         }
                         else
                         {
                             _manualProfile.DE = 0; _manualProfile.DL = 0; _manualProfile.DC = 0; _manualProfile.DH = 0;
                         }
+
+                        // 3. ACTUALIZACIÓN VISUAL: Mostramos los valores calculados con 3 decimales
                         lblBody.Text = $"\nDL  {_manualProfile.DL:0.000}\nDC  {_manualProfile.DC:0.000}\nDH  {_manualProfile.DH:0.000}";
                     };
+
                     pnlCard.Controls.Add(txtDE);
                     txtDE.BringToFront();
                 }

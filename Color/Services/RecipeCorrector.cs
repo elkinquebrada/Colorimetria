@@ -64,10 +64,9 @@ namespace Color
             double rawFC = (double)(1.0m + analysis.FactorC);
             double rawFH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
             
-            // Límite Protocolo Seguridad Industrial (+/- 15%)
-            double fL = Math.Max(0.85, Math.Min(1.15, rawFL));
-            double fC = Math.Max(0.85, Math.Min(1.15, rawFC));
-            double fH = Math.Max(0.85, Math.Min(1.15, rawFH));
+            double fL = rawFL;
+            double fC = rawFC;
+            double fH = rawFH;
 
             // Ordenar por concentración para identificar roles
             var sorted = originalRecipe.OrderByDescending(i => i.Percentage).ToList();
@@ -104,7 +103,7 @@ namespace Color
                 bool capL = Math.Abs(rawFL - 1.0) > 0.15;
                 string flagL = (capL && isLowPart) ? "\n* Sensibilidad Limitada" : "";
                 detail.Optiondl = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%){flagL}";
-                if (capL) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
+                if (capL) { detail.IsCritical = true; detail.Status = "REV"; }
 
                 // ESCENARIO 2 (da): Solo secundario (Brillo)
                 if (secondary != null && ing.Code == secondary.Code)
@@ -114,7 +113,7 @@ namespace Color
                     bool capC = Math.Abs(rawFC - 1.0) > 0.15;
                     string flagC = (capC && isLowPart) ? "\n* Sensibilidad Limitada" : "";
                     detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%){flagC}";
-                    if (capC) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
+                    if (capC) { detail.IsCritical = true; detail.Status = "REV"; }
                 }
                 else detail.Optionda = "---";
 
@@ -126,7 +125,7 @@ namespace Color
                     bool capH = Math.Abs(rawFH - 1.0) > 0.15;
                     string flagH = (capH && isLowPart) ? "\n* Sensibilidad Limitada" : "";
                     detail.Optiondb = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%){flagH}";
-                    if (capH) { detail.IsCritical = true; detail.Status = "CAP 15%"; }
+                    if (capH) { detail.IsCritical = true; detail.Status = "REV"; }
                 }
                 else detail.Optiondb = "---";
 

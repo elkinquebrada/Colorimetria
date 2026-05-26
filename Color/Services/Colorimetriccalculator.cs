@@ -188,19 +188,16 @@ namespace Color
             decimal lH = (decimal)lot.Hue;
 
             // Variaciones Relativas con límite 15% (Protocolo de Seguridad Industrial)
-            decimal Limit15(decimal f) => Math.Max(-0.15m, Math.Min(0.15m, f));
-
-            res.FactorL = Limit15(sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0);
-            res.FactorA = Limit15(sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0);
-            res.FactorB = Limit15(sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0);
-            res.FactorC = Limit15(sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0);
+            res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
+            res.FactorA = sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0;
+            res.FactorB = sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0;
+            res.FactorC = sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0;
             
             decimal dH_Raw = lH - sH;
             if (dH_Raw > 180) dH_Raw -= 360;
             if (dH_Raw < -180) dH_Raw += 360;
             
-            // FactorH (Hue) differs conceptually, limits equivalent limit 15% applied to degrees
-            res.FactorH = Limit15(Math.Round(dH_Raw, 8) / 100.0m) * 100.0m;
+            res.FactorH = Math.Round(dH_Raw, 8) / 100.0m * 100.0m;
 
             // Deltas para UI y Gráficos (PARIDAD EXCEL COATS: Std - Lot)
             res.DeltaL = (double)(sL - lL);
