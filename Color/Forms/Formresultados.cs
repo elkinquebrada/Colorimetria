@@ -478,11 +478,11 @@ namespace Color
             dgv.Columns[0].Name = "Colorante";      dgv.Columns[0].FillWeight = 20;
             dgv.Columns[1].Name = "Receta Original"; dgv.Columns[1].Visible = false; 
             dgv.Columns[2].Name = "Receta 1";       dgv.Columns[2].FillWeight = 15;
-            dgv.Columns[3].Name = "Part 1 %";       dgv.Columns[3].FillWeight = 10;
+            dgv.Columns[3].Name = "Part 1 ";       dgv.Columns[3].FillWeight = 10;
             dgv.Columns[4].Name = "Receta 2";       dgv.Columns[4].FillWeight = 15;
-            dgv.Columns[5].Name = "Part 2 %";       dgv.Columns[5].FillWeight = 10;
+            dgv.Columns[5].Name = "Part 2 ";       dgv.Columns[5].FillWeight = 10;
             dgv.Columns[6].Name = "Receta 3";       dgv.Columns[6].FillWeight = 15;
-            dgv.Columns[7].Name = "Part 3 %";       dgv.Columns[7].FillWeight = 10;
+            dgv.Columns[7].Name = "Part 3 ";       dgv.Columns[7].FillWeight = 10;
 
             return dgv;
         }
@@ -987,6 +987,12 @@ namespace Color
 
             // Agregar fila respetando el orden: Eje, Variación, Ajuste, Impacto, Acción
             int r3 = dgv.Rows.Add("dH", varH, adjH, impH, actH);
+            ApplyEjeStyle(dgv, r3, "dH"); ApplyTenueRowStyle(dgv, r3);
+
+            // Garantizar color verde para todos los checklist
+            HighlightChecks(dgv, r1);
+            HighlightChecks(dgv, r2);
+            HighlightChecks(dgv, r3);
         }
 
         private void FillRightPanelGrid_LCH(DataGridView dgv, ColorCorrectionResult res)

@@ -92,10 +92,10 @@ namespace Color
                     Name = ing.Name,
                     Original = ing.Percentage,
                     Status = "OK",
-                    // REGLA NUEVA: Original - Valor Absoluto del Ajuste
-                    R1 = Math.Max(0, ing.Percentage - adj1),
-                    R2 = Math.Max(0, ing.Percentage - adj2),
-                    R3 = Math.Max(0, ing.Percentage - adj3)
+                    // REGLA NUEVA (Hybrid Algorithm): Evita el cero en negros/oscuros
+                    R1 = CalcularValorPropuesta(ing.Percentage, adj1),
+                    R2 = CalcularValorPropuesta(ing.Percentage, adj2),
+                    R3 = CalcularValorPropuesta(ing.Percentage, adj3)
                 };
 
                 result.Ingredients.Add(detail);
@@ -115,6 +115,26 @@ namespace Color
             }
 
             return result;
+        }
+
+        // Función aislada para el Algoritmo de Salvaguarda (Modo Oscuro/Negro)
+        private static double CalcularValorPropuesta(double concOriginal, double valorAdj)
+        {
+            double adjAbs = Math.Abs(valorAdj);
+            
+            // Si la resta es segura (no se acerca a cero)
+            // Se mantiene la Resta Aritmética Estricta (Funciona bien en colores claros)
+            if ((concOriginal - adjAbs) > (concOriginal * 0.15))
+            {
+                return concOriginal - adjAbs;
+            }
+            else
+            {
+                // Si el ajuste es muy agresivo (caso Negros), aplicamos reducción porcentual proporcional
+                // Ejemplo: Si adj es 0.60, reduce el 0.60% de la carga actual
+                double factor = adjAbs / 100; 
+                return concOriginal * (1 - factor);
+            }
         }
 
         public static List<RecipeIngredientInput> IngredientsFromShade(ShadeExtractionResult shadeData)
