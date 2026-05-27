@@ -242,10 +242,19 @@ namespace Color
         /// Determina la dirección visual del viraje de tono
         public static string GetHueDirection(double dA, double dB)
         {
+            // Evaluamos cuál eje tiene mayor desviación para determinar el matiz principal
             if (Math.Abs(dA) >= Math.Abs(dB))
-                return dA < 0 ? " Virado al Rojo" : " Virado al Verde";
+            {
+                // Eje dA: Positivo (+) es Rojo, Negativo (-) es Verde
+                // Según tu estándar: redder (bluer) / greener (yellower)
+                return dA > 0 ? "redder (bluer)" : "greener (yellower)";
+            }
             else
-                return dB < 0 ? " Virado al Amarillo" : " Virado al Azul";
+            {
+                // Eje dB: Positivo (+) es Amarillo, Negativo (-) es Azul
+                // Según tu estándar: yellower (greener) / bluer (redder)
+                return dB > 0 ? "yellower (greener)" : "bluer (redder)";
+            }
         }
 
         // --- MÓDULO DE INGENIERÍA TEXTIL (DIAGNÓSTICO FINAL) ---

@@ -29,10 +29,10 @@ namespace Color
         public string Name { get; set; }
         public double Original { get; set; }
         
-        // Los 3 Escenarios de Fase 2 (Diagonal Matrix Logic)
-        public string Optiondl { get; set; }
-        public string Optionda { get; set; }
-        public string Optiondb { get; set; }
+        // Los 3 Escenarios de Resta Estricta
+        public double R1 { get; set; }
+        public double R2 { get; set; }
+        public double R3 { get; set; }
         
         public string Status { get; set; }
         public bool IsCritical { get; set; }
@@ -59,22 +59,24 @@ namespace Color
                 TotalOriginal = originalRecipe.Sum(i => i.Percentage)
             };
 
-            // Factores de Variación Relativa (sin factores K de sensibilidad)
-            double rawFL = (double)(1.0m - analysis.FactorL);
-            double rawFC = (double)(1.0m + analysis.FactorC);
-            double rawFH = (double)(1.0m + ((decimal)analysis.DeltaHue / 100.0m));
-            
-            double fL = rawFL;
-            double fC = rawFC;
-            double fH = rawFH;
+            // --- LÓGICA DE RESTA ESTRICTA ---
+            // 1. Obtener ajustes y ordenar por magnitud (valor absoluto)
+            // Usamos FactorL, FactorA, FactorB como los subtrahendos directos
+            var listaAjustes = new List<double> { (double)analysis.FactorL, (double)analysis.FactorA, (double)analysis.FactorB }
+                .OrderByDescending(x => Math.Abs(x))
+                .ToList();
 
-            // Ordenar por concentración para identificar roles
-            var sorted = originalRecipe.OrderByDescending(i => i.Percentage).ToList();
-            var primary = sorted.Count > 0 ? sorted[0] : null;
-            var secondary = sorted.Count > 1 ? sorted[1] : null;
-            var toner = sorted.Count > 2 ? sorted[2] : sorted.LastOrDefault();
+            // REGLA NUEVA: Resta de valores absolutos (Ignora la ley de signos) - SOLO PARA TABLA DE FORMULACIÓN
+            double adj1 = Math.Abs(listaAjustes[0]);
+            double adj2 = Math.Abs(listaAjustes[1]);
+            double adj3 = Math.Abs(listaAjustes[2]);
 
-            // Inyectar nombres reales (Solo el nombre, sin código) en el análisis para recomendaciones dinámicas
+            // Inyectar nombres reales para compatibilidad con diagnósticos y guardado
+            var sortedByConc = originalRecipe.OrderByDescending(i => i.Percentage).ToList();
+            var primary = sortedByConc.Count > 0 ? sortedByConc[0] : null;
+            var secondary = sortedByConc.Count > 1 ? sortedByConc[1] : null;
+            var toner = sortedByConc.Count > 2 ? sortedByConc[2] : sortedByConc.LastOrDefault();
+
             if (analysis != null)
             {
                 if (primary != null) analysis.PrimaryDyeName = primary.Name.Trim();
@@ -82,65 +84,26 @@ namespace Color
                 if (toner != null) analysis.TonerDyeName = toner.Name.Trim();
             }
 
-            double totalRecipePct = originalRecipe.Sum(i => i.Percentage);
-
             foreach (var ing in originalRecipe)
             {
-                double partPct = totalRecipePct > 0 ? (ing.Percentage / totalRecipePct) * 100.0 : 0;
-                bool isLowPart = partPct < 2.0;
-
                 var detail = new CorrectiveIngredientDetail
                 {
                     Code = ing.Code,
                     Name = ing.Name,
                     Original = ing.Percentage,
-                    Status = "OK"
+                    Status = "OK",
+                    // REGLA NUEVA: Original - Valor Absoluto del Ajuste
+                    R1 = Math.Max(0, ing.Percentage - adj1),
+                    R2 = Math.Max(0, ing.Percentage - adj2),
+                    R3 = Math.Max(0, ing.Percentage - adj3)
                 };
-
-                // ESCENARIO 1 (dl): AJUSTE GLOBAL DE CARGA (Afecta a todos simultáneamente)
-                double valL = ing.Percentage * fL;
-                double diffL = ((valL - ing.Percentage) / ing.Percentage) * 100.0;
-                bool capL = Math.Abs(rawFL - 1.0) > 0.15;
-                string flagL = (capL && isLowPart) ? "\n* Sensibilidad Limitada" : "";
-                detail.Optiondl = $"{valL:F5} ({(diffL >= 0 ? "+" : "")}{diffL:F2}%){flagL}";
-                if (capL) { detail.IsCritical = true; detail.Status = "REV"; }
-
-                // ESCENARIO 2 (da): Solo secundario (Brillo)
-                if (secondary != null && ing.Code == secondary.Code)
-                {
-                    double valC = ing.Percentage * fC;
-                    double diffC = ((valC - ing.Percentage) / ing.Percentage) * 100.0;
-                    bool capC = Math.Abs(rawFC - 1.0) > 0.15;
-                    string flagC = (capC && isLowPart) ? "\n* Sensibilidad Limitada" : "";
-                    detail.Optionda = $"{valC:F5} ({(diffC >= 0 ? "+" : "")}{diffC:F2}%){flagC}";
-                    if (capC) { detail.IsCritical = true; detail.Status = "REV"; }
-                }
-                else detail.Optionda = "---";
-
-                // ESCENARIO 3 (db): Solo toner
-                if (toner != null && ing.Code == toner.Code)
-                {
-                    double valH = ing.Percentage * fH;
-                    double diffH = ((valH - ing.Percentage) / ing.Percentage) * 100.0;
-                    bool capH = Math.Abs(rawFH - 1.0) > 0.15;
-                    string flagH = (capH && isLowPart) ? "\n* Sensibilidad Limitada" : "";
-                    detail.Optiondb = $"{valH:F5} ({(diffH >= 0 ? "+" : "")}{diffH:F2}%){flagH}";
-                    if (capH) { detail.IsCritical = true; detail.Status = "REV"; }
-                }
-                else detail.Optiondb = "---";
 
                 result.Ingredients.Add(detail);
             }
 
-            bool isCritical = result.Ingredients.Any(i => i.IsCritical);
-            bool requiresAnyAdjustment = Math.Abs(rawFL - 1.0) > 0.001 || Math.Abs(rawFC - 1.0) > 0.001 || Math.Abs(rawFH - 1.0) > 0.001;
+            bool requiresAnyAdjustment = Math.Abs(adj1) > 0.0001 || Math.Abs(adj2) > 0.0001 || Math.Abs(adj3) > 0.0001;
 
-            if (isCritical)
-            {
-                result.AlertMessage = "Ajuste Requerido - Límite de Seguridad Alcanzado";
-                result.AlertSeverity = "Critical";
-            }
-            else if (requiresAnyAdjustment)
+            if (requiresAnyAdjustment)
             {
                 result.AlertMessage = "Revisar Ajustes Sugeridos";
                 result.AlertSeverity = "Warning";
