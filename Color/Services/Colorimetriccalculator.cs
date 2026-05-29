@@ -65,25 +65,46 @@ namespace Color
         public double AbsDeltaA => Math.Abs(DeltaA);
         public double AbsDeltaB => Math.Abs(DeltaB);
 
+        // Textos del OCR (Espejo)
+        public string OcrValueL { get; set; }
+        public string OcrValueC { get; set; }
+        public string OcrValueH { get; set; }
+        
+        public string OcrImpactoL { get; set; }
+        public string OcrImpactoC { get; set; }
+        public string OcrImpactoH { get; set; }
+
+        public int FactorIntL { get; set; }
+        public int FactorIntC { get; set; }
+        public int FactorIntH { get; set; }
+
         // --- Propiedades de Diagnóstico Dinámico ---
-        public string DiagnosticoL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoRecetaL);
+        public string DiagnosticoL => !string.IsNullOrEmpty(OcrImpactoL) ? OcrImpactoL : GetInternalDiagnosis("L");
         public string DiagnosticoLoteL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoLoteL);
         public string ImpactoRecetaL => ColorimetricCalculator.GetImpactoLRecipe(DeltaL);
         public string ImpactoLoteL => ColorimetricCalculator.GetImpactoLLot(DeltaL);
         public string RecomendacionRecetaL => ColorimetricCalculator.GetInstLRecipe(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
         public string RecomendacionLoteL => ColorimetricCalculator.GetInstLLot(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
 
-        public string DiagnosisC => Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
+        public string DiagnosisC => !string.IsNullOrEmpty(OcrImpactoC) ? OcrImpactoC : GetInternalDiagnosis("C");
 
         // DeltaChroma = Std - Lot:
         public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Opaco" : "Brillante");
         public string RecommendationC => (Math.Abs(DeltaChroma) < 0.1) ? "✔" : ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
-        public string DiagnosisH => Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
+        public string DiagnosisH => !string.IsNullOrEmpty(OcrImpactoH) ? OcrImpactoH : GetInternalDiagnosis("H");
        
         // Dirección del viraje: eje dominante (|da| vs |db|)
         public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
         public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "Aumentar" : "Disminuir")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
+
+        private string GetInternalDiagnosis(string eje)
+        {
+            if (eje == "L") return Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoRecetaL);
+            if (eje == "C") return Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
+            if (eje == "H") return Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
+            return "✔";
+        }
 
         public bool Pass { get; set; }
     }
@@ -187,7 +208,6 @@ namespace Color
             decimal lC = (decimal)lot.Chroma;
             decimal lH = (decimal)lot.Hue;
 
-            // Variaciones Relativas con límite 15% (Protocolo de Seguridad Industrial)
             res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
             res.FactorA = sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0;
             res.FactorB = sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0;
@@ -197,7 +217,8 @@ namespace Color
             if (dH_Raw > 180) dH_Raw -= 360;
             if (dH_Raw < -180) dH_Raw += 360;
             
-            res.FactorH = Math.Round(dH_Raw, 8) / 100.0m * 100.0m;
+            decimal factorSensibilidadH = 0.15m; // Factor técnico para evitar virajes bruscos
+            res.FactorH = Math.Round((decimal)dH_Raw * factorSensibilidadH, 8);
 
             // Deltas para UI y Gráficos (PARIDAD EXCEL COATS: Std - Lot)
             res.DeltaL = (double)(sL - lL);
@@ -209,6 +230,29 @@ namespace Color
             var cmc = report.CmcDifferences?.FirstOrDefault(c => c.Illuminant.ToUpper().Contains(illuminantName.ToUpper()));
             res.DeltaE = cmc?.DeltaCMC ?? Math.Sqrt(res.DeltaL*res.DeltaL + res.DeltaA*res.DeltaA + res.DeltaB*res.DeltaB);
             res.CmcValue = res.DeltaE;
+
+            if (cmc != null)
+            {
+                res.OcrValueL = $"{cmc.DeltaLightness.ToString(System.Globalization.CultureInfo.InvariantCulture)} {cmc.LightnessFlagOcr ?? ""}".Trim();
+                res.OcrValueC = $"{cmc.DeltaChroma.ToString(System.Globalization.CultureInfo.InvariantCulture)} {cmc.ChromaFlagOcr ?? ""}".Trim();
+                res.OcrValueH = $"{cmc.DeltaHue.ToString(System.Globalization.CultureInfo.InvariantCulture)} {cmc.HueFlagOcr ?? ""}".Trim();
+
+                res.OcrImpactoL = cmc.LightnessFlagOcr ?? "";
+                res.OcrImpactoC = cmc.ChromaFlagOcr ?? "";
+                res.OcrImpactoH = cmc.HueFlagOcr ?? "";
+
+                // Calculamos temporalmente el factor entero para tenerlo estructurado
+                res.FactorIntL = 0;
+                res.FactorIntC = 0;
+                res.FactorIntH = 0;
+                
+                if (double.TryParse(System.Text.RegularExpressions.Regex.Match(res.OcrValueL, @"[-+]?[0-9]*\.?[0-9]+").Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedL))
+                    res.FactorIntL = (int)Math.Round(parsedL * 100, MidpointRounding.AwayFromZero);
+                if (double.TryParse(System.Text.RegularExpressions.Regex.Match(res.OcrValueC, @"[-+]?[0-9]*\.?[0-9]+").Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedC))
+                    res.FactorIntC = (int)Math.Round(parsedC * 100, MidpointRounding.AwayFromZero);
+                if (double.TryParse(System.Text.RegularExpressions.Regex.Match(res.OcrValueH, @"[-+]?[0-9]*\.?[0-9]+").Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedH))
+                    res.FactorIntH = (int)Math.Round(parsedH * 100, MidpointRounding.AwayFromZero);
+            }
 
             res.StdL = std.L; res.StdA = std.A; res.StdB = std.B; res.StdC = std.Chroma; res.StdH = std.Hue;
             res.LotL = lot.L; res.LotA = lot.A; res.LotB = lot.B; res.LotC = lot.Chroma; res.LotH = lot.Hue;
@@ -239,21 +283,18 @@ namespace Color
         public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH < 0 ? "Viraje (+)" : "Viraje (-)");
 
 
-        /// Determina la dirección visual del viraje de tono
+        /// Determina la dirección visual del viraje de tono para el sistema rectangular (da, db)
         public static string GetHueDirection(double dA, double dB)
         {
-            // Evaluamos cuál eje tiene mayor desviación para determinar el matiz principal
             if (Math.Abs(dA) >= Math.Abs(dB))
             {
-                // Eje dA: Positivo (+) es Rojo, Negativo (-) es Verde
-                // Según tu estándar: redder (bluer) / greener (yellower)
-                return dA > 0 ? "redder (bluer)" : "greener (yellower)";
+                // Eje dA: Positivo (+) es Rojo, Negativo (-) es Verde (según paridad Std - Lot)
+                return dA > 0 ? "Más Rojo" : "Más Verde";
             }
             else
             {
                 // Eje dB: Positivo (+) es Amarillo, Negativo (-) es Azul
-                // Según tu estándar: yellower (greener) / bluer (redder)
-                return dB > 0 ? "yellower (greener)" : "bluer (redder)";
+                return dB > 0 ? "Más Amarillo" : "Más Azul";
             }
         }
 
@@ -272,21 +313,22 @@ namespace Color
                 case "DC": 
                 case "DA":
                 case "C":
-                    if (impacto.Contains("Brillante") || delta > 0) 
-                        return "Mas Brillante";
-                    else
+                    // Si Delta > 0 (Std > Lot), el lote tiene menos color -> Mas Opaco
+                    if (delta > 0) 
                         return "Mas Opaco";
+                    else
+                        return "Mas Brillante";
 
                 case "DH":
                 case "DB":
                 case "H":
                     if (delta < 0) 
-                        return "Tendecia al  Amarillo.";
+                        return "Más Azul";
                     else 
-                        return "Tendencia al AZul.";
+                        return "Más Amarillo";
             }
 
-            return "DENTRO DE TOLERANCIA:";
+            return "OK";
         }
 
         // Lógica de Ciclo Industrial (Matriz Diagonal)
