@@ -211,7 +211,7 @@ namespace Color
             dgvShadeHistory.Columns[0].Name = "Dye Code";
             dgvShadeHistory.Columns[1].Name = "Dye Names";
             dgvShadeHistory.Columns[2].Name = "Concentration";
-            dgvShadeHistory.Columns[3].Name = " Stake";
+            dgvShadeHistory.Columns[3].Name = " proportion";
             dgvShadeHistory.Columns[4].Name = " adjustment dL";
             dgvShadeHistory.Columns[4].Visible = false;
             dgvShadeHistory.Columns[0].FillWeight = 15;
@@ -736,14 +736,11 @@ namespace Color
                 // Eje dl
                 int factorL_int = (int)Math.Round((double)d65.FactorL, MidpointRounding.AwayFromZero);
                 string varL = (factorL_int >= 0 ? "+" : "") + factorL_int.ToString() + "%";
+                if (Math.Abs(d65.DeltaL) < 0.15) varL = "0%";
                 string adjL = (d65.DeltaL > 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs((double)d65.FactorL), MidpointRounding.AwayFromZero)).ToString() + "%";
                 string lotL = d65.DeltaL < 0 ? " Claro" : " Oscuro";
                 string actL = d65.DeltaL < 0 ? "Aumentar colorante" : "Reducir colorante";
                 
-                if (Math.Abs(d65.DeltaL) <= DL_MAX || Math.Abs((double)d65.FactorL) < 1.0)
-                {
-                    varL = "✔"; lotL = "✔"; actL = "✔"; adjL = "✔";
-                }
                 int idxL = dgvCielabSummary.Rows.Add("dl", varL, adjL, lotL, actL);
                 ApplyEjeStyle(dgvCielabSummary, idxL, "dl"); ApplyTenueRowStyle(dgvCielabSummary, idxL);
 
@@ -754,10 +751,7 @@ namespace Color
                 string adjA = (d65.DeltaA < 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(pctA), MidpointRounding.AwayFromZero)).ToString() + "%";
                 string lotA = d65.DeltaA < 0 ? " Mas Rojo" : " Mas Verde";
                 string actA = d65.DeltaA < 0 ? "Reducir el Rojo" : "Aumentar el Rojo";
-                if (Math.Abs(d65.DeltaA) <= DC_MAX || Math.Abs(pctA) < 1.0)
-                {
-                    varA = "✔"; lotA = "✔"; actA = "✔"; adjA = "✔";
-                }
+                
                 int idxA = dgvCielabSummary.Rows.Add("da", varA, adjA, lotA, actA);
                 ApplyEjeStyle(dgvCielabSummary, idxA, "da"); ApplyTenueRowStyle(dgvCielabSummary, idxA);
 
@@ -768,10 +762,7 @@ namespace Color
                 string adjB = (d65.DeltaB < 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(pctB), MidpointRounding.AwayFromZero)).ToString() + "%";
                 string lotB = d65.DeltaB < 0 ? " Mas Amarillo" : " Mas Azul";
                 string actB = d65.DeltaB < 0 ? "Reducir el Amarillo" : "Aumentar el Azul";
-                if (Math.Abs(d65.DeltaB) <= DC_MAX || Math.Abs(pctB) < 1.0)
-                {
-                    varB = "✔"; lotB = "✔"; actB = "✔"; adjB = "✔";
-                }
+                
                 int idxB = dgvCielabSummary.Rows.Add("db", varB, adjB, lotB, actB);
                 ApplyEjeStyle(dgvCielabSummary, idxB, "db"); ApplyTenueRowStyle(dgvCielabSummary, idxB);
 
@@ -833,10 +824,10 @@ namespace Color
 
             int intDL = (int)Math.Round(dl, MidpointRounding.AwayFromZero);
             string varL = (intDL >= 0 ? "+" : "") + intDL.ToString() + "%";
+            if (Math.Abs(dl) < 0.15) varL = "0%";
             string adjL = (dl > 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(res.PercentL), MidpointRounding.AwayFromZero)).ToString() + "%";
             string impL = dl > 0 ? "Más Oscuro" : "Más Claro";
             string actL = dl > 0 ? "Reducir carga" : "Aumentar matiz";
-            if (Math.Abs(dl) <= DL_MAX || Math.Abs(res.PercentL) < 1.0) { varL = "✔"; adjL = "✔"; impL = "✔"; actL = "✔"; }
             int rdl = dgv.Rows.Add("dl", varL, adjL, impL, actL);
             ApplyEjeStyle(dgv, rdl, "dl");
 
@@ -845,7 +836,6 @@ namespace Color
             string adjA = (da > 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(res.PercentA), MidpointRounding.AwayFromZero)).ToString() + "%";
             string impA = da > 0 ? "Más Rojo" : "Más Verde";
             string actA = da > 0 ? "Bajar Rojo" : "Subir Rojo";
-            if (Math.Abs(da) <= DC_MAX || Math.Abs(res.PercentA) < 1.0) { varA = "✔"; adjA = "✔"; impA = "✔"; actA = "✔"; }
             int rda = dgv.Rows.Add("da", varA, adjA, impA, actA);
             ApplyEjeStyle(dgv, rda, "da");
 
@@ -854,7 +844,6 @@ namespace Color
             string adjB = (db > 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(res.PercentB), MidpointRounding.AwayFromZero)).ToString() + "%";
             string impB = db > 0 ? "Más Amarillo" : "Más Azul";
             string actB = db > 0 ? "Bajar Amarillo" : "Subir Azul";
-            if (Math.Abs(db) <= DC_MAX || Math.Abs(res.PercentB) < 1.0) { varB = "✔"; adjB = "✔"; impB = "✔"; actB = "✔"; }
             int rdb = dgv.Rows.Add("db", varB, adjB, impB, actB);
             ApplyEjeStyle(dgv, rdb, "db");
 
@@ -1019,14 +1008,11 @@ namespace Color
 
             // ---- ROW 1: dL ----
             string varL = ((int)Math.Round(res.DeltaL, MidpointRounding.AwayFromZero)).ToString() + "%";
+            if (Math.Abs(res.DeltaL) < 0.15) varL = "0%";
             string adjL = (res.DeltaL > 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(res.PercentL), MidpointRounding.AwayFromZero)).ToString() + "%";
             string impL = res.DeltaL > 0 ? " Oscuro" : " Claro";
             string actL = res.DeltaL > 0 ? "Reducir carga" : "Aumentar carga";
             
-            if (Math.Abs(res.DeltaL) <= DL_MAX || Math.Abs(res.PercentL) < 1.0)
-            {
-                varL = "✔"; adjL = "✔"; impL = "✔"; actL = "✔";
-            }
             int r1 = dgv.Rows.Add("dL", varL, adjL, impL, actL);
             ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
 
@@ -1036,10 +1022,6 @@ namespace Color
             string impC = res.DeltaChroma > 0 ? " Opaco / Apagado" : " Vivo / Brillante";
             string actC = res.DeltaChroma > 0 ? "Avivar Tono" : "Opacar";
             
-            if (Math.Abs(res.DeltaChroma) <= DC_MAX || Math.Abs(res.PercentChroma) < 1.0)
-            {
-                varC = "✔"; adjC = "✔"; impC = "✔"; actC = "✔";
-            }
             int r2 = dgv.Rows.Add("dC", varC, adjC, impC, actC);
             ApplyEjeStyle(dgv, r2, "dC"); ApplyTenueRowStyle(dgv, r2);
 
@@ -1083,11 +1065,6 @@ namespace Color
 
             // Resultado: "Adicionar Yellow" o "Reducir / Compensar Redder"
             string actH = $"{accionFisica} {palabraMatiz}";
-            // Lógica de Checklist
-            if (Math.Abs(res.DeltaHue) <= DH_MAX || Math.Abs(res.PercentHue) < 1.0)
-            {
-                varH = "✔"; adjH = "✔"; impH = "✔"; actH = "✔";
-            }
 
             // Agregar fila respetando el orden: Eje, Variación, Ajuste, Impacto, Acción
             int r3 = dgv.Rows.Add("dH", varH, adjH, impH, actH);
@@ -1190,13 +1167,9 @@ namespace Color
                 string lotLStr = d65.DeltaLightness < 0 ? " Oscuro" : " Claro";
                 string actLStr = d65.DeltaLightness < 0 ? "Aumentar colorante" : "Reducir colorante";
                 string adjLStr = (d65.DeltaLightness < 0 ? "+ " : "- ") + ((int)Math.Round(Math.Abs(expertAnalysis.PercentL), MidpointRounding.AwayFromZero)).ToString() + "%";
-                if (Math.Abs(expertAnalysis.PercentL) <= 0.1)
-                {
-                    lotLStr = "✔";
-                    actLStr = "✔";
-                    adjLStr = "✔";
-                }
                 string varL_err = (expertAnalysis.FactorL >= 0 ? "+" : "") + ((int)Math.Round(errL, MidpointRounding.AwayFromZero)).ToString() + "%";
+                if (Math.Abs(expertAnalysis.DeltaL) < 0.15) varL_err = "0%";
+                
                 int idxL = dgvCielabSummary.Rows.Add("dl", varL_err, lotLStr, actLStr, adjLStr);
                 ApplyEjeStyle(dgvCielabSummary, idxL, "dl"); ApplyTenueRowStyle(dgvCielabSummary, idxL);
 
@@ -1206,12 +1179,6 @@ namespace Color
                 double stdA = std != null ? std.A : 0;
                 double pctA = (Math.Abs(stdA) > 0.1) ? (dA / Math.Abs(stdA)) : 0;
                 string adjAStr = (dA < 0 ? "- " : "+ ") + ((int)Math.Round(Math.Abs(pctA * 100), MidpointRounding.AwayFromZero)).ToString() + "%";
-                if (Math.Abs(pctA * 100) <= 0.1)
-                {
-                    lotAStr = "✔";
-                    actAStr = "✔";
-                    adjAStr = "✔";
-                }
                 string varA_err = (expertAnalysis.FactorA >= 0 ? "+" : "") + ((int)Math.Round(errA, MidpointRounding.AwayFromZero)).ToString() + "%";
                 int idxA = dgvCielabSummary.Rows.Add("da", varA_err, lotAStr, actAStr, adjAStr);
                 ApplyEjeStyle(dgvCielabSummary, idxA, "da"); ApplyTenueRowStyle(dgvCielabSummary, idxA);
@@ -1222,12 +1189,6 @@ namespace Color
                 double stdB = std != null ? std.B : 0;
                 double pctB = (Math.Abs(stdB) > 0.1) ? (dB / Math.Abs(stdB)) : 0;
                 string adjBStr = "- " + ((int)Math.Round(Math.Abs(pctB * 100), MidpointRounding.AwayFromZero)).ToString() + "%";
-                if (Math.Abs(pctB * 100) <= 0.1)
-                {
-                    lotBStr = "✔";
-                    actBStr = "✔";
-                    adjBStr = "✔";
-                }
                 string varB_err = (expertAnalysis.FactorB >= 0 ? "+" : "") + ((int)Math.Round(errB, MidpointRounding.AwayFromZero)).ToString() + "%";
                 int idxB = dgvCielabSummary.Rows.Add("db", varB_err, lotBStr, actBStr, adjBStr);
                 ApplyEjeStyle(dgvCielabSummary, idxB, "db"); ApplyTenueRowStyle(dgvCielabSummary, idxB);
@@ -1313,14 +1274,14 @@ namespace Color
             int ajusteL = (int)Math.Round(Math.Abs(ponderadoL), MidpointRounding.AwayFromZero);
 
             string varL = isRightPanel ? $"{variacionL}%" : $"{(int)Math.Round(cmc.DeltaLightness, MidpointRounding.AwayFromZero)}%";
+            // Atenuación visual a 0%
+            if (expertData != null && Math.Abs(expertData.DeltaL) < 0.15) varL = "0%";
+            else if (expertData == null && Math.Abs(cmc.DeltaLightness) < 0.15) varL = "0%";
+            
             string adjL = isRightPanel ? $"{(cmc.DeltaLightness < 0 ? "+" : "-")}{ajusteL}%" : $"{(cmc.DeltaLightness < 0 ? "+ " : "- ")}{ajusteL}%";
             string impL = cmc.DeltaLightness < 0 ? " Oscuro" : " Claro";
             string actL = cmc.DeltaLightness < 0 ? "Aumentar carga" : "Reducir carga";
             
-            if (Math.Abs(cmc.DeltaLightness) <= DL_MAX || Math.Abs(ponderadoL) < 1.0)
-            {
-                varL = "✔"; adjL = "✔"; impL = "✔"; actL = "✔";
-            }
             int r1 = dgv.Rows.Add("dL", varL, adjL, impL, actL);
             ApplyEjeStyle(dgv, r1, "dL"); ApplyTenueRowStyle(dgv, r1);
 
@@ -1335,10 +1296,6 @@ namespace Color
             string impC = cmc.DeltaChroma >= 0 ? " Vivo / Brillante" : " Opaco / Apagado";
             string actC = cmc.DeltaChroma >= 0 ? "Opacar" : "Avivar Tono";
             
-            if (Math.Abs(cmc.DeltaChroma) <= DC_MAX || Math.Abs(ponderadoC) < 1.0)
-            {
-                varC = "✔"; adjC = "✔"; impC = "✔"; actC = "✔";
-            }
             int r2 = dgv.Rows.Add("dC", varC, adjC, impC, actC);
             ApplyEjeStyle(dgv, r2, "dC"); ApplyTenueRowStyle(dgv, r2);
 
@@ -1358,10 +1315,6 @@ namespace Color
 
             string actH = cmc.DeltaHue >= 0 ? "Aumentar Matizador" : "Reducir Matizador";
             
-            if (Math.Abs(cmc.DeltaHue) <= DH_MAX || Math.Abs(ponderadoH) < 1.0)
-            {
-                varH = "✔"; adjH = "✔"; impH = "✔"; actH = "✔";
-            }
             int r3 = dgv.Rows.Add("dH", varH, adjH, impH, actH);
             ApplyEjeStyle(dgv, r3, "dH"); ApplyTenueRowStyle(dgv, r3);
 
@@ -1456,8 +1409,8 @@ namespace Color
                     string sDye = _lastMainResult?.SecondaryDyeName ?? "";
                     string tDye = _lastMainResult?.TonerDyeName ?? "";
 
-                    string recC_Filtrada = (name == sDye) ? recC : "✔";
-                    string recH_Filtrada = (name == tDye) ? recH : "✔";
+                    string recC_Filtrada = (name == sDye) ? recC : "";
+                    string recH_Filtrada = (name == tDye) ? recH : "";
 
                     // Para el Eje L (Luminosidad), la recomendación es global, se mantiene para todos
                     string recL_Filtrada = recL;

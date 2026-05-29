@@ -80,7 +80,7 @@ namespace Color
 
         // --- Propiedades de Diagnóstico Dinámico ---
         public string DiagnosticoL => !string.IsNullOrEmpty(OcrImpactoL) ? OcrImpactoL : GetInternalDiagnosis("L");
-        public string DiagnosticoLoteL => Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoLoteL);
+        public string DiagnosticoLoteL => ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoLoteL);
         public string ImpactoRecetaL => ColorimetricCalculator.GetImpactoLRecipe(DeltaL);
         public string ImpactoLoteL => ColorimetricCalculator.GetImpactoLLot(DeltaL);
         public string RecomendacionRecetaL => ColorimetricCalculator.GetInstLRecipe(DeltaL, Math.Abs(PercentL), PrimaryDyeName);
@@ -89,21 +89,21 @@ namespace Color
         public string DiagnosisC => !string.IsNullOrEmpty(OcrImpactoC) ? OcrImpactoC : GetInternalDiagnosis("C");
 
         // DeltaChroma = Std - Lot:
-        public string DescripcionC => (Math.Abs(DeltaChroma) < 0.15) ? "✔" : (DeltaChroma > 0 ? "Opaco" : "Brillante");
-        public string RecommendationC => (Math.Abs(DeltaChroma) < 0.1) ? "✔" : ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
+        public string DescripcionC => (DeltaChroma > 0 ? "Opaco" : "Brillante");
+        public string RecommendationC => ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
         public string DiagnosisH => !string.IsNullOrEmpty(OcrImpactoH) ? OcrImpactoH : GetInternalDiagnosis("H");
        
         // Dirección del viraje: eje dominante (|da| vs |db|)
-        public string ImpactoMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
-        public string RecomendacionMatiz => (Math.Abs(DeltaHue) < 0.1) ? "✔" : $"{(DeltaHue > 0 ? "Aumentar" : "Disminuir")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
+        public string ImpactoMatiz => ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
+        public string RecomendacionMatiz => $"{(DeltaHue > 0 ? "Aumentar" : "Disminuir")} {TonerDyeName} {Math.Abs(DeltaHue):F2}%";
 
         private string GetInternalDiagnosis(string eje)
         {
-            if (eje == "L") return Math.Abs(DeltaL) < 0.2 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoRecetaL);
-            if (eje == "C") return Math.Abs(DeltaChroma) < 0.15 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
-            if (eje == "H") return Math.Abs(DeltaHue) < 0.1 ? "✔" : ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
-            return "✔";
+            if (eje == "L") return ColorimetricCalculator.GetEngineeringDiagnosis("dl", DeltaL, ImpactoRecetaL);
+            if (eje == "C") return ColorimetricCalculator.GetEngineeringDiagnosis("da", DeltaChroma, DescripcionC);
+            if (eje == "H") return ColorimetricCalculator.GetEngineeringDiagnosis("db", DeltaHue, ImpactoMatiz);
+            return "";
         }
 
         public bool Pass { get; set; }
@@ -208,17 +208,38 @@ namespace Color
             decimal lC = (decimal)lot.Chroma;
             decimal lH = (decimal)lot.Hue;
 
-            res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
-            res.FactorA = sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0;
-            res.FactorB = sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0;
-            res.FactorC = sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0;
-            
+            // ── MOTOR DE SENSIBILIDAD ADAPTATIVA ────────────────────────────────
+            // Switch de Croma: evalúa sC para determinar el carril de ajuste.
+            // CARRIL A (sC > 15): Colores Vivos  → Proporción Lineal  (Std-Lot)/Std
+            // CARRIL B (sC ≤ 15): Colores Oscuros → Factor Fijo ×0.15 en ejes cromáticos
+            bool esColorOscuro = (sC <= 15m);
+
+            if (esColorOscuro)
+            {
+                // CARRIL B — Matriz de ejes para colores oscuros/negros
+                // dL: Proporcional   → (sL - lL) / sL   [mantiene fuerza para negros]
+                res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
+                // da: Ponderado      → (sA - lA) * 0.15  [estabiliza matiz]
+                res.FactorA = Math.Round((sA - lA) * 0.15m, 8);
+                // db: Ponderado      → (sB - lB) * 0.15  [estabiliza matiz]
+                res.FactorB = Math.Round((sB - lB) * 0.15m, 8);
+                // dC: Ponderado      → (sC - lC) * 0.15  [evita ajustes absurdos de saturación]
+                res.FactorC = Math.Round((sC - lC) * 0.15m, 8);
+            }
+            else
+            {
+                // CARRIL A — Proporción Lineal estándar para todos los ejes
+                res.FactorL = sL != 0 ? Math.Round((sL - lL) / sL, 8) : 0;
+                res.FactorA = sA != 0 ? Math.Round((sA - lA) / sA, 8) : 0;
+                res.FactorB = sB != 0 ? Math.Round((sB - lB) / sB, 8) : 0;
+                res.FactorC = sC != 0 ? Math.Round((sC - lC) / sC, 8) : 0;
+            }
+
+            // dH: siempre ponderado ×0.15 en ambos carriles (evita virajes bruscos)
             decimal dH_Raw = lH - sH;
             if (dH_Raw > 180) dH_Raw -= 360;
             if (dH_Raw < -180) dH_Raw += 360;
-            
-            decimal factorSensibilidadH = 0.15m; // Factor técnico para evitar virajes bruscos
-            res.FactorH = Math.Round((decimal)dH_Raw * factorSensibilidadH, 8);
+            res.FactorH = Math.Round(dH_Raw * 0.15m, 8);
 
             // Deltas para UI y Gráficos (PARIDAD EXCEL COATS: Std - Lot)
             res.DeltaL = (double)(sL - lL);
@@ -252,6 +273,14 @@ namespace Color
                     res.FactorIntC = (int)Math.Round(parsedC * 100, MidpointRounding.AwayFromZero);
                 if (double.TryParse(System.Text.RegularExpressions.Regex.Match(res.OcrValueH, @"[-+]?[0-9]*\.?[0-9]+").Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedH))
                     res.FactorIntH = (int)Math.Round(parsedH * 100, MidpointRounding.AwayFromZero);
+
+                // ── REGLA "CAPA ESPEJO" (Innegociable) ──────────────────────────────
+                // Si la Variación Visual que ve el cliente es 0% (por redondeo u OCR),
+                // el Factor de ajuste de la receta para ese eje se fuerza a 0.
+                // Esto garantiza coherencia total: 0% visual → 0% de ajuste en receta.
+                if (res.FactorIntL == 0) res.FactorL = 0m;
+                if (res.FactorIntC == 0) res.FactorC = 0m;
+                if (res.FactorIntH == 0) res.FactorH = 0m;
             }
 
             res.StdL = std.L; res.StdA = std.A; res.StdB = std.B; res.StdC = std.Chroma; res.StdH = std.Hue;
@@ -274,13 +303,13 @@ namespace Color
             return (sl, sc, sh);
         }
 
-        public static string GetDiagL_Expert(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
-        public static string GetImpactoLRecipe(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Más Claro" : "Más Oscuro");
-        public static string GetImpactoLLot(double dL) => Math.Abs(dL) < 0.2 ? "✔" : (dL < 0 ? "Brillante" : "");
-        public static string GetInstLRecipe(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "INCREMENTAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
-        public static string GetInstLLot(double dL, double varL, string name) => Math.Abs(dL) < 0.2 ? "✔" : $"{(dL < 0 ? "ADICIONAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
-        public static string GetDiagC_Expert(double dC) => Math.Abs(dC) < 0.15 ? "✔" : (dC < 0 ? "Saturado" : "Opaco");
-        public static string GetDiagH_Expert(double dH, double tol) => Math.Abs(dH) < tol ? "✔" : (dH < 0 ? "Viraje (+)" : "Viraje (-)");
+        public static string GetDiagL_Expert(double dL) => (Math.Abs(dL) > 0.5 ? "Desviación Crítica" : "Desviación Moderada");
+        public static string GetImpactoLRecipe(double dL) => (dL < 0 ? "Más Claro" : "Más Oscuro");
+        public static string GetImpactoLLot(double dL) => (dL < 0 ? "Brillante" : "");
+        public static string GetInstLRecipe(double dL, double varL, string name) => $"{(dL < 0 ? "INCREMENTAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
+        public static string GetInstLLot(double dL, double varL, string name) => $"{(dL < 0 ? "ADICIONAR" : "REDUCIR")} {Math.Abs(varL):F2}%";
+        public static string GetDiagC_Expert(double dC) => (dC < 0 ? "Saturado" : "Opaco");
+        public static string GetDiagH_Expert(double dH, double tol) => (dH < 0 ? "Viraje (+)" : "Viraje (-)");
 
 
         /// Determina la dirección visual del viraje de tono para el sistema rectangular (da, db)
