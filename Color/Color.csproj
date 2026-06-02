@@ -167,10 +167,15 @@
     <Compile Include="Forms\CielabChartControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Forms\IluminantReportBlock.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Services\Historialservices.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\RecipeCorrector.cs" />
+    <Compile Include="Models\TextileMetadata.cs" />
+    <Compile Include="Services\TextileMetadataExtractor.cs" />
     <Compile Include="Tolerancias\FormConfigTolerancias.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -19,7 +19,9 @@ namespace Color
 
         // Extractor de receta e instancia de resultado
         private readonly ShadeReportExtractor _shadeExtractor = new ShadeReportExtractor(@".\tessdata");
+        private readonly TextileMetadataExtractor _textileExtractor = new TextileMetadataExtractor(@".\tessdata");
         private ShadeExtractionResult _lastShadeResult;
+        private Color.Models.TextileMetadata _lastTextileMetadata;
 
         public Form1()
         {
@@ -152,6 +154,11 @@ namespace Color
                 var validacion = _shadeExtractor.ExtractFromBitmap(tempBmp);
                 _lastShadeResult = validacion;
             }
+            else if (etiqueta == "PASS / FAIL")
+            {
+                // Extraer metadatos de la imagen principal de evaluación (donde esta la cabecera completa)
+                _lastTextileMetadata = _textileExtractor.ExtractFromBitmap(tempBmp);
+            }
 
             // CARGA EXITOSA
             if (target.Image != null) target.Image.Dispose();
@@ -249,6 +256,11 @@ namespace Color
 
                             using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta, _lastShadeResult))
                             {
+                                if (_lastTextileMetadata != null)
+                                {
+                                    frmRes.UpdateTextileMetadataPanel(_lastTextileMetadata);
+                                }
+
                                 if (frmRes.ShowDialog() == DialogResult.Retry)
                                 {
                                     volverAConfirmar = true; 
@@ -273,6 +285,7 @@ namespace Color
         {
             ClearPicture(picLeft); ClearPicture(picRight);
             _lastShadeResult = null;
+            _lastTextileMetadata = null;
             btnCargarLeft.Visible = btnCargarRight.Visible = true;
             if (lblLeftLoaded != null) lblLeftLoaded.Visible = false;
             if (lblRightLoaded != null) lblRightLoaded.Visible = false;
