@@ -622,7 +622,7 @@ namespace Colorimetria
                 CmcDifferenceRow r = cmc[i];
                 object cmcVal = r.DeltaCMC.HasValue ? (object)r.DeltaCMC.Value : null;
 
-                // ETAPA 1.2: Formato idéntico al reporte (Valor Etiqueta) sin paréntesis
+                // ETAPA : Formato idéntico al reporte (Valor Etiqueta) sin paréntesis
                 string tagL = !string.IsNullOrWhiteSpace(r.LightnessFlagOcr) ? r.LightnessFlagOcr : r.LightnessFlag;
                 string tagC = !string.IsNullOrWhiteSpace(r.ChromaFlagOcr) ? r.ChromaFlagOcr : r.ChromaFlag;
                 string tagH = !string.IsNullOrWhiteSpace(r.HueFlagOcr) ? r.HueFlagOcr : r.HueFlag;

@@ -73,9 +73,9 @@ namespace Color.Services
 
             try
             {
-                // ── 1. ROI: 100% ancho × 32% alto (cabecera completa) ──
+                // ── 1. ROI ampliado: 100% ancho × 50% alto (captura más filas de cabecera) ──
                 int roiW = original.Width;
-                int roiH = (int)(original.Height * 0.32);
+                int roiH = (int)(original.Height * 0.50);
                 var roiRect = Rectangle.Intersect(
                     new Rectangle(0, 0, roiW, roiH),
                     new Rectangle(0, 0, original.Width, original.Height));
@@ -84,10 +84,15 @@ namespace Color.Services
 
                 using (var roi = original.Clone(roiRect, original.PixelFormat))
                 {
-                    // ── 2. Escalado moderado ─────────────────────
-                    // Evitamos escalas extremas que causen alucinaciones en el OCR
-                    int nW = roi.Width  * 2;
-                    int nH = roi.Height * 2;
+                    // ── 2. Escalado adaptativo basado en nitidez medida ─────────────────────
+                    float sharpness = MeasureSharpness(roi);
+                    int scaleFactor;
+                    if      (sharpness < SHARPNESS_LOW_THRESHOLD)  scaleFactor = SCALE_FACTOR_MAX; // 4x baja calidad
+                    else if (sharpness < SHARPNESS_HIGH_THRESHOLD) scaleFactor = 3;                // 3x media calidad
+                    else                                            scaleFactor = SCALE_FACTOR_MIN; // 2x alta calidad
+
+                    int nW = roi.Width  * scaleFactor;
+                    int nH = roi.Height * scaleFactor;
 
                     using (var scaled = new Bitmap(nW, nH, PixelFormat.Format32bppArgb))
                     {
@@ -98,9 +103,36 @@ namespace Color.Services
                             g.DrawImage(roi, 0, 0, nW, nH);
                         }
 
-                        // ── 3. OCR (Delegando binarización adaptativa a Tesseract) ──
-                        string rawText = RunOcrAuto(scaled);
-                        ParseKeyValue(rawText, meta);
+                        // ── 3. PASE 1: OCR estándar con segmentación Auto ──────────────────
+                        string text1 = RunOcrWithMode(scaled, PageSegMode.Auto);
+                        ParseKeyValue(text1, meta);
+
+                        // ── 4. PASE 2: Binarización Otsu + SparseText si faltan campos ─────
+                        if (HasMissingFields(meta))
+                        {
+                            using (var binarized = BinarizeOtsu(scaled))
+                            {
+                                string text2 = RunOcrWithMode(binarized, PageSegMode.SparseText);
+                                ParseKeyValue(text2, meta);
+                            }
+                        }
+
+                        // ── 5. PASE 3: SingleBlock como último recurso ─────────────────────
+                        if (HasMissingFields(meta))
+                        {
+                            string text3 = RunOcrWithMode(scaled, PageSegMode.SingleBlock);
+                            ParseKeyValue(text3, meta);
+                        }
+
+                        // ── 6. PASE 4: Binarizado + SingleBlock (imágenes muy degradadas) ──
+                        if (HasMissingFields(meta))
+                        {
+                            using (var binarized = BinarizeOtsu(scaled))
+                            {
+                                string text4 = RunOcrWithMode(binarized, PageSegMode.SingleBlock);
+                                ParseKeyValue(text4, meta);
+                            }
+                        }
                     }
                 }
             }
@@ -109,11 +141,20 @@ namespace Color.Services
             return meta;
         }
 
+        private bool HasMissingFields(TextileMetadata meta)
+        {
+            return (string.IsNullOrEmpty(meta.ShadeName)   || meta.ShadeName   == "-") ||
+                   (string.IsNullOrEmpty(meta.DyeingClass) || meta.DyeingClass == "-") ||
+                   (string.IsNullOrEmpty(meta.Substrate)   || meta.Substrate   == "-") ||
+                   (string.IsNullOrEmpty(meta.CountPly)    || meta.CountPly    == "-") ||
+                   (string.IsNullOrEmpty(meta.FiberType)   || meta.FiberType   == "-");
+        }
+
         // =====================================================================
-        // OCR INTERNO
+        // OCR INTERNO — MULTI-MODO
         // =====================================================================
 
-        private string RunOcrAuto(Bitmap bmp)
+        private string RunOcrWithMode(Bitmap bmp, PageSegMode mode)
         {
             string tmpFile = Path.Combine(Path.GetTempPath(),
                 $"textile_hdr_{Guid.NewGuid():N}.png");
@@ -125,8 +166,7 @@ namespace Color.Services
                 {
                     using (var engine = new TesseractEngine(_tessDataPath, "eng", EngineMode.Default))
                     {
-                        // Auto: Usa segmentación inteligente respetando el orden de lectura y sin fusionar ruido
-                        engine.DefaultPageSegMode = PageSegMode.Auto;
+                        engine.DefaultPageSegMode = mode;
 
                         using (var pix  = Pix.LoadFromFile(tmpFile))
                         using (var page = engine.Process(pix))
@@ -143,6 +183,8 @@ namespace Color.Services
             }
         }
 
+
+
         // =====================================================================
         // PARSER DE CLAVE-VALOR
         // =====================================================================
@@ -157,8 +199,11 @@ namespace Color.Services
 
             string[] allAnchorsList = new string[] {
                 "shade name", "sombra", "dyeing class", "clase", "substrate", "sustrato",
-                "count/ply", "count / ply", "count", "ply", "fibre type", "fiber type", "fibra", 
-                "component", "std", "redye", "new thread flag", "batch", "recipe", "lot no", "lot"
+                "count/ply", "count / ply", "count", "ply", "fibre type", "fiber type", "fibra",
+                "component", "std type", "stdtype", "std", "redye flag", "redye",
+                "new thread flag", "new thread", "newthread",
+                "batch id", "batchid", "batch", "recipe type", "recipetype", "recipe",
+                "lot no", "lotno", "lot"
             };
 
             meta.ShadeName   = ExtractWithRegex(text, SHADE_KEYS, allAnchorsList, meta.ShadeName);
@@ -184,32 +229,38 @@ namespace Color.Services
             {
                 string val = match.Groups["val"].Value.Trim();
 
-                // Separar si en la misma linea vienen otras columnas lejanas (ej: "125x2       Fibre Type : G002061")
-                var parts = Regex.Split(val, @"\s{3,}|\t");
-                if (parts.Length > 0)
+                // Separar si en la misma linea vienen otras columnas (reducir umbral a 2+ espacios)
+                var parts = Regex.Split(val, @"\s{2,}|\t");
+                string firstPart = parts.Length > 0 ? parts[0].Trim() : val.Trim();
+
+                // Truncar usando StopWords contra el texto COMPLETO (para capturar 'stdtype' pegado)
+                string valFull = val.ToLowerInvariant();
+                string firstLower = firstPart.ToLowerInvariant();
+                int cutInFull = val.Length;
+
+                foreach (var sw in stopWords)
                 {
-                    string finalVal = parts[0].Trim();
+                    bool isOwnAnchor = false;
+                    foreach (var own in anchors) if (own == sw) { isOwnAnchor = true; break; }
+                    if (isOwnAnchor) continue;
 
-                    // Truncar preventivamente usando StopWords (Cualquier otro anchor del sistema que se coló)
-                    string valLower = finalVal.ToLowerInvariant();
-                    int cutIdx = finalVal.Length;
-                    foreach(var sw in stopWords)
-                    {
-                        // Evitar cortarse a si mismo si match hace parte de los propios anchors iterados
-                        bool isOwnAnchor = false;
-                        foreach(var own in anchors) if (own == sw) { isOwnAnchor = true; break; }
-                        if (isOwnAnchor) continue;
-
-                        // Solo cortar si la palabra exacta hace match (evitar que "ply" corte "polyester")
-                        var matchSw = Regex.Match(valLower, @"\b" + Regex.Escape(sw) + @"\b");
-                        if (matchSw.Success && matchSw.Index > 0 && matchSw.Index < cutIdx) 
-                            cutIdx = matchSw.Index;
-                    }
-
-                    finalVal = finalVal.Substring(0, cutIdx).Trim();
-                    finalVal = finalVal.TrimEnd(':', '-', ' ', '.', ',');
-                    if (!string.IsNullOrWhiteSpace(finalVal)) return finalVal;
+                    // Buscar en el valor completo (no solo en la primera parte) para detectar tokens pegados
+                    var matchSw = Regex.Match(valFull, @"(^|\s|\b)" + Regex.Escape(sw) + @"(\b|\s|:)");
+                    if (matchSw.Success && matchSw.Index > 0 && matchSw.Index < cutInFull)
+                        cutInFull = matchSw.Index;
                 }
+
+                // Aplicar corte al valor original preservando mayúsculas
+                string finalVal = val.Substring(0, cutInFull).Trim();
+
+                // Si el corte quedó en la primera columna, preferirla
+                if (firstPart.Length < finalVal.Length) finalVal = firstPart;
+
+                // Guardia máxima: evitar capturas multi-columna (máx 70 caracteres)
+                if (finalVal.Length > 70) finalVal = finalVal.Substring(0, 70);
+
+                finalVal = finalVal.TrimEnd(':', '-', ' ', '.', ',');
+                if (!string.IsNullOrWhiteSpace(finalVal)) return finalVal;
             }
             return "-";
         }

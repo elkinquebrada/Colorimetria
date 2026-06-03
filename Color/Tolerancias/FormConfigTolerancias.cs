@@ -103,7 +103,7 @@ namespace Color.Tolerancias
 
                 var lblBody = new Label
                 {
-                    Text = $"\nDL  {profile.DL:0.000}\nDC  {profile.DC:0.000}\nDH  {profile.DH:0.000}",
+                    Text = $"\nL  {profile.DL:0.000}\nC  {profile.DC:0.000}\nHue  {profile.DH:0.000}",
                     Dock = DockStyle.Fill,
                     TextAlign = ContentAlignment.TopCenter,
                     Font = new Font("Segoe UI", 10F),
@@ -146,7 +146,7 @@ namespace Color.Tolerancias
                         }
 
                         // 3. ACTUALIZACIÓN VISUAL: Mostramos los valores calculados con 3 decimales
-                        lblBody.Text = $"\nDL  {_manualProfile.DL:0.000}\nDC  {_manualProfile.DC:0.000}\nDH  {_manualProfile.DH:0.000}";
+                        lblBody.Text = $"\nL  {_manualProfile.DL:0.000}\nC  {_manualProfile.DC:0.000}\nHue  {_manualProfile.DH:0.000}";
                     };
 
                     pnlCard.Controls.Add(txtDE);
@@ -175,7 +175,7 @@ namespace Color.Tolerancias
             }
 
             _selectedPanel = pnl;
-            _selectedProfile = profile; // Vinculamos el perfil actual a la selección
+            _selectedProfile = profile; 
             _selectedPanel.BackColor = System.Drawing.Color.AliceBlue;
             _selectedPanel.BorderStyle = BorderStyle.Fixed3D;
         }
@@ -198,7 +198,7 @@ namespace Color.Tolerancias
             Properties.Settings.Default.Save();
 
             // Mensaje de confirmación con los valores reales enviados
-            MessageBox.Show($"Tolerancia Enviada:\nDE: {_selectedProfile.DE:0.00}\nDL: {_selectedProfile.DL:0.000}\nDC: {_selectedProfile.DC:0.000}\nDH: {_selectedProfile.DH:0.000}",
+            MessageBox.Show($"Tolerancia Enviada:\nDE: {_selectedProfile.DE:0.00}\nL: {_selectedProfile.DL:0.000}\nC: {_selectedProfile.DC:0.000}\nHue: {_selectedProfile.DH:0.000}",
                             "Confirmación de Envío", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             this.Close();
