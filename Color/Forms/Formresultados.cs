@@ -133,6 +133,11 @@ namespace Color
             pnlTopInfo.Controls.Add(pnlTolerances, 2, 0);
             pnlReportFlow.Controls.Add(pnlTopInfo);
 
+            pnlTopInfo.Controls.Add(dgvShadeHistory, 0, 0);
+            pnlTopInfo.Controls.Add(pnlGeneralInfo, 1, 0);
+            pnlTopInfo.Controls.Add(pnlTolerances, 2, 0);
+            pnlReportFlow.Controls.Add(pnlTopInfo);
+
             var pnlTitlesHeader = new Panel
             {
                 Width = 940,
@@ -186,23 +191,14 @@ namespace Color
             // Inyectamos la barra de títulos completa al flujo del reporte
             pnlReportFlow.Controls.Add(pnlTitlesHeader);
 
-            // BLOQUES – ancho dinámico idéntico al del panel de flujo
-            blockD65  = new IluminantReportBlock { Width = 940, Height = 115, Margin = new Padding(0, 0, 0, 10) };
-            blockTL84 = new IluminantReportBlock { Width = 940, Height = 115, Margin = new Padding(0, 0, 0, 10) };
-            blockCWF  = new IluminantReportBlock { Width = 940, Height = 115, Margin = new Padding(0, 0, 0, 10) };
-
+            // BLOQUES
+            blockD65 = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
+            blockTL84 = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
+            blockCWF = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
+            
             pnlReportFlow.Controls.Add(blockD65);
             pnlReportFlow.Controls.Add(blockTL84);
             pnlReportFlow.Controls.Add(blockCWF);
-
-            // Ajuste dinámico del ancho de los bloques cuando el form cambie de tamaño
-            this.Resize += (s, e) =>
-            {
-                int w = Math.Max(900, pnlWhitePaper.ClientSize.Width - 60);
-                blockD65.Width  = w;
-                blockTL84.Width = w;
-                blockCWF.Width  = w;
-            };
 
             // RECETA Y GRAFICO (Solo se inicializan; se agregarán dinámicamente en PopulateFromObjects)
             dgvCorrectiveRecipe = CreateCorrectiveGrid();
@@ -477,7 +473,8 @@ namespace Color
             if (!pnlReportFlow.Controls.Contains(dgvCorrectiveRecipe))
             {
                 var pnlNewRecipesHeader = new Panel { Width = 940, Height = 35, Margin = new Padding(0, 20, 0, 10) };
-                var lblNewRecipesTitle = new Label { Text = "New recipes", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, Location = new Point(0, 5), AutoSize = true };
+                var lblNewRecipesTitle = new Label { Text = "New recipes", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, 
+                    Location = new Point(0, 5), AutoSize = true };
                 var lineNewRecipes = new Label { BackColor = System.Drawing.Color.Black, Location = new Point(0, 28), Size = new Size(940, 2) };
 
                 pnlNewRecipesHeader.Controls.Add(lblNewRecipesTitle);
@@ -502,8 +499,8 @@ namespace Color
                     pnlCondiciones.Dock = DockStyle.Fill;
 
                     var pnlGraficoFlow = new Panel { Dock = DockStyle.Fill };
-                    var lblGrTitle = new Label { Text = "Gráfico", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.DarkGray, AutoSize = true, Location = new Point(0, 5) };
-                    var lineGr = new Label { BackColor = System.Drawing.Color.LightGray, Size = new Size(400, 2), Location = new Point(0, 28) };
+                    var lblGrTitle = new Label { Text = "Gráfico", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, AutoSize = true, Location = new Point(0, 5) };
+                    var lineGr = new Label { BackColor = System.Drawing.Color.Black, Size = new Size(400, 2), Location = new Point(0, 28) };
                     
                     _cielabChart.Location = new Point(0, 35);
                     _cielabChart.Width = 450;
@@ -525,8 +522,8 @@ namespace Color
         {
             var pnl = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, AutoScroll = true };
 
-            var lblTitle = new Label { Text = "Condiciones", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.DarkGray, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
-            var line = new Label { BackColor = System.Drawing.Color.LightGray, Size = new Size(380, 2), Margin = new Padding(0, 2, 0, 10) };
+            var lblTitle = new Label { Text = "Condiciones", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+            var line = new Label { BackColor = System.Drawing.Color.Black, Size = new Size(380, 2), Margin = new Padding(0, 2, 0, 10) };
             pnl.Controls.Add(lblTitle); pnl.Controls.Add(line);
 
             // Intento de cargar la imagen que el usuario suele arrastrar luego a la carpeta logicDocs
