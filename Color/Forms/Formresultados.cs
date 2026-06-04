@@ -83,10 +83,26 @@ namespace Color
             this.BackColor = System.Drawing.Color.FromArgb(230, 230, 230);
 
             pnlWhitePaper = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = System.Drawing.Color.FromArgb(230, 230, 230), Padding = new Padding(20) };
-            pnlReportFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = System.Drawing.Color.White, Padding = new Padding(30), Width = 1000 };
+            pnlReportFlow = new FlowLayoutPanel 
+            { 
+                FlowDirection = FlowDirection.TopDown, 
+                WrapContents = false, 
+                AutoSize = true, 
+                BackColor = System.Drawing.Color.White, 
+                Padding = new Padding(30), 
+                Dock = DockStyle.Top 
+            };
             pnlWhitePaper.Controls.Add(pnlReportFlow);
 
-            this.Resize += (s, e) => { pnlReportFlow.Width = Math.Max(900, pnlWhitePaper.ClientSize.Width - 40); };
+            // Cuando la ventana cambia de tamaño, el FlowPanel y los bloques se adaptan al nuevo ancho
+            this.Resize += (s, e) => 
+            { 
+                int nuevoAncho = Math.Max(900, pnlWhitePaper.ClientSize.Width - 40);
+                pnlReportFlow.Width = nuevoAncho;
+                if (blockD65  != null) { blockD65.Width  = nuevoAncho - 60; blockD65.Height  = 240; }
+                if (blockTL84 != null) { blockTL84.Width = nuevoAncho - 60; blockTL84.Height = 240; }
+                if (blockCWF  != null) { blockCWF.Width  = nuevoAncho - 60; blockCWF.Height  = 240; }
+            };
 
             // CABECERA
             var pnlHeader = new Panel { Width = 940, Height = 100, Margin = new Padding(0, 0, 0, 20) };
@@ -138,49 +154,69 @@ namespace Color
             pnlTopInfo.Controls.Add(pnlTolerances, 2, 0);
             pnlReportFlow.Controls.Add(pnlTopInfo);
 
-            var pnlTitlesHeader = new Panel
-            {
-                Width = 940,
-                Height = 35,
-                Margin = new Padding(0, 15, 0, 5)
-            };
+            // =================================================================
+            // --- DECLARACIÓN DE TÍTULOS ( - Cobertura Bloque 1 y 2) ---
+            // =================================================================
+            Panel pnlTitlesHeader = new Panel();
+            pnlTitlesHeader.Width = 940;
+            pnlTitlesHeader.Height = 35;
+
+            pnlTitlesHeader.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            Padding marginTitles = new Padding(0, 15, 0, 5);
+            pnlTitlesHeader.Margin = marginTitles;
 
             Font fontTitulos = new Font("Segoe UI", 10, FontStyle.Bold);
             System.Drawing.Color negroPuro = System.Drawing.Color.Black;
 
-            // 1. TÍTULO IZQUIERDO: L, a, b (lot - std)
-            var lblLabTitle = new Label
-            {
-                Text = "L, a, b (lot - std)",
-                Font = fontTitulos,
-                ForeColor = negroPuro,
-                Location = new Point(0, 5),
-                AutoSize = true
-            };
-            // Línea negra que cubre exactamente el ancho de las tablas izquierdas
-            var lineLab = new Label
-            {
-                BackColor = negroPuro,
-                Location = new Point(0, 28),
-                Size = new Size(505, 2)
-            };
+            // --- CÁLCULO DE POSICIÓN PARA EL ACOPLE DE BLOQUES --
+            int posXDerecha = (int)(pnlTitlesHeader.Width * 0.58);
 
-            // 2. TÍTULO DERECHO: L, C, H (Ajustado para que NO se pase al segundo bloque)
-            var lblLchTitle = new Label
-            {
-                Text = "L, C, H",
-                Font = fontTitulos,
-                ForeColor = negroPuro,
-                Location = new Point(530, 5), 
-                AutoSize = true
-            };
-            // Línea negra reducida para que se limite ÚNICAMENTE a su sección derecha
-            var lineLch = new Label
-            {
-                BackColor = negroPuro,
-                Location = new Point(530, 28),
-                Size = new Size(310, 2) 
-            };
+            // 1. TÍTULO IZQUIERDO: L, a, b (lot - std)
+            Label lblLabTitle = new Label();
+            lblLabTitle.Text = "L, a, b (lot - std)";
+            lblLabTitle.Font = fontTitulos;
+            lblLabTitle.ForeColor = negroPuro;
+            Point locLabTitle = new Point(0, 5);
+            lblLabTitle.Location = locLabTitle;
+            lblLabTitle.AutoSize = true;
+
+            // Línea negra izquierda
+            Label lineLab = new Label();
+            lineLab.BackColor = negroPuro;
+            Point locLineLab = new Point(0, 28);
+            lineLab.Location = locLineLab;
+            Size sizeLineLab = new Size(posXDerecha - 15, 2);
+            lineLab.Size = sizeLineLab;
+            lineLab.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            // 2. TÍTULO CENTRAL: 
+            Label lblLchTitle = new Label();
+            lblLchTitle.Text = "L, C, H "; 
+            lblLchTitle.Font = fontTitulos;
+            lblLchTitle.ForeColor = negroPuro;
+            Point locLchTitle = new Point(posXDerecha, 5);
+            lblLchTitle.Location = locLchTitle;
+            lblLchTitle.AutoSize = true;
+            lblLchTitle.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            // Línea negra derecha
+            Label lineLch = new Label();
+            lineLch.BackColor = negroPuro;
+            Point locLineLch = new Point(posXDerecha, 28);
+            lineLch.Location = locLineLch;
+            Size sizeLineLch = new Size(395, 2);
+            lineLch.Size = sizeLineLch;
+            lineLch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            // Agregamos todos los elementos al panel contenedor
+            pnlTitlesHeader.Controls.Add(lblLabTitle);
+            pnlTitlesHeader.Controls.Add(lineLab);
+            pnlTitlesHeader.Controls.Add(lblLchTitle);
+            pnlTitlesHeader.Controls.Add(lineLch);
+
+            pnlReportFlow.Controls.Add(pnlTitlesHeader);
+            pnlReportFlow.PerformLayout();
 
             // Agregamos todos los elementos al panel contenedor
             pnlTitlesHeader.Controls.Add(lblLabTitle);
@@ -191,16 +227,17 @@ namespace Color
             // Inyectamos la barra de títulos completa al flujo del reporte
             pnlReportFlow.Controls.Add(pnlTitlesHeader);
 
-            // BLOQUES
-            blockD65 = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
-            blockTL84 = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
-            blockCWF = new IluminantReportBlock { Width = 940, Margin = new Padding(0, 0, 0, 15) };
+            // BLOQUES - Ancho responsivo controlado por el evento Resize
+            int anchoInicial = Math.Max(900, this.ClientSize.Width - 80);
+            blockD65  = new IluminantReportBlock { Width = anchoInicial, Height = 240, Margin = new Padding(0, 0, 0, 10) };
+            blockTL84 = new IluminantReportBlock { Width = anchoInicial, Height = 240, Margin = new Padding(0, 0, 0, 10) };
+            blockCWF  = new IluminantReportBlock { Width = anchoInicial, Height = 240, Margin = new Padding(0, 0, 0, 10) };
             
             pnlReportFlow.Controls.Add(blockD65);
             pnlReportFlow.Controls.Add(blockTL84);
             pnlReportFlow.Controls.Add(blockCWF);
 
-            // RECETA Y GRAFICO (Solo se inicializan; se agregarán dinámicamente en PopulateFromObjects)
+            // RECETA Y GRAFICO 
             dgvCorrectiveRecipe = CreateCorrectiveGrid();
             _cielabChart = new CielabChartControl();
 
@@ -404,7 +441,7 @@ namespace Color
             }
             catch (Exception)
             {
-                // Silencioso: si no encuentra el logo o falla, el reporte carga igual sin interrumpir la operación
+               
             }
         }
 

@@ -9,11 +9,16 @@ namespace Color
     {
         private Label lblIlluminantName;
         private DataGridView dgvLab;
+        private DataGridView dgvDiagnostic;
         private DataGridView dgvActions;
         private DataGridView dgvChromaHue;
+        private DataGridView dgvDeviation;
 
         private Label lblCmcValue;
         private Label lblLightness, lblChroma, lblHue;
+        private Label lblCmcStatus;   
+        private Label lblMiLeft;      
+        private Label lblMiRight;     
 
         private double _deAprobado = 1.20;
         private double _dlAprobado = 1.0;
@@ -28,150 +33,419 @@ namespace Color
 
         private void InitializeComponent()
         {
-            // Ajustamos las dimensiones generales del bloque de reporte
-            this.Size = new Size(1000, 140);
+            // El alto (240px) y el ancho son controlados desde Formresultados.cs.
+            this.MinimumSize = new Size(900, 240);
             this.BackColor = System.Drawing.Color.White;
 
             var mainLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 4,
+                ColumnCount = 3,
                 RowCount = 1,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35)); // L,a,b y Acción
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20)); // C,H
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35)); // CMC Summary
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 65)); // Ancho fijo perfecto para el iluminante lateral
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40)); 
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20)); 
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
             // =================================================================
-            // --- Bloque 1: L,a,b y Acciones ---
+            // --- Bloque 1: Configuración del Contenedor Principal (.NET 4.8) ---
             // =================================================================
-            var pnlLeft = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, Margin = new Padding(2) };
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 65));
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 35));
+            TableLayoutPanel pnlLeft = new TableLayoutPanel();
+            pnlLeft.Dock = DockStyle.Fill;
+            pnlLeft.ColumnCount = 1;
+            pnlLeft.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            pnlLeft.RowCount = 3;
+            pnlLeft.Margin = new Padding(2);
 
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
+
+            // Color Celeste/Azul del colorímetro según la imagen
+            System.Drawing.Color azulColorimetro = System.Drawing.Color.FromArgb(0, 122, 204);
+
+            // =================================================================
+            // --- 1. Grid Superior: Datos CIELAB (dgvLab) ---
+            // =================================================================
             dgvLab = CreateBaseGrid(4);
             dgvLab.Columns[0].Width = 55;
 
-            // Fila 0: Cabecera Azul de Títulos
-            int headerLabIdx = dgvLab.Rows.Add("D65", "L", "a", "b");
-            dgvLab.Rows[headerLabIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
-            dgvLab.Rows[headerLabIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
-            dgvLab.Rows[headerLabIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
+            // Fila 0: Cabecera Principal (D65, L, a, b)
+            int r0 = dgvLab.Rows.Add("D65", "L", "a", "b");
+            dgvLab.Rows[r0].DefaultCellStyle.BackColor = azulColorimetro;
+            dgvLab.Rows[r0].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+            dgvLab.Rows[r0].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
 
-            // Filas de datos estructurales
-            dgvLab.Rows.Add("Std", "0.00", "0.00", "0.00"); // Fila 1
-            dgvLab.Rows.Add("Lot", "0.00", "0.00", "0.00"); // Fila 2
+            // Filas 1 y 2: Valores estándar y de lote
+            dgvLab.Rows.Add("Std", "47.19", "-7.26", "6.67");
+            dgvLab.Rows.Add("Lot", "47.94", "-6.83", "7.11");
 
-            int deltaLabIdx = dgvLab.Rows.Add("Δ", "0.00", "0.00", "0.00"); // Fila 3
-            dgvLab.Rows[deltaLabIdx].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
+            // Fila 3: Indicadores dL, da, db
+            int r3 = dgvLab.Rows.Add("", "dL", "da", "db");
+            dgvLab.Rows[r3].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
-            // Tabla de acciones inferior
-            dgvActions = CreateBaseGrid(3);
-            dgvActions.Rows.Add("Aumentar []", "Aumentar Verde", "Aumentar Azul");
-            dgvActions.Rows.Add("0%", "0%", "0%");
-            dgvActions.Rows[0].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
-            dgvActions.Rows[0].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
+            // =================================================================
+            // --- 2. Grid Central: Delta y Diagnóstico (dgvDiagnostic) ---
+            // =================================================================
+            dgvDiagnostic = CreateBaseGrid(4);
+            dgvDiagnostic.Columns[0].Width = 55;
+            dgvDiagnostic.ColumnHeadersVisible = false;
 
+            // Fila 0: Valores numéricos de Delta
+            int rd0 = dgvDiagnostic.Rows.Add("Δ", "0.75", "0.43", "0.44");
+            dgvDiagnostic.Rows[rd0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
+
+            // Fila 1: Texto de Diagnóstico (Claro, Rojo, Amarillo)
+            int rd1 = dgvDiagnostic.Rows.Add("Δ", "Claro (Thin)", "Rojo", "Amarillo");
+
+            // Celda Claro (Fondo Azul, Texto Blanco)
+            dgvDiagnostic.Rows[rd1].Cells[1].Style.Font = new Font(dgvDiagnostic.Font, FontStyle.Bold);
+            dgvDiagnostic.Rows[rd1].Cells[1].Style.ForeColor = System.Drawing.Color.White;
+            dgvDiagnostic.Rows[rd1].Cells[1].Style.BackColor = azulColorimetro;
+
+            // Celda Rojo (Texto Rojo)
+            dgvDiagnostic.Rows[rd1].Cells[2].Style.Font = new Font(dgvDiagnostic.Font, FontStyle.Bold);
+            dgvDiagnostic.Rows[rd1].Cells[2].Style.ForeColor = System.Drawing.Color.Red;
+
+            // Celda Amarillo (Texto Amarillo Oscuro/Gold para visibilidad)
+            dgvDiagnostic.Rows[rd1].Cells[3].Style.Font = new Font(dgvDiagnostic.Font, FontStyle.Bold);
+            dgvDiagnostic.Rows[rd1].Cells[3].Style.ForeColor = System.Drawing.Color.DarkGoldenrod;
+
+            dgvDiagnostic.CellPainting += new DataGridViewCellPaintingEventHandler(DgvDiagnostic_CellPainting);
+
+            // =================================================================
+            // --- 3. Grid Inferior: Acciones de Corrección (dgvActions) ---
+            // =================================================================
+            dgvActions = CreateBaseGrid(4);
+            dgvActions.Columns[0].Width = 55;
+            dgvActions.ColumnHeadersVisible = false;
+
+            int ra0 = dgvActions.Rows.Add("Acción", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
+            dgvActions.Rows[ra0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
+
+            // Fila 1: Porcentajes numéricos
+            int ra1 = dgvActions.Rows.Add("Acción", "2%", "6%", "7%");
+
+            dgvActions.CellPainting += new DataGridViewCellPaintingEventHandler(DgvActions_CellPainting);
+
+            // =================================================================
+            // --- Inyección de controles al Layout ---
+            // =================================================================
             pnlLeft.Controls.Add(dgvLab, 0, 0);
-            pnlLeft.Controls.Add(dgvActions, 0, 1);
+            pnlLeft.Controls.Add(dgvDiagnostic, 0, 1);
+            pnlLeft.Controls.Add(dgvActions, 0, 2);
 
             // =================================================================
-            // --- Bloque 2: Chroma/Hue ---
+            // --- Bloque 2: Configuración del Contenedor Principal ---
             // =================================================================
-            var pnlMiddle = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 1, Margin = new Padding(2) };
+            TableLayoutPanel pnlMiddle = new TableLayoutPanel();
+            pnlMiddle.Dock = DockStyle.Fill;
+            pnlMiddle.RowCount = 3; 
+            pnlMiddle.ColumnCount = 1;
+            pnlMiddle.Margin = new Padding(2);
+
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Percent, 50f)); 
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 35f));  
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Percent, 35f)); 
+
+            // -----------------------------------------------------------------
+            // 1. Componente Superior: dgvChromaHue
+            // -----------------------------------------------------------------
             dgvChromaHue = CreateBaseGrid(2);
 
             // Fila 0: Cabecera Azul
             int headerChromaIdx = dgvChromaHue.Rows.Add("Chroma", "Hue");
-            dgvChromaHue.Rows[headerChromaIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
-            dgvChromaHue.Rows[headerChromaIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
-            dgvChromaHue.Rows[headerChromaIdx].DefaultCellStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Bold);
+            DataGridViewCellStyle headerStyle = dgvChromaHue.Rows[headerChromaIdx].DefaultCellStyle;
+            headerStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204); 
+            headerStyle.ForeColor = System.Drawing.Color.Black;
+            headerStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Bold);
 
-            // Filas de datos
-            dgvChromaHue.Rows.Add("0.00", "0.00"); // Fila 1: Std
-            dgvChromaHue.Rows.Add("0.00", "0.00"); // Fila 2: Lot
+            // Filas de datos duros 
+            dgvChromaHue.Rows.Add("9.86", "137.43"); 
+            dgvChromaHue.Rows.Add("9.86", "133.85"); 
 
-            int deltaChromaIdx = dgvChromaHue.Rows.Add("0.00", "0.00"); // Fila 3: Delta
-            dgvChromaHue.Rows[deltaChromaIdx].DefaultCellStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Bold);
+            // Fila 3: Etiquetas estáticas "dC" y "dH"
+            int lblDeltaIdx = dgvChromaHue.Rows.Add("dC", "dH");
+            dgvChromaHue.Rows[lblDeltaIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
+
+            // Fila 4: Valores Delta (Resultado del cálculo)
+            int deltaChromaIdx = dgvChromaHue.Rows.Add("0.00", "-0.62");
+            DataGridViewCellStyle deltaStyle = dgvChromaHue.Rows[deltaChromaIdx].DefaultCellStyle;
+            deltaStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Regular);
+            deltaStyle.ForeColor = System.Drawing.Color.Black; 
 
             pnlMiddle.Controls.Add(dgvChromaHue, 0, 0);
 
+            // -----------------------------------------------------------------
+            // 2. Componente Central: Indicadores (Brighter / Yellower)
+            // -----------------------------------------------------------------
+            TableLayoutPanel pnlStatusMiddle = new TableLayoutPanel();
+            pnlStatusMiddle.Dock = DockStyle.Fill;
+            pnlStatusMiddle.ColumnCount = 2;
+            pnlStatusMiddle.RowCount = 1;
+            pnlStatusMiddle.Margin = new Padding(0, 5, 0, 5);
+            pnlStatusMiddle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            pnlStatusMiddle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+
+            Label lblBrighter = new Label();
+            lblBrighter.Text = "Brighter";
+            lblBrighter.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+            lblBrighter.ForeColor = System.Drawing.Color.White;
+            lblBrighter.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            lblBrighter.Dock = DockStyle.Fill;
+            lblBrighter.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
+
+            Label lblYellower = new Label();
+            lblYellower.Text = "Yellower (Redder)";
+            lblYellower.BackColor = System.Drawing.Color.White;
+            lblYellower.ForeColor = System.Drawing.Color.Black;
+            lblYellower.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            lblYellower.Dock = DockStyle.Fill;
+            lblYellower.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+
+            pnlStatusMiddle.Controls.Add(lblBrighter, 0, 0);
+            pnlStatusMiddle.Controls.Add(lblYellower, 1, 0);
+
+            pnlMiddle.Controls.Add(pnlStatusMiddle, 0, 1);
+
+            // -----------------------------------------------------------------
+            // 3. Componente Inferior: Desviación (Duller / Bluer)
+            // -----------------------------------------------------------------
+
+            dgvDeviation = CreateBaseGrid(2);
+            dgvDeviation.CellBorderStyle = DataGridViewCellBorderStyle.Single; 
+
+            // Fila 0: Etiquetas descriptivas con fuente tipográfica fija (Monoespaciada)
+            int descRowIdx = dgvDeviation.Rows.Add("Duller", "Bluer\n(Greener)");
+            dgvDeviation.Rows[descRowIdx].Height = 45; 
+            DataGridViewCellStyle descStyle = dgvDeviation.Rows[descRowIdx].DefaultCellStyle;
+            descStyle.Font = new Font("Courier New", 10f, FontStyle.Regular);
+            descStyle.ForeColor = System.Drawing.Color.Black;
+            descStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            descStyle.WrapMode = DataGridViewTriState.True; 
+
+            // Fila 1: Porcentajes de variación
+            int percentRowIdx = dgvDeviation.Rows.Add("0%", "6%");
+            DataGridViewCellStyle percentStyle = dgvDeviation.Rows[percentRowIdx].DefaultCellStyle;
+            percentStyle.Font = new Font("Courier New", 10f, FontStyle.Regular);
+            percentStyle.ForeColor = System.Drawing.Color.FromArgb(0, 122, 204);
+            percentStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            pnlMiddle.Controls.Add(dgvDeviation, 0, 2);
+
             // =================================================================
-            // --- Bloque 3 y 4 Unificados: CMC Summary e Iluminante ---
+            //  Bloque 3 y 4 Unificados: CMC Summary, Parámetros e Iluminante 
             // =================================================================
-            var pnlCmcCombo = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 6, RowCount = 5, Margin = new Padding(2) };
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 75));
 
-            // Ajustamos las alturas para que sean idénticas a los bloques 1 y 2
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // Header
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // Fila Vacía (Std)
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // Fila Vacía (Lot)
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // Fila Delta (Data)
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Espacio restante
+            var pnlCmcCombo = new TableLayoutPanel 
+            { 
+                Dock = DockStyle.Fill, 
+                ColumnCount = 6, 
+                RowCount = 7, 
+                Margin = new Padding(2),
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+            };
 
-            var lblTitleLightness = CreateHeaderLabel("lightnees");
-            var lblTitleChroma = CreateHeaderLabel("Chroma");
-            var lblTitleHue = CreateHeaderLabel("Hue");
-            var lblTitleCmcCompleto = CreateHeaderLabel("cmc (2:1)");
+            // Distribución exacta de columnas en C# 7.3 (Usando floats explícitos válidos)
+            for (int i = 0; i < 5; i++)
+            {
+                pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.0f));
+            }
+            pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 75.0f)); 
 
-            var pnlTopSpacer = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.White };
+            // Definición de alturas de filas
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 24.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 34.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 24.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 28.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 50.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 22.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Percent, 100.0f));
+
+            // --- FILA 0: Headers Principales ---
+            var lblTitleLightness = CreateHeaderLabel("Lightness");
+            var lblTitleChroma    = CreateHeaderLabel("Chroma");
+            var lblTitleHue       = CreateHeaderLabel("Hue");
+            var lblTitleCmc       = CreateHeaderLabel("CMC (2:1)");
 
             pnlCmcCombo.Controls.Add(lblTitleLightness, 0, 0);
-            pnlCmcCombo.Controls.Add(lblTitleChroma, 1, 0);
-            pnlCmcCombo.Controls.Add(lblTitleHue, 2, 0);
-            pnlCmcCombo.Controls.Add(lblTitleCmcCompleto, 3, 0);
+            pnlCmcCombo.Controls.Add(lblTitleChroma,    1, 0);
+            pnlCmcCombo.Controls.Add(lblTitleHue,       2, 0);
+            pnlCmcCombo.Controls.Add(lblTitleCmc,       3, 0);
+            pnlCmcCombo.SetColumnSpan(lblTitleCmc, 2); 
 
-            pnlCmcCombo.SetColumnSpan(lblTitleCmcCompleto, 2);
+            // --- FILA 1: Valores Principales (Estilo Verde/Azul de la imagen) ---
+            System.Drawing.Color bgGreen = System.Drawing.Color.Black; 
+            lblLightness = CreateValueLabelCustom("0.36", bgGreen, System.Drawing.Color.Green, 11.0f);
+            lblChroma    = CreateValueLabelCustom("0.00", bgGreen, System.Drawing.Color.Green, 11.0f);
+            lblHue       = CreateValueLabelCustom("-0.66", bgGreen, System.Drawing.Color.Green, 11.0f);
 
-            // Celdas vacías para conservar la estética de parrilla
-            for (int r = 2; r <= 3; r++)
-            {
-                for (int c = 0; c < 5; c++)
-                {
-                    pnlCmcCombo.Controls.Add(CreateValueLabel("", true), c, r);
-                }
-            }
-
-            lblLightness = CreateValueLabel("0.00", true);
-            lblChroma = CreateValueLabel("0.00", true);
-            lblHue = CreateValueLabel("0.00", true);
-            lblCmcValue = CreateValueLabel("0.00", true);
-            var lblNuevaValue = CreateValueLabel("0.00", true);
+            // El valor de CMC en la imagen es azul y centrado
+            lblCmcValue  = CreateValueLabelCustom("0.75", System.Drawing.Color.White, System.Drawing.Color.Black, 12.0f);
 
             pnlCmcCombo.Controls.Add(lblLightness, 0, 1);
-            pnlCmcCombo.Controls.Add(lblChroma, 1, 1);
-            pnlCmcCombo.Controls.Add(lblHue, 2, 1);
-            pnlCmcCombo.Controls.Add(lblCmcValue, 3, 1);
+            pnlCmcCombo.Controls.Add(lblChroma,    1, 1);
+            pnlCmcCombo.Controls.Add(lblHue,       2, 1);
+            pnlCmcCombo.Controls.Add(lblCmcValue,  3, 1);
             pnlCmcCombo.SetColumnSpan(lblCmcValue, 2);
 
+            // --- FILA 0 y 1 (Bloque Lateral): Iluminante D65 ---
             lblIlluminantName = new Label
             {
                 Text = "D65",
-                BackColor = System.Drawing.Color.FromArgb(0, 122, 204),
+                BackColor = System.Drawing.Color.FromArgb(0, 122, 204), 
                 ForeColor = System.Drawing.Color.White,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 12, FontStyle.Bold)
+                Font = new Font("Segoe UI", 11.0f, FontStyle.Bold),
+                Margin = new Padding(2, 0, 2, 2)
             };
+            pnlCmcCombo.Controls.Add(lblIlluminantName, 5, 0);
+            pnlCmcCombo.SetRowSpan(lblIlluminantName, 2); 
 
-            pnlCmcCombo.Controls.Add(lblIlluminantName, 5, 1);
-            pnlCmcCombo.SetRowSpan(lblIlluminantName, 1); // Ocupará la altura de Std + Lot + Delta
+            // --- FILA 2: Sub-Headers (SL, SC, h, SH, T, F) ---
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("SL"), 0, 2);
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("SC"), 1, 2);
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("h"),  2, 2);
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("SH"), 3, 2);
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("T"),  4, 2);
+            pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("F"),  5, 2);
+
+            // --- FILA 3: Sub-Valores Numéricos ---
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("1.055"),  0, 3);
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("1.195"),  1, 3);
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("137.43"), 2, 3);
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.930"),  3, 3);
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.757"),  4, 3);
+            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.912"),  5, 3);
+
+            // --- FILA 4: Estado Global OK / FAIL ---
+            lblCmcStatus = new Label
+            {
+                Text = "ok",
+                Font = new Font("Segoe UI", 16.0f, FontStyle.Bold),
+                BackColor = System.Drawing.Color.White,
+                ForeColor = System.Drawing.Color.Black,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(2)
+            };
+            pnlCmcCombo.Controls.Add(lblCmcStatus, 0, 4);
+            pnlCmcCombo.SetColumnSpan(lblCmcStatus, 6); 
+
+            // --- FILA 5: Header Índice de Metamerismo ---
+            var lblMiHeader = new Label
+            {
+                Text = "Índice de metamerismo (MI)",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+                BackColor = System.Drawing.Color.White,
+                ForeColor = System.Drawing.Color.Black,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(1, 0, 1, 0)
+            };
+            pnlCmcCombo.Controls.Add(lblMiHeader, 0, 5);
+            pnlCmcCombo.SetColumnSpan(lblMiHeader, 6);
+
+            // --- FILA 6: Valores Numéricos MI ---
+            lblMiLeft = CreateSubValueLabel("0.80");
+            lblMiLeft.Font = new Font("Segoe UI", 11.0f, FontStyle.Bold);
+
+            lblMiRight = CreateSubValueLabel("1.20");
+            lblMiRight.Font = new Font("Segoe UI", 11.0f, FontStyle.Bold);
+
+            pnlCmcCombo.Controls.Add(lblMiLeft,  0, 6);
+            pnlCmcCombo.SetColumnSpan(lblMiLeft,  3); 
+            pnlCmcCombo.Controls.Add(lblMiRight, 3, 6);
+            pnlCmcCombo.SetColumnSpan(lblMiRight, 3); 
 
             // --- Ensamblado General ---
             mainLayout.Controls.Add(pnlLeft, 0, 0);
             mainLayout.Controls.Add(pnlMiddle, 1, 0);
             mainLayout.Controls.Add(pnlCmcCombo, 2, 0);
-            mainLayout.SetColumnSpan(pnlCmcCombo, 2); // Ocupa la columna del CMC y la del Iluminante
 
             this.Controls.Add(mainLayout);
+        }
+
+        private void DgvDiagnostic_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.ColumnIndex == 0 && (e.RowIndex == 0 || e.RowIndex == 1))
+            {
+                DataGridView dgv = (DataGridView)sender;
+                System.Drawing.Color azulColorimetro = System.Drawing.Color.FromArgb(0, 122, 204);
+
+                e.AdvancedBorderStyle.Bottom = DataGridViewAdvancedCellBorderStyle.None;
+
+                if (e.RowIndex == 0)
+                {
+                    Rectangle rectFila1 = dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
+
+                    //rectángulo fusionado de la primera celda
+                    Rectangle rectFusionado = e.CellBounds;
+                    rectFusionado.Height += rectFila1.Height;
+
+                    using (SolidBrush brush = new SolidBrush(azulColorimetro))
+                    {
+                        e.Graphics.FillRectangle(brush, rectFusionado);
+                    }
+
+                    // "Δ" centrado en ese nuevo espacio izquierdo
+                    Font fontDelta = new Font("Segoe UI", 12.0f, FontStyle.Bold);
+                    TextFormatFlags flagsCentrado = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
+                    TextRenderer.DrawText(e.Graphics, "Δ", fontDelta, rectFusionado, System.Drawing.Color.White, flagsCentrado);
+                }
+
+                using (Pen penBorde = new Pen(dgv.GridColor))
+                {
+                    e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Top, e.CellBounds.Left, e.CellBounds.Bottom);
+                    if (e.RowIndex == 1)
+                    {
+                        e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                    }
+                }
+
+                e.Handled = true;
+            }
+        }
+
+        private void DgvActions_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.ColumnIndex == 0 && (e.RowIndex == 0 || e.RowIndex == 1))
+            {
+                DataGridView dgv = (DataGridView)sender;
+                System.Drawing.Color azulColorimetro = System.Drawing.Color.FromArgb(0, 122, 204);
+
+                e.AdvancedBorderStyle.Bottom = DataGridViewAdvancedCellBorderStyle.None;
+
+                if (e.RowIndex == 0)
+                {
+                    Rectangle rectFila1 = dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
+                    Rectangle rectFusionado = e.CellBounds;
+                    rectFusionado.Height += rectFila1.Height;
+
+                    using (SolidBrush brush = new SolidBrush(azulColorimetro))
+                    {
+                        e.Graphics.FillRectangle(brush, rectFusionado);
+                    }
+
+                    Font fontAccion = new Font("Segoe UI", 9.0f, FontStyle.Bold);
+                    TextFormatFlags flagsCentrado = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
+                    TextRenderer.DrawText(e.Graphics, "Acción", fontAccion, rectFusionado, System.Drawing.Color.White, flagsCentrado);
+                }
+
+                using (Pen penBorde = new Pen(dgv.GridColor))
+                {
+                    e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Top, e.CellBounds.Left, e.CellBounds.Bottom);
+                    if (e.RowIndex == 1)
+                    {
+                        e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                    }
+                }
+
+                e.Handled = true;
+            }
         }
 
         private DataGridView CreateBaseGrid(int cols)
@@ -213,12 +487,56 @@ namespace Color
             return new Label
             {
                 Text = text,
+                BackColor = System.Drawing.Color.FromArgb(0, 122, 204), 
+                ForeColor = System.Drawing.Color.White,
+                Font = new Font("Segoe UI", 10.0f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(1)
+            };
+        }
+
+        private Label CreateValueLabelCustom(string text, System.Drawing.Color backColor, System.Drawing.Color foreColor, float fontSize)
+        {
+            return new Label
+            {
+                Text = text,
+                BackColor = backColor,
+                ForeColor = foreColor,
+                Font = new Font("Segoe UI", fontSize, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(1)
+            };
+        }
+
+        private Label CreateSubHeaderLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                BackColor = System.Drawing.Color.White,
+                ForeColor = System.Drawing.Color.DimGray,
+                Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BorderStyle = BorderStyle.FixedSingle, 
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 1, 1) 
+            };
+        }
+
+        private Label CreateSubValueLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                BackColor = System.Drawing.Color.White,
+                ForeColor = System.Drawing.Color.FromArgb(0, 102, 204), 
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
                 BorderStyle = BorderStyle.FixedSingle,
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                BackColor = System.Drawing.Color.FromArgb(0, 122, 204),
-                ForeColor = System.Drawing.Color.White
+                Margin = new Padding(0, 0, 1, 1)
             };
         }
 
@@ -262,34 +580,47 @@ namespace Color
             dgvLab.Rows[2].Cells[2].Value = res.LotA.ToString("F2");
             dgvLab.Rows[2].Cells[3].Value = res.LotB.ToString("F2");
 
-            dgvLab.Rows[3].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaL);
-            dgvLab.Rows[3].Cells[2].Value = ColorimetricCalculator.FormatDelta(res.DeltaA);
-            dgvLab.Rows[3].Cells[3].Value = ColorimetricCalculator.FormatDelta(res.DeltaB);
+            // Los deltas van en dgvDiagnostic, Fila 0, columnas 1, 2, 3
+            dgvDiagnostic.Rows[0].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaL);
+            dgvDiagnostic.Rows[0].Cells[2].Value = ColorimetricCalculator.FormatDelta(res.DeltaA);
+            dgvDiagnostic.Rows[0].Cells[3].Value = ColorimetricCalculator.FormatDelta(res.DeltaB);
 
-            // Update Chroma/Hue (Fila 0 es cabecera, los datos reales van en 1, 2, 3)
+            // Update Chroma/Hue (Fila 0 es cabecera, los datos reales van en 1, 2, 4)
             dgvChromaHue.Rows[1].Cells[0].Value = res.StdC.ToString("F2");
             dgvChromaHue.Rows[1].Cells[1].Value = res.StdH.ToString("F2");
             dgvChromaHue.Rows[2].Cells[0].Value = res.LotC.ToString("F2");
             dgvChromaHue.Rows[2].Cells[1].Value = res.LotH.ToString("F2");
-            dgvChromaHue.Rows[3].Cells[0].Value = ColorimetricCalculator.FormatDelta(res.DeltaChroma);
-            dgvChromaHue.Rows[3].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaHue);
+
+            // Nota: Fila 3 contiene "dC" y "dH"
+            dgvChromaHue.Rows[4].Cells[0].Value = ColorimetricCalculator.FormatDelta(res.DeltaChroma);
+            dgvChromaHue.Rows[4].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaHue);
 
             // Update CMC Values
             lblLightness.Text = res.CmcLightness.ToString("F2");
-            lblChroma.Text = res.CmcChroma.ToString("F2");
-            lblHue.Text = res.CmcHue.ToString("F2");
-            lblCmcValue.Text = res.CmcValue.ToString("F2");
+            lblChroma.Text    = res.CmcChroma.ToString("F2");
+            lblHue.Text       = res.CmcHue.ToString("F2");
+            lblCmcValue.Text  = res.CmcValue.ToString("F2");
+
+            // --- Estado Global OK / FAIL (Fila 4) ---
+            bool aprobado = res.CmcValue <= _deAprobado;
+            lblCmcStatus.Text      = aprobado ? "ok" : "FAIL";
+            lblCmcStatus.ForeColor = aprobado
+                ? System.Drawing.Color.FromArgb(0, 153, 0)
+                : System.Drawing.Color.FromArgb(180, 0, 0);
+            lblCmcStatus.BackColor = aprobado
+                ? System.Drawing.Color.FromArgb(230, 255, 230)
+                : System.Drawing.Color.FromArgb(255, 220, 220);
 
             // Estado Semafórico del CMC Tolerancia
             if (res.CmcValue > _deAprobado)
             {
                 lblCmcValue.BackColor = System.Drawing.ColorTranslator.FromHtml("#FFD6D6");
-                lblCmcValue.ForeColor = System.Drawing.Color.FromArgb(153, 0, 0); // Texto rojo oscuro para legibilidad
+                lblCmcValue.ForeColor = System.Drawing.Color.FromArgb(153, 0, 0); 
             }
             else
             {
                 lblCmcValue.BackColor = System.Drawing.ColorTranslator.FromHtml("#D6F5D6");
-                lblCmcValue.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0); // Texto verde oscuro
+                lblCmcValue.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0); 
             }
 
             // Estado semafórico de Lightness (DL)
@@ -329,9 +660,9 @@ namespace Color
             }
 
             // Update Actions (Tabla Inferior)
-            dgvActions.Rows[1].Cells[0].Value = Math.Round(res.PercentL, 0) + "%";
-            dgvActions.Rows[1].Cells[1].Value = Math.Round(res.PercentA, 0) + "%";
-            dgvActions.Rows[1].Cells[2].Value = Math.Round(res.PercentB, 0) + "%";
+            dgvActions.Rows[1].Cells[1].Value = Math.Round(res.PercentL, 0) + "%";
+            dgvActions.Rows[1].Cells[2].Value = Math.Round(res.PercentA, 0) + "%";
+            dgvActions.Rows[1].Cells[3].Value = Math.Round(res.PercentB, 0) + "%";
 
             // ¡Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
             lblIlluminantName.Refresh();
