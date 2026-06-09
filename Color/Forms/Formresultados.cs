@@ -1,7 +1,7 @@
 using System.IO;
 using Color.Services;
 using Color.Models;
-using OCR;
+using Color.Models;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -489,13 +489,16 @@ namespace Color
 
             if (results != null && results.Count > 0)
             {
-                var d65 = results.FirstOrDefault(r => r.Illuminant.Contains("D65")) ?? results[0];
+                var d65  = results.FirstOrDefault(r => r.Illuminant.Contains("D65"))  ?? results[0];
                 var tl84 = results.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
-                var cwf = results.FirstOrDefault(r => r.Illuminant.Contains("CWF")) ?? results.FirstOrDefault(r => r.Illuminant.Contains("A"));
+                var cwf  = results.FirstOrDefault(r => r.Illuminant.Contains("CWF"))  ?? results.FirstOrDefault(r => r.Illuminant.Contains("A"));
 
+                // FASE 2 del pliego: inyección limpia con refresco explícito de interfaz
                 blockD65.UpdateData(d65);
-                if (tl84 != null) blockTL84.UpdateData(tl84);
-                if (cwf != null) blockCWF.UpdateData(cwf);
+                blockD65.Invalidate();
+
+                if (tl84 != null) { blockTL84.UpdateData(tl84); blockTL84.Invalidate(); }
+                if (cwf  != null) { blockCWF.UpdateData(cwf);   blockCWF.Invalidate();  }
 
                 UpdateChart(d65); _lastMainResult = d65;
 

@@ -19,7 +19,7 @@ namespace OCR
         public static bool WriteAll(
             string excelPath,
             List<ColorimetricRow> ocrRows,
-            List<CmcResult> cmcResults,
+            List<ColorCorrectionResult> cmcResults,
             List<CorrectiveRecipeResult> recipeResults)
         {
             if (string.IsNullOrWhiteSpace(excelPath) || !File.Exists(excelPath))
@@ -112,15 +112,11 @@ namespace OCR
                 if (std != null)
                 {
                     SetNumericCell(ws, baseRow, 4, std.L);     
-                    SetNumericCell(ws, baseRow, 5, std.A);     
-                    SetNumericCell(ws, baseRow, 6, std.B);     
                 }
 
                 if (lot != null)
                 {
                     SetNumericCell(ws, baseRow + 1, 4, lot.L); 
-                    SetNumericCell(ws, baseRow + 1, 5, lot.A); 
-                    SetNumericCell(ws, baseRow + 1, 6, lot.B); 
                 }
 
                 baseRow += 2; 
@@ -136,7 +132,7 @@ namespace OCR
 
         private static bool WriteHoja2_CalculoReceta(
             IXLWorkbook wb,
-            List<CmcResult> cmcResults,
+            List<ColorCorrectionResult> cmcResults,
             List<CorrectiveRecipeResult> recipeResults,
             List<ColorimetricRow> ocrRows)
         {
@@ -170,9 +166,9 @@ namespace OCR
 
                     if (cmc == null) continue;
 
-                    SetNumericCell(ws, row, 3, cmc.Lightness);  
-                    SetNumericCell(ws, row, 4, cmc.Chroma);     
-                    SetNumericCell(ws, row, 5, cmc.Hue);        
+                    SetNumericCell(ws, row, 3, cmc.CmcLightness);  
+                    SetNumericCell(ws, row, 4, cmc.CmcChroma);     
+                    SetNumericCell(ws, row, 5, cmc.CmcHue);        
                     SetNumericCell(ws, row, 6, cmc.CmcValue);   
 
                     // HUE Std / Lot (cols I y J en filas 5, 7, 9)

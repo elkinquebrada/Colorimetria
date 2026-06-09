@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 using Color.Services;
 
@@ -19,6 +20,8 @@ namespace Color
         private Label lblCmcStatus;   
         private Label lblMiLeft;      
         private Label lblMiRight;     
+
+        private Label lblSL, lblSC, lblH_Angle, lblSH, lblT, lblF;
 
         private double _deAprobado = 1.20;
         private double _dlAprobado = 1.0;
@@ -159,7 +162,7 @@ namespace Color
             int headerChromaIdx = dgvChromaHue.Rows.Add("Chroma", "Hue");
             DataGridViewCellStyle headerStyle = dgvChromaHue.Rows[headerChromaIdx].DefaultCellStyle;
             headerStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204); 
-            headerStyle.ForeColor = System.Drawing.Color.Black;
+            headerStyle.ForeColor = System.Drawing.Color.White;
             headerStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Bold);
 
             // Filas de datos duros 
@@ -230,7 +233,7 @@ namespace Color
             int percentRowIdx = dgvDeviation.Rows.Add("0%", "6%");
             DataGridViewCellStyle percentStyle = dgvDeviation.Rows[percentRowIdx].DefaultCellStyle;
             percentStyle.Font = new Font("Courier New", 10f, FontStyle.Regular);
-            percentStyle.ForeColor = System.Drawing.Color.FromArgb(0, 122, 204);
+            percentStyle.ForeColor = System.Drawing.Color.Black;
             percentStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             pnlMiddle.Controls.Add(dgvDeviation, 0, 2);
@@ -314,12 +317,19 @@ namespace Color
             pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("F"),  5, 2);
 
             // --- FILA 3: Sub-Valores Numéricos ---
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("1.055"),  0, 3);
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("1.195"),  1, 3);
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("137.43"), 2, 3);
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.930"),  3, 3);
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.757"),  4, 3);
-            pnlCmcCombo.Controls.Add(CreateSubValueLabel("0.912"),  5, 3);
+            lblSL      = CreateSubValueLabel("1.055");
+            lblSC      = CreateSubValueLabel("1.195");
+            lblH_Angle = CreateSubValueLabel("137.43");
+            lblSH      = CreateSubValueLabel("0.930");
+            lblT       = CreateSubValueLabel("0.757");
+            lblF       = CreateSubValueLabel("0.912");
+
+            pnlCmcCombo.Controls.Add(lblSL,      0, 3);
+            pnlCmcCombo.Controls.Add(lblSC,      1, 3);
+            pnlCmcCombo.Controls.Add(lblH_Angle, 2, 3);
+            pnlCmcCombo.Controls.Add(lblSH,      3, 3);
+            pnlCmcCombo.Controls.Add(lblT,       4, 3);
+            pnlCmcCombo.Controls.Add(lblF,       5, 3);
 
             // --- FILA 4: Estado Global OK / FAIL ---
             lblCmcStatus = new Label
@@ -531,7 +541,7 @@ namespace Color
             {
                 Text = text,
                 BackColor = System.Drawing.Color.White,
-                ForeColor = System.Drawing.Color.FromArgb(0, 102, 204), 
+                ForeColor = System.Drawing.Color.Black, 
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -572,13 +582,13 @@ namespace Color
             }
 
             // Update L,a,b (Fila 0 es cabecera, los datos reales van en 1, 2, 3)
-            dgvLab.Rows[1].Cells[1].Value = res.StdL.ToString("F2");
-            dgvLab.Rows[1].Cells[2].Value = res.StdA.ToString("F2");
-            dgvLab.Rows[1].Cells[3].Value = res.StdB.ToString("F2");
+            dgvLab.Rows[1].Cells[1].Value = res.StdL.ToString("F2", CultureInfo.InvariantCulture);
+            dgvLab.Rows[1].Cells[2].Value = res.StdA.ToString("F2", CultureInfo.InvariantCulture);
+            dgvLab.Rows[1].Cells[3].Value = res.StdB.ToString("F2", CultureInfo.InvariantCulture);
 
-            dgvLab.Rows[2].Cells[1].Value = res.LotL.ToString("F2");
-            dgvLab.Rows[2].Cells[2].Value = res.LotA.ToString("F2");
-            dgvLab.Rows[2].Cells[3].Value = res.LotB.ToString("F2");
+            dgvLab.Rows[2].Cells[1].Value = res.LotL.ToString("F2", CultureInfo.InvariantCulture);
+            dgvLab.Rows[2].Cells[2].Value = res.LotA.ToString("F2", CultureInfo.InvariantCulture);
+            dgvLab.Rows[2].Cells[3].Value = res.LotB.ToString("F2", CultureInfo.InvariantCulture);
 
             // Los deltas van en dgvDiagnostic, Fila 0, columnas 1, 2, 3
             dgvDiagnostic.Rows[0].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaL);
@@ -586,24 +596,32 @@ namespace Color
             dgvDiagnostic.Rows[0].Cells[3].Value = ColorimetricCalculator.FormatDelta(res.DeltaB);
 
             // Update Chroma/Hue (Fila 0 es cabecera, los datos reales van en 1, 2, 4)
-            dgvChromaHue.Rows[1].Cells[0].Value = res.StdC.ToString("F2");
-            dgvChromaHue.Rows[1].Cells[1].Value = res.StdH.ToString("F2");
-            dgvChromaHue.Rows[2].Cells[0].Value = res.LotC.ToString("F2");
-            dgvChromaHue.Rows[2].Cells[1].Value = res.LotH.ToString("F2");
+            dgvChromaHue.Rows[1].Cells[0].Value = res.StdC.ToString("F2", CultureInfo.InvariantCulture);
+            dgvChromaHue.Rows[1].Cells[1].Value = res.StdH.ToString("F2", CultureInfo.InvariantCulture);
+            dgvChromaHue.Rows[2].Cells[0].Value = res.LotC.ToString("F2", CultureInfo.InvariantCulture);
+            dgvChromaHue.Rows[2].Cells[1].Value = res.LotH.ToString("F2", CultureInfo.InvariantCulture);
 
             // Nota: Fila 3 contiene "dC" y "dH"
             dgvChromaHue.Rows[4].Cells[0].Value = ColorimetricCalculator.FormatDelta(res.DeltaChroma);
             dgvChromaHue.Rows[4].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaHue);
 
             // Update CMC Values
-            lblLightness.Text = res.CmcLightness.ToString("F2");
-            lblChroma.Text    = res.CmcChroma.ToString("F2");
-            lblHue.Text       = res.CmcHue.ToString("F2");
-            lblCmcValue.Text  = res.CmcValue.ToString("F2");
+            lblLightness.Text = res.CmcLightness.ToString("F2", CultureInfo.InvariantCulture);
+            lblChroma.Text    = res.CmcChroma.ToString("F2", CultureInfo.InvariantCulture);
+            lblHue.Text       = res.CmcHue.ToString("F2", CultureInfo.InvariantCulture);
+            lblCmcValue.Text  = res.CmcValue.ToString("F2", CultureInfo.InvariantCulture);
+
+            // CMC Params
+            if (lblSL != null) lblSL.Text = res.SL.ToString("0.000", CultureInfo.InvariantCulture);
+            if (lblSC != null) lblSC.Text = res.SC.ToString("0.000", CultureInfo.InvariantCulture);
+            if (lblH_Angle != null) lblH_Angle.Text = res.h_angle.ToString("0.00", CultureInfo.InvariantCulture);
+            if (lblSH != null) lblSH.Text = res.SH.ToString("0.000", CultureInfo.InvariantCulture);
+            if (lblT != null) lblT.Text = res.T_factor.ToString("0.000", CultureInfo.InvariantCulture);
+            if (lblF != null) lblF.Text = res.F_factor.ToString("0.000", CultureInfo.InvariantCulture);
 
             // --- Estado Global OK / FAIL (Fila 4) ---
-            bool aprobado = res.CmcValue <= _deAprobado;
-            lblCmcStatus.Text      = aprobado ? "ok" : "FAIL";
+            bool aprobado = res.Pass; 
+            lblCmcStatus.Text      = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "ok" : "FAIL");
             lblCmcStatus.ForeColor = aprobado
                 ? System.Drawing.Color.FromArgb(0, 153, 0)
                 : System.Drawing.Color.FromArgb(180, 0, 0);
@@ -659,10 +677,10 @@ namespace Color
                 lblHue.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0);
             }
 
-            // Update Actions (Tabla Inferior)
-            dgvActions.Rows[1].Cells[1].Value = Math.Round(res.PercentL, 0) + "%";
-            dgvActions.Rows[1].Cells[2].Value = Math.Round(res.PercentA, 0) + "%";
-            dgvActions.Rows[1].Cells[3].Value = Math.Round(res.PercentB, 0) + "%";
+            // Update Actions (Tabla Inferior) - Usar Valor Absoluto por solicitud del cliente
+            dgvActions.Rows[1].Cells[1].Value = Math.Abs(Math.Round(res.PercentL, 0)) + "%";
+            dgvActions.Rows[1].Cells[2].Value = Math.Abs(Math.Round(res.PercentA, 0)) + "%";
+            dgvActions.Rows[1].Cells[3].Value = Math.Abs(Math.Round(res.PercentB, 0)) + "%";
 
             // ¡Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
             lblIlluminantName.Refresh();
