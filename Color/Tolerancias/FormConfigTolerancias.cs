@@ -190,7 +190,6 @@ namespace Color.Tolerancias
             }
 
             // ENVÍO DE DATOS AL PROGRAMA:
-            // Tomamos los valores exactos del objeto seleccionado (sea estático o el manual modificado)
             Properties.Settings.Default.ToleranciaDE = _selectedProfile.DE;
             Properties.Settings.Default.ToleranciaDL = _selectedProfile.DL;
             Properties.Settings.Default.ToleranciaDC = _selectedProfile.DC;

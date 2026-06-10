@@ -1,7 +1,6 @@
 using System.IO;
 using Color.Services;
 using Color.Models;
-using Color.Models;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -155,7 +154,7 @@ namespace Color
             pnlReportFlow.Controls.Add(pnlTopInfo);
 
             // =================================================================
-            // --- DECLARACIÓN DE TÍTULOS ( - Cobertura Bloque 1 y 2) ---
+            // --- DECLARACIÓN DE TÍTULOS (Cobertura Bloque 1 y 2) ---
             // =================================================================
             Panel pnlTitlesHeader = new Panel();
             pnlTitlesHeader.Width = 940;
@@ -243,7 +242,7 @@ namespace Color
 
             // BOTONES
             var pnlButtons = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.White };
-            btnGuardar = CreateStyledButton(" Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
+            btnGuardar = CreateStyledButton("Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
             btnCerrar = CreateStyledButton("Finalizar", System.Drawing.Color.FromArgb(90, 90, 90));
             btnRegresar = CreateStyledButton("← Regresar", System.Drawing.Color.FromArgb(180, 100, 30));
 
@@ -513,7 +512,7 @@ namespace Color
             if (!pnlReportFlow.Controls.Contains(dgvCorrectiveRecipe))
             {
                 var pnlNewRecipesHeader = new Panel { Width = 940, Height = 35, Margin = new Padding(0, 20, 0, 10) };
-                var lblNewRecipesTitle = new Label { Text = "New recipes", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, 
+                var lblNewRecipesTitle = new Label { Text = "New Recipes", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, 
                     Location = new Point(0, 5), AutoSize = true };
                 var lineNewRecipes = new Label { BackColor = System.Drawing.Color.Black, Location = new Point(0, 28), Size = new Size(940, 2) };
 
@@ -671,7 +670,7 @@ namespace Color
         private void BtnGuardar_Click(object sender, EventArgs e)
         {
             try {
-                MessageBox.Show("Reporte guardado exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Reporte Guardado Exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 btnGuardar.Enabled = false; btnGuardar.Text = "✔ Guardado";
             } catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
         }

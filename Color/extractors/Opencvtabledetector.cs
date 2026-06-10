@@ -72,7 +72,7 @@ namespace Color
                         if (yPositions.Count < MIN_ROWS + 1 || xPositions.Count < MIN_COLS + 1)
                         {
                             result.FailReason = string.Format(
-                                "Pocas líneas detectadas: {0} H, {1} V (mínimo {2}H, {3}V)",
+                                "Pocas Líneas Detectadas: {0} H, {1} V (mínimo {2}H, {3}V)",
                                 yPositions.Count, xPositions.Count, MIN_ROWS + 1, MIN_COLS + 1);
                             return result;
                         }
@@ -82,7 +82,7 @@ namespace Color
                         if (tableWidth < src.Width * MIN_TABLE_WIDTH_PCT)
                         {
                             result.FailReason = string.Format(
-                                "Tabla demasiado estrecha: {0}px ({1}% del ancho)",
+                                "Tabla Demasiado Estrecha: {0}px ({1}% del ancho)",
                                 tableWidth, (int)(tableWidth * 100.0 / src.Width));
                             return result;
                         }
@@ -129,7 +129,7 @@ namespace Color
             }
             catch (Exception ex)
             {
-                result.FailReason = "OpenCV error: " + ex.Message;
+                result.FailReason = "OpenCV Error: " + ex.Message;
             }
 
             return result;

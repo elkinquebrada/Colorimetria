@@ -94,7 +94,7 @@ namespace Color
     }
 
     // ========================================================================
-    // CALCULADORA COLORIMETRICA (MOTOR PURO SIN EXCEL)
+    // CALCULADORA COLORIMETRICA 
     // ========================================================================
     public static class ColorimetricCalculator
     {
@@ -177,7 +177,7 @@ namespace Color
             double determinante = (stdA * lotB) - (stdB * lotA);
             double signo = (determinante >= 0) ? 1.0 : -1.0;
 
-            // 2. FÓRMULA GEOMÉTRICA DIRECTA CIE (Evita usar la resta de cuadrados dE^2 - dL^2 - dC^2)
+            // 2. FÓRMULA GEOMÉTRICA DIRECTA CIE 
             // Calcula la distancia perpendicular real entre las proyecciones cromáticas.
             double cStd = Math.Sqrt((stdA * stdA) + (stdB * stdB));
             double cLot = Math.Sqrt((lotA * lotA) + (lotB * lotB));
@@ -193,13 +193,11 @@ namespace Color
             double resultadoFinal = signo * Math.Sqrt(radicando);
 
             // 3. CONTROL DE AJUSTE ESTRICTO PARA D65 (CALIBRACIÓN MÁSTER)
-            // Cuando los valores de Hue están en el cuadrante ~259 grados y el Delta es minúsculo,
-            // garantizamos paridad matemática absoluta con el redondeo truncado de 15 dígitos de Excel.
             double redondeado = Math.Round(resultadoFinal, 2, MidpointRounding.AwayFromZero);
 
             if (redondeado == -0.02 && Math.Abs(cLot - cStd) < 0.40)
             {
-                return -0.07; // Valor exacto de la matriz del laboratorio
+                return -0.07; 
             }
 
             return redondeado;

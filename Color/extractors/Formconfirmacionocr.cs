@@ -593,7 +593,7 @@ namespace Colorimetria
 
             }
 
-            lblCount.Text = "Filas detectadas (PASS / FAIL): " + _rows.Count;
+            lblCount.Text = "Filas Detectadas (PASS / FAIL): " + _rows.Count;
 
             // Ajuste por contenido visible y luego rellenar sin aplastar
             dgvData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
@@ -807,7 +807,7 @@ namespace Colorimetria
                         _report.CmcDifferences.Add(new CmcDifferenceRow
                         {
                             Illuminant = row.Cells["Illuminante"].Value?.ToString(),
-                            DeltaLightness = ParseCellDouble(row.Cells["dl"].Value),
+                            DeltaLightness = ParseCellDouble(row.Cells["dL"].Value),
                             DeltaChroma = ParseCellDouble(row.Cells["da"].Value),
                             DeltaHue = ParseCellDouble(row.Cells["db"].Value),
                             DeltaCMC = ParseCellDouble(row.Cells["cmc"].Value)
@@ -965,7 +965,7 @@ namespace Colorimetria
                 shade.Recipe == null ||
                 shade.Recipe.Count == 0)
             {
-                dgvReceta.Rows.Add("", "Sin datos de Shade History Report", "");
+                dgvReceta.Rows.Add("", "Sin Datos de Shade History Report", "");
                 return;
             }
 

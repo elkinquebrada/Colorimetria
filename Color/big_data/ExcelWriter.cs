@@ -15,7 +15,6 @@ namespace OCR
         // PUNTO DE ENTRADA PRINCIPAL — llamado automáticamente desde FormResultados
         // ──────────────────────────────────────────────────────────────────────
 
-        /// Escribe todos los datos OCR en el Excel de referencia de forma silenciosa.
         public static bool WriteAll(
             string excelPath,
             List<ColorimetricRow> ocrRows,
@@ -48,7 +47,6 @@ namespace OCR
         }
 
         // ──────────────────────────────────────────────────────────────────────
-        // HOJA 1: CALCULO PASS / FAIL
         // Celdas azules: L/A/B del Estándar y Lote por iluminante
         // ──────────────────────────────────────────────────────────────────────
 
@@ -126,7 +124,6 @@ namespace OCR
         }
 
         // ──────────────────────────────────────────────────────────────────────
-        // HOJA 2: CALCULO SHADE HISTORY REPORT
         // Celdas azules: CMC por iluminante + tintes y concentraciones
         // ──────────────────────────────────────────────────────────────────────
 
@@ -143,7 +140,6 @@ namespace OCR
             bool anyWrite = false;
 
             // ─── Sección CMC(2:1) por iluminante ─────────────────────────────
-            // Estructura del Excel:
 
             if (cmcResults != null && cmcResults.Count > 0)
             {
@@ -187,7 +183,6 @@ namespace OCR
             }
 
             // ─── Sección Receta/Tintes por iluminante ────────────────────────
-            // Estructura del Excel:
 
             if (recipeResults != null && recipeResults.Count > 0)
             {

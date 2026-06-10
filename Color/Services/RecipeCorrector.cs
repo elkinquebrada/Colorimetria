@@ -60,8 +60,6 @@ namespace Color
             };
 
             // --- LÓGICA DE RESTA ESTRICTA ---
-            // 1. Obtener ajustes y ordenar por magnitud (valor absoluto)
-            // Usamos FactorL, FactorA, FactorB como los subtrahendos directos
             var listaAjustes = new List<double> { (double)analysis.FactorL, (double)analysis.FactorA, (double)analysis.FactorB }
                 .OrderByDescending(x => Math.Abs(x))
                 .ToList();
@@ -92,6 +90,7 @@ namespace Color
                     Name = ing.Name,
                     Original = ing.Percentage,
                     Status = "OK",
+
                     // REGLA NUEVA (Hybrid Algorithm): Evita el cero en negros/oscuros
                     R1 = CalcularValorPropuesta(ing.Percentage, adj1),
                     R2 = CalcularValorPropuesta(ing.Percentage, adj2),
@@ -122,7 +121,6 @@ namespace Color
         {
             double adjAbs = Math.Abs(valorAdj);
             
-            // Si la resta es segura (no se acerca a cero)
             // Se mantiene la Resta Aritmética Estricta (Funciona bien en colores claros)
             if ((concOriginal - adjAbs) > (concOriginal * 0.15))
             {
@@ -131,7 +129,6 @@ namespace Color
             else
             {
                 // Si el ajuste es muy agresivo (caso Negros), aplicamos reducción porcentual proporcional
-                // Ejemplo: Si adj es 0.60, reduce el 0.60% de la carga actual
                 double factor = adjAbs / 100; 
                 return concOriginal * (1 - factor);
             }

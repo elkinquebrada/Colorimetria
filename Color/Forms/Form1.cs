@@ -226,7 +226,6 @@ namespace Color
                 }
 
                 // --- TRANSICIÓN FLUIDA ---
-                // Minimizamos JUSTO ANTES de abrir la siguiente ventana para evitar el vacío de 1 segundo
                 this.TopMost = false;
                 this.WindowState = FormWindowState.Minimized;
 
@@ -291,7 +290,7 @@ namespace Color
             if (lblRightLoaded != null) lblRightLoaded.Visible = false;
             btnCambiarLeft.Visible = btnCambiarRight.Visible = false;
 
-            lblStatus.Text = "Cargue imágenes";
+            lblStatus.Text = "Cargue Imágenes";
             lblStatus.ForeColor = System.Drawing.Color.Black;
             UpdateHints();
             ShowActionButtons(false);

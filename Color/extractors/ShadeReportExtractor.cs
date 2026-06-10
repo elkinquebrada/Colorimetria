@@ -554,7 +554,6 @@ namespace Color
         //-------------------------------------------------------------------
         private string ExtractDtMainFromBitmap(Bitmap original)
         {
-            // La línea "DT Main:" está en el encabezado medio, aprox entre 20% y 38% de la altura
             // Ampliado: 15% a 45%
             int top = (int)(original.Height * 0.15);
             int bot = (int)(original.Height * 0.45);
@@ -598,7 +597,6 @@ namespace Color
         }
         private string ExtractShadeNameFromBitmap(Bitmap original)
         {
-            // El Shade Name está en la parte superior izquierda (aprox 0% al 15% de altura y 0 al 60% de ancho)
             // Ampliado: 0% a 20%
             int h = (int)(original.Height * 0.20);
             int w = (int)(original.Width * 0.70);
@@ -721,8 +719,7 @@ namespace Color
                 int top = (int)(original.Height * 0.18);
                 int bot = (int)(original.Height * 0.65);
 
-                // Si la imagen es pequeña (< 900px de alto), probablemente ya es un recorte.
-                // En este caso, buscamos en el 100% de la imagen.
+                // Si la imagen es pequeña (< 900px de alto), 
                 if (original.Height < 900) { top = 0; bot = original.Height; }
 
                 int h = bot - top;

@@ -9,13 +9,7 @@ using Color.Models;
 
 namespace Color.Services
 {
-    /// <summary>
     /// Extractor aislado de metadatos texiles del encabezado del reporte de color.
-    /// NO modifica ni depende internamente del motor matricial (Dataextraxtor.cs).
-    /// Reutiliza las rutinas de preprocesamiento mas robustas via copia directa:
-    ///   - MeasureSharpness  (Laplaciano sobre mapa de memoria)
-    ///   - BinarizeOtsu      (Umbralizado adaptativo por varianza inter-clase)
-    /// </summary>
     public class TextileMetadataExtractor
     {
         private readonly string _tessDataPath;
@@ -43,10 +37,7 @@ namespace Color.Services
         // API PUBLICA
         // =====================================================================
 
-        /// <summary>
         /// Extrae los metadatos del encabezado superior izquierdo de la imagen.
-        /// Devuelve un TextileMetadata con los campos ocupados (o "-" si no se pudieron leer).
-        /// </summary>
         public TextileMetadata Extract(string imagePath)
         {
             var meta = new TextileMetadata();
@@ -62,10 +53,8 @@ namespace Color.Services
             catch { return meta; }
         }
 
-        /// <summary>
         /// Sobrecarga que acepta directamente un Bitmap en memoria
-        /// (util cuando la imagen ya fue cargada por el extractor principal).
-        /// </summary>
+
         public TextileMetadata ExtractFromBitmap(Bitmap original)
         {
             var meta = new TextileMetadata();
@@ -87,9 +76,9 @@ namespace Color.Services
                     // ── 2. Escalado adaptativo basado en nitidez medida ─────────────────────
                     float sharpness = MeasureSharpness(roi);
                     int scaleFactor;
-                    if      (sharpness < SHARPNESS_LOW_THRESHOLD)  scaleFactor = SCALE_FACTOR_MAX; // 4x baja calidad
-                    else if (sharpness < SHARPNESS_HIGH_THRESHOLD) scaleFactor = 3;                // 3x media calidad
-                    else                                            scaleFactor = SCALE_FACTOR_MIN; // 2x alta calidad
+                    if      (sharpness < SHARPNESS_LOW_THRESHOLD)  scaleFactor = SCALE_FACTOR_MAX; 
+                    else if (sharpness < SHARPNESS_HIGH_THRESHOLD) scaleFactor = 3;                
+                    else                                            scaleFactor = SCALE_FACTOR_MIN; 
 
                     int nW = roi.Width  * scaleFactor;
                     int nH = roi.Height * scaleFactor;
@@ -189,10 +178,7 @@ namespace Color.Services
         // PARSER DE CLAVE-VALOR
         // =====================================================================
 
-        /// <summary>
         /// Mapea las lineas del texto OCR a los campos del modelo usando
-        /// anclas tolerantes a errores tipicos de Tesseract.
-        /// </summary>
         private static void ParseKeyValue(string text, TextileMetadata meta)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
@@ -220,8 +206,7 @@ namespace Color.Services
             // Construir regex tolerante a OCR: Permite multiples espacios dentro del anchor (ej: "shade   name")
             string anchorsPattern = string.Join("|", System.Linq.Enumerable.Select(anchors, a => string.Join(@"\s+", a.Split(' '))));
             
-            // Regex: Busca el anchor, luego ignora cualquier espacio, salto de linea, dos puntos, guiones, igual
-            // Y finalmente captura todo un bloque continuo hasta el proximo salto de línea
+            // Busca el anchor, luego ignora cualquier espacio, salto de linea, dos puntos, guiones, igual
             string pattern = $@"(?:{anchorsPattern})[\s=:;.-]*(?<val>[^\r\n]+)";
             
             var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
@@ -276,10 +261,7 @@ namespace Color.Services
         // PROCESAMIENTO DE IMAGEN — HEREDADO DE Dataextraxtor.cs
         // =====================================================================
 
-        /// <summary>
-        /// Varianza del Laplaciano sobre el centro de la imagen (mide nitidez).
         /// Identica a MeasureSharpness de ColorimetricDataExtractor.
-        /// </summary>
         private static float MeasureSharpness(Bitmap src)
         {
             int w = src.Width, h = src.Height;
@@ -326,10 +308,7 @@ namespace Color.Services
             return (float)Math.Max(0, variance);
         }
 
-        /// <summary>
         /// Umbralizado Otsu (varianza inter-clase) sobre mapa de memoria.
-        /// Identico a BinarizeOtsu de ColorimetricDataExtractor.
-        /// </summary>
         private static Bitmap BinarizeOtsu(Bitmap src)
         {
             int w = src.Width, h = src.Height;

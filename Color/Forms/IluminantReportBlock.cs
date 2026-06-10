@@ -348,7 +348,7 @@ namespace Color
             // --- FILA 5: Header Índice de Metamerismo ---
             var lblMiHeader = new Label
             {
-                Text = "Índice de metamerismo (MI)",
+                Text = "Indice de Metamerismo (MI)",
                 Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
                 BackColor = System.Drawing.Color.White,
                 ForeColor = System.Drawing.Color.Black,
@@ -476,20 +476,6 @@ namespace Color
                 ScrollBars = ScrollBars.None
             };
             return dgv;
-        }
-
-        private Label CreateValueLabel(string value, bool isMain = false)
-        {
-            var lbl = new Label
-            {
-                Text = value,
-                TextAlign = ContentAlignment.MiddleCenter,
-                BorderStyle = BorderStyle.FixedSingle,
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", isMain ? 10 : 9, isMain ? FontStyle.Bold : FontStyle.Regular),
-                BackColor = System.Drawing.Color.White
-            };
-            return lbl;
         }
 
         private Label CreateHeaderLabel(string text)
@@ -621,7 +607,7 @@ namespace Color
 
             // --- Estado Global OK / FAIL (Fila 4) ---
             bool aprobado = res.Pass; 
-            lblCmcStatus.Text      = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "ok" : "FAIL");
+            lblCmcStatus.Text      = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
             lblCmcStatus.ForeColor = aprobado
                 ? System.Drawing.Color.FromArgb(0, 153, 0)
                 : System.Drawing.Color.FromArgb(180, 0, 0);
