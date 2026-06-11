@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Globalization;
 namespace Color
 {
     // ========================================================================
-    // RESULTADO DE CORRECCION DE COLOR (Motor Autónomo Pure C#)
+    // RESULTADO DE CORRECCION DE COLOR 
     // ========================================================================
     public sealed class ColorCorrectionResult
     {
@@ -33,7 +33,7 @@ namespace Color
         public double LotC { get; set; }
         public double LotH { get; set; }
 
-        public string GlobalStatus { get; set; } = "ok";
+        public string GlobalStatus { get; set; } = "Ok";
         public bool Success { get; set; } = true;
         public string Message { get; set; } = "";
 
@@ -79,7 +79,7 @@ namespace Color
         public string DiagnosisC => !string.IsNullOrEmpty(OcrImpactoC) ? OcrImpactoC : ColorimetricCalculator.GetEngineeringDiagnosis("C", DeltaChroma, "");
         public string DiagnosisH => !string.IsNullOrEmpty(OcrImpactoH) ? OcrImpactoH : ColorimetricCalculator.GetEngineeringDiagnosis("H", DeltaHue, "");
         
-        public string ImpactoMatiz => ColorimetricCalculator.GetHueDirection(DeltaA, DeltaB);
+        // ImpactoMatiz removed per Phase A logic revision
         public string RecommendationC => ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
         public bool Pass { get; set; } = true;
@@ -124,7 +124,7 @@ namespace Color
 
             var res = new ColorCorrectionResult { Illuminant = illuminantName };
 
-            // 1. Valores de Espectro
+            // Valores de Espectro
             res.StdL = std.L; res.StdA = std.A; res.StdB = std.B; res.StdC = std.Chroma;
             res.LotL = lot.L; res.LotA = lot.A; res.LotB = lot.B; res.LotC = lot.Chroma;
 
@@ -139,26 +139,24 @@ namespace Color
             res.StdH = CalcularHueAngular((double)std.A, (double)std.B);
             res.LotH = CalcularHueAngular((double)lot.A, (double)lot.B);
             
-            // dH Estricto según pliego técnico final del cliente
             res.DeltaHue = CalcularDeltaH_CMC_Estricto((double)std.A, (double)std.B, (double)lot.A, (double)lot.B, dE, res.DeltaL, res.DeltaChroma);
 
-            // 5. Semi-ejes CMC (Paridad Industrial)
+            //  Semi-ejes CMC (Paridad Industrial)
             var (sl, sc, sh, f, t) = CalculateCmcSemiAxes(res.StdL, res.StdC, res.StdH);
             res.SL = sl; res.SC = sc; res.SH = sh; res.F_factor = f; res.T_factor = t;
             res.h_angle = res.StdH;
 
-            // 6. Valores CMC Finales (2:1)
+            //  Valores CMC Finales (2:1)
             res.CmcLightness = sl > 0 ? res.DeltaL / (2.0 * sl) : 0;
             res.CmcChroma = sc > 0 ? res.DeltaChroma / sc : 0;
             res.CmcHue = sh > 0 ? res.DeltaHue / sh : 0;
             res.CmcValue = Math.Sqrt(res.CmcLightness * res.CmcLightness + res.CmcChroma * res.CmcChroma + res.CmcHue * res.CmcHue);
             res.DeltaE = dE;
 
-            // 7. Acciones Corectivas (Legacy Logic)
             ApplyCorrectionLogic(res, (decimal)std.L, (decimal)std.A, (decimal)std.B, (decimal)std.Chroma, 
                                      (decimal)lot.L, (decimal)lot.A, (decimal)lot.B, (decimal)lot.Chroma);
 
-            res.GlobalStatus = (res.CmcValue > 1.25) ? "FAIL" : "ok";
+            res.GlobalStatus = (res.CmcValue > 1.25) ? "FAIL" : "Ok";
             res.Pass = (res.CmcValue <= 1.25);
 
             return res;
@@ -173,12 +171,11 @@ namespace Color
 
         public static double CalcularDeltaH_CMC_Estricto(double stdA, double stdB, double lotA, double lotB, double dE, double dL, double dC)
         {
-            // 1. Sentido de orientación del vector de tono (SIGN en Excel)
+         
             double determinante = (stdA * lotB) - (stdB * lotA);
             double signo = (determinante >= 0) ? 1.0 : -1.0;
 
-            // 2. FÓRMULA GEOMÉTRICA DIRECTA CIE 
-            // Calcula la distancia perpendicular real entre las proyecciones cromáticas.
+            // 2. FORMULA GEOMeTRICA DIRECTA CIE 
             double cStd = Math.Sqrt((stdA * stdA) + (stdB * stdB));
             double cLot = Math.Sqrt((lotA * lotA) + (lotB * lotB));
 
@@ -187,12 +184,11 @@ namespace Color
 
             double radicando = (da * da) + (db * db) - ((cLot - cStd) * (cLot - cStd));
 
-            // Control de estabilidad por si el valor es un negativo microscópico por la CPU
             if (radicando < 0) radicando = 0;
 
             double resultadoFinal = signo * Math.Sqrt(radicando);
 
-            // 3. CONTROL DE AJUSTE ESTRICTO PARA D65 (CALIBRACIÓN MÁSTER)
+            // 3. CONTROL DE AJUSTE ESTRICTO PARA D65 (CALIBRACION MASTER)
             double redondeado = Math.Round(resultadoFinal, 2, MidpointRounding.AwayFromZero);
 
             if (redondeado == -0.02 && Math.Abs(cLot - cStd) < 0.40)
@@ -218,7 +214,7 @@ namespace Color
         private static void ApplyCorrectionLogic(ColorCorrectionResult res, decimal sL, decimal sA, decimal sB, decimal sC,
                                                decimal lL, decimal lA, decimal lB, decimal lC)
         {
-            // Convención: Lot - Std
+            // Convencion: Lot - Std
             res.FactorL = sL != 0 ? Math.Round((lL - sL) / sL, 8) : 0;
             if (sC <= 15m)
             {
@@ -240,18 +236,32 @@ namespace Color
             return value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
         }
 
-        public static string GetHueDirection(double dA, double dB)
+
+
+        // =========================================================================
+        // ðŸ› ï¸ EXTENSION DEL MOTOR: EVALUACIONES CROMATICAS INDEPENDIENTES (PARIDAD EXCEL)
+        // =========================================================================
+
+        public static string GetLuminosityDiagnosis(double deltaL)
         {
-            if (Math.Abs(dA) >= Math.Abs(dB)) return dA > 0 ? "Redder" : "Greener";
-            return dB > 0 ? "Yellower" : "Bluer";
+            return deltaL > 0 ? "Claro (Thin)" : "Oscuro (Full)";
         }
 
+        public static string GetEjeADiagnosis(double deltaA)
+        {
+            return deltaA < 0 ? "Verde" : "Rojo";
+        }
+
+        public static string GetEjeBDiagnosis(double deltaB)
+        {
+            return deltaB > 0 ? "Amarillo" : "Azul";
+        }
         public static string GetEngineeringDiagnosis(string eje, double delta, string impacto)
         {
             switch (eje.ToUpper())
             {
                 case "DL": case "L": return delta < 0 ? "Oscuro (Full)" : "Claro (Thin)";
-                case "DC": case "C": return delta > 0 ? "Brighter" : "Duller";
+                case "DC": case "C": return delta > 0 ? "Duller" : "Brighter";
                 case "DH": case "H": return delta > 0 ? "Yellower" : "Bluer";
             }
             return "OK";

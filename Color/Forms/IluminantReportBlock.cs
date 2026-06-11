@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
@@ -55,7 +55,7 @@ namespace Color
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
             // =================================================================
-            // --- Bloque 1: Configuración del Contenedor Principal (.NET 4.8) ---
+            // --- Bloque 1: Configuracion del Contenedor Principal ---
             // =================================================================
             TableLayoutPanel pnlLeft = new TableLayoutPanel();
             pnlLeft.Dock = DockStyle.Fill;
@@ -68,7 +68,6 @@ namespace Color
             pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
             pnlLeft.RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
 
-            // Color Celeste/Azul del colorímetro según la imagen
             System.Drawing.Color azulColorimetro = System.Drawing.Color.FromArgb(0, 122, 204);
 
             // =================================================================
@@ -83,7 +82,7 @@ namespace Color
             dgvLab.Rows[r0].DefaultCellStyle.ForeColor = System.Drawing.Color.White;
             dgvLab.Rows[r0].DefaultCellStyle.Font = new Font(dgvLab.Font, FontStyle.Bold);
 
-            // Filas 1 y 2: Valores estándar y de lote
+            // Filas 1 y 2: Valores estandar y de lote
             dgvLab.Rows.Add("Std", "47.19", "-7.26", "6.67");
             dgvLab.Rows.Add("Lot", "47.94", "-6.83", "7.11");
 
@@ -92,18 +91,18 @@ namespace Color
             dgvLab.Rows[r3].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
             // =================================================================
-            // --- 2. Grid Central: Delta y Diagnóstico (dgvDiagnostic) ---
+            // --- 2. Grid Central: Delta y Diagnostico (dgvDiagnostic) ---
             // =================================================================
             dgvDiagnostic = CreateBaseGrid(4);
             dgvDiagnostic.Columns[0].Width = 55;
             dgvDiagnostic.ColumnHeadersVisible = false;
 
-            // Fila 0: Valores numéricos de Delta
-            int rd0 = dgvDiagnostic.Rows.Add("?�", "0.75", "0.43", "0.44");
+            // Fila 0: Valores numericos de Delta
+            int rd0 = dgvDiagnostic.Rows.Add("?”", "0.75", "0.43", "0.44");
             dgvDiagnostic.Rows[rd0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
-            // Fila 1: Texto de Diagnóstico (Claro, Rojo, Amarillo)
-            int rd1 = dgvDiagnostic.Rows.Add("?�", "Claro (Thin)", "Rojo", "Amarillo");
+            // Fila 1: Texto de Diagnostico (Claro, Rojo, Amarillo)
+            int rd1 = dgvDiagnostic.Rows.Add("?”", "Claro (Thin)", "Rojo", "Amarillo");
 
             // Celda Claro (Fondo Azul, Texto Blanco)
             dgvDiagnostic.Rows[rd1].Cells[1].Style.Font = new Font(dgvDiagnostic.Font, FontStyle.Bold);
@@ -121,7 +120,7 @@ namespace Color
             dgvDiagnostic.CellPainting += new DataGridViewCellPaintingEventHandler(DgvDiagnostic_CellPainting);
 
             // =================================================================
-            // --- 3. Grid Inferior: Acciones de Corrección (dgvActions) ---
+            // --- 3. Grid Inferior: Acciones de Correccion (dgvActions) ---
             // =================================================================
             dgvActions = CreateBaseGrid(4);
             dgvActions.Columns[0].Width = 55;
@@ -130,20 +129,20 @@ namespace Color
             int ra0 = dgvActions.Rows.Add("Accion", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
             dgvActions.Rows[ra0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
-            // Fila 1: Porcentajes numéricos
+            // Fila 1: Porcentajes numericos
             int ra1 = dgvActions.Rows.Add("Accion", "2%", "6%", "7%");
 
             dgvActions.CellPainting += new DataGridViewCellPaintingEventHandler(DgvActions_CellPainting);
 
             // =================================================================
-            // --- Inyección de controles al Layout ---
+            // --- Inyeccion de controles al Layout ---
             // =================================================================
             pnlLeft.Controls.Add(dgvLab, 0, 0);
             pnlLeft.Controls.Add(dgvDiagnostic, 0, 1);
             pnlLeft.Controls.Add(dgvActions, 0, 2);
 
             // =================================================================
-            // --- Bloque 2: Configuración del Contenedor Principal ---
+            // --- Bloque 2: Configuracion del Contenedor Principal ---
             // =================================================================
             TableLayoutPanel pnlMiddle = new TableLayoutPanel();
             pnlMiddle.Dock = DockStyle.Fill;
@@ -171,11 +170,11 @@ namespace Color
             dgvChromaHue.Rows.Add("9.86", "137.43"); 
             dgvChromaHue.Rows.Add("9.86", "133.85"); 
 
-            // Fila 3: Etiquetas estáticas "dC" y "dH"
+            // Fila 3: Etiquetas estaticas "dC" y "dH"
             int lblDeltaIdx = dgvChromaHue.Rows.Add("dC", "dH");
             dgvChromaHue.Rows[lblDeltaIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
-            // Fila 4: Valores Delta (Resultado del cálculo)
+            // Fila 4: Valores Delta (Resultado del cÃ¡lculo)
             int deltaChromaIdx = dgvChromaHue.Rows.Add("0.00", "-0.62");
             DataGridViewCellStyle deltaStyle = dgvChromaHue.Rows[deltaChromaIdx].DefaultCellStyle;
             deltaStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Regular);
@@ -222,26 +221,27 @@ namespace Color
             dgvDeviation = CreateBaseGrid(2);
             dgvDeviation.CellBorderStyle = DataGridViewCellBorderStyle.Single; 
 
-            // Fila 0: Etiquetas descriptivas con fuente tipográfica fija (Monoespaciada)
-            int descRowIdx = dgvDeviation.Rows.Add("Duller", "Bluer\n(Greener)");
+            // Fila 0: Etiquetas descriptivas con fuente tipografica fija (Monoespaciada)
+            int descRowIdx = dgvDeviation.Rows.Add("-", "-");
             dgvDeviation.Rows[descRowIdx].Height = 45; 
             DataGridViewCellStyle descStyle = dgvDeviation.Rows[descRowIdx].DefaultCellStyle;
             descStyle.Font = new Font("Courier New", 10f, FontStyle.Regular);
-            descStyle.ForeColor = System.Drawing.Color.Black;
+            descStyle.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+            descStyle.ForeColor = System.Drawing.Color.White;
             descStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             descStyle.WrapMode = DataGridViewTriState.True; 
 
-            // Fila 1: Porcentajes de variación
-            int percentRowIdx = dgvDeviation.Rows.Add("0%", "6%");
+            // Fila 1: Porcentajes de variacion
+            int percentRowIdx = dgvDeviation.Rows.Add("-", "-");
             DataGridViewCellStyle percentStyle = dgvDeviation.Rows[percentRowIdx].DefaultCellStyle;
             percentStyle.Font = new Font("Courier New", 10f, FontStyle.Regular);
-            percentStyle.ForeColor = System.Drawing.Color.Black;
+            percentStyle.ForeColor = System.Drawing.Color.FromArgb(0, 122, 204);
             percentStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             pnlMiddle.Controls.Add(dgvDeviation, 0, 2);
 
             // =================================================================
-            //  Bloque 3 y 4 Unificados: CMC Summary, Parámetros e Iluminante 
+            //  Bloque 3 y 4 Unificados: CMC Summary, Paremetros e Iluminante 
             // =================================================================
 
             var pnlCmcCombo = new TableLayoutPanel 
@@ -260,7 +260,7 @@ namespace Color
             }
             pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 75.0f)); 
 
-            // Definición de alturas de filas
+            // Definicion de alturas de filas
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 24.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 34.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 24.0f)); 
@@ -347,7 +347,7 @@ namespace Color
             pnlCmcCombo.Controls.Add(lblCmcStatus, 0, 4);
             pnlCmcCombo.SetColumnSpan(lblCmcStatus, 6); 
 
-            // --- FILA 5: Header Índice de Metamerismo ---
+            // --- FILA 5: Header indice de Metamerismo ---
             var lblMiHeader = new Label
             {
                 Text = "Indice de Metamerismo (MI)",
@@ -403,7 +403,6 @@ namespace Color
                         e.Graphics.FillRectangle(brush, rectFusionado);
                     }
 
-                    // "Δ" centrado en ese nuevo espacio izquierdo
                     Font fontDelta = new Font("Segoe UI", 12.0f, FontStyle.Bold);
                     TextFormatFlags flagsCentrado = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
                     TextRenderer.DrawText(e.Graphics, "Δ", fontDelta, rectFusionado, System.Drawing.Color.White, flagsCentrado);
@@ -539,7 +538,7 @@ namespace Color
         }
 
         // =================================================================
-        // ACTUALIZACION DE DATOS DINA�MICOS (Corregida de forma segura)
+        // ACTUALIZACION DE DATOS DINAMICOS (Corregida de forma segura)
         // =================================================================
         public void UpdateTolerances(double de, double dl, double dc, double dh)
         {
@@ -559,7 +558,6 @@ namespace Color
             if (res == null) return;
             _lastResult = res;
 
-            // Actualización segura sin Invoke (Funciona sin importar si el Handle ya se creó o no)
             string textIlluminant = !string.IsNullOrEmpty(res.Illuminant) ? res.Illuminant.ToUpper() : "D65";
             lblIlluminantName.Text = textIlluminant;
 
@@ -582,6 +580,34 @@ namespace Color
             dgvDiagnostic.Rows[0].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaL);
             dgvDiagnostic.Rows[0].Cells[2].Value = ColorimetricCalculator.FormatDelta(res.DeltaA);
             dgvDiagnostic.Rows[0].Cells[3].Value = ColorimetricCalculator.FormatDelta(res.DeltaB);
+
+            if (dgvDiagnostic != null && dgvDiagnostic.Rows.Count >= 2)
+            {
+                int rd1 = 1; 
+
+                // Asignacion de textos independientes por variable
+                string diagL = ColorimetricCalculator.GetLuminosityDiagnosis(res.DeltaL);
+                string diagA = ColorimetricCalculator.GetEjeADiagnosis(res.DeltaA);
+                string diagB = ColorimetricCalculator.GetEjeBDiagnosis(res.DeltaB);
+
+                dgvDiagnostic.Rows[rd1].Cells[1].Value = diagL;
+                dgvDiagnostic.Rows[rd1].Cells[2].Value = diagA;
+                dgvDiagnostic.Rows[rd1].Cells[3].Value = diagB;
+
+                // Formato dinamico y estricto de colores
+                dgvDiagnostic.Rows[rd1].Cells[1].Style.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+                dgvDiagnostic.Rows[rd1].Cells[1].Style.ForeColor = System.Drawing.Color.White;
+
+                // Eje A
+                dgvDiagnostic.Rows[rd1].Cells[2].Style.ForeColor = (diagA == "Rojo") 
+                    ? System.Drawing.Color.Red 
+                    : System.Drawing.Color.Green;
+
+                // Eje B
+                dgvDiagnostic.Rows[rd1].Cells[3].Style.ForeColor = (diagB == "Amarillo") 
+                    ? System.Drawing.Color.DarkGoldenrod 
+                    : System.Drawing.Color.Blue;
+            }
 
             // Update Chroma/Hue (Fila 0 es cabecera, los datos reales van en 1, 2, 4)
             dgvChromaHue.Rows[1].Cells[0].Value = res.StdC.ToString("F2", CultureInfo.InvariantCulture);
@@ -607,15 +633,23 @@ namespace Color
             if (lblT != null) lblT.Text = res.T_factor.ToString("0.000", CultureInfo.InvariantCulture);
             if (lblF != null) lblF.Text = res.F_factor.ToString("0.000", CultureInfo.InvariantCulture);
 
-            // --- Estado Global OK / FAIL (Fila 4) ---
-            bool aprobado = res.Pass;
-            lblCmcStatus.Text = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
-            lblCmcStatus.ForeColor = aprobado
+            // --- Estado Global OK / FAIL (Fila 4): Solo para D65 ---
+            if (textIlluminant == "D65")
+            {
+                bool aprobado = res.Pass;
+                lblCmcStatus.Text = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
+                lblCmcStatus.ForeColor = aprobado
                 ? System.Drawing.Color.FromArgb(0, 153, 0)
                 : System.Drawing.Color.FromArgb(180, 0, 0);
-            lblCmcStatus.BackColor = aprobado
+                lblCmcStatus.BackColor = aprobado
                 ? System.Drawing.Color.FromArgb(230, 255, 230)
                 : System.Drawing.Color.FromArgb(255, 220, 220);
+                
+            }
+            else if (textIlluminant == "TL84" || textIlluminant == "A" || textIlluminant == "CWF")
+            {
+                if (lblCmcStatus != null) lblCmcStatus.Visible = false;
+            }
 
             // Estado Semaforico del CMC Tolerancia
             if (res.CmcValue > _deAprobado)
@@ -672,7 +706,31 @@ namespace Color
 
             ProcesarYMostrarDiagnostico(res);
 
-            // �Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
+            // =========================================================
+            // OCULTAMIENTO DINAMICO BLOQUE 3: Solo iluminante A / CWF
+            // =========================================================
+            bool esIluminanteA = (textIlluminant == "A" || textIlluminant == "CWF");
+
+            if (lblCmcStatus != null)
+                lblCmcStatus.Visible = !esIluminanteA;
+
+            if (lblMiLeft != null)
+                lblMiLeft.Visible = !esIluminanteA;
+
+            if (lblMiRight != null)
+                lblMiRight.Visible = !esIluminanteA;
+
+            if (lblCmcStatus != null && lblCmcStatus.Parent != null)
+            {
+                foreach (System.Windows.Forms.Control ctl in lblCmcStatus.Parent.Controls)
+                {
+                    var lbl = ctl as System.Windows.Forms.Label;
+                    if (lbl != null && lbl.Text != null && lbl.Text.Contains("Metamerismo"))
+                        lbl.Visible = !esIluminanteA;
+                }
+            }
+
+            // ¡Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
             lblIlluminantName.Refresh();
         }
 
@@ -683,30 +741,68 @@ namespace Color
             // -------------------------------------------------------------------------
             // PARTE A: DIAGNOSTICO VISUAL Y MATRIZ DE COLOR OPUESTO
             // -------------------------------------------------------------------------
-
-            // 1. Construimos dinámicamente el string de cuadrante
             string dirA = res.DeltaA >= 0 ? "Redder" : "Greener";
             string dirB = res.DeltaB >= 0 ? "Yellower" : "Bluer";
-            string hueLabel = $"{dirB} ({dirA})";
+            string tRight = $"{dirB} ({dirA})";
 
-            // 2. Ejecutamos las reglas lógicas que mapean las fórmulas de Excel
-            ColorDecisionResult decision = ColorDecisionEngine.EvaluarDesviacion(res.DeltaL, hueLabel);
+            string oppA = res.DeltaA >= 0 ? "Greener" : "Redder";
+            string oppB = res.DeltaB >= 0 ? "Bluer" : "Yellower";
+            string bRight = $"{oppB}\n({oppA})";
 
-            // 3. Asignamos los textos dinámicos a las etiquetas de diagnóstico
-            if (lblBrighter != null) lblBrighter.Text = decision.Brightness;
-            if (lblYellower != null) lblYellower.Text = decision.QuadrantLabel;
+            // 2. Logica exacta de Excel para la celda tipo Brighter/Duller (basada en dC)
+            bool isBrighter = res.DeltaChroma > 0;
+            string tLeft = isBrighter ? "Brighter" : "Duller";
+            string bLeft = isBrighter ? "Duller" : "Brighter";
 
-            // 4. Rellenamos la grilla de desviaciones con saltos de línea visuales
-            if (dgvDeviation.Rows.Count > 0)
+            // 3. Asignaciones a la UI Superior (Componente Central)
+            if (lblBrighter != null)
             {
-                dgvDeviation.Rows[0].Cells[0].Value = decision.DeviationCell0;
-                dgvDeviation.Rows[0].Cells[1].Value = decision.OppositeColor.Replace(" (", "\n(");
-                dgvDeviation.Rows[0].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
+                lblBrighter.Text = tLeft;
+                lblBrighter.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+                lblBrighter.ForeColor = System.Drawing.Color.White;
+            }
+
+            if (lblYellower != null)
+            {
+                lblYellower.Text = tRight;
+                lblYellower.BackColor = System.Drawing.Color.White;
+                lblYellower.ForeColor = System.Drawing.Color.Black;
+            }
+
+            // 4. Asignaciones a la Grilla Inferior (dgvDeviation, opuestos)
+            if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
+            {
+                dgvDeviation.Rows[0].Cells[0].Value = bLeft;
+                dgvDeviation.Rows[0].Cells[0].Style.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
+                    dgvDeviation.Rows[0].Cells[0].Style.ForeColor = System.Drawing.Color.White;
+
+                dgvDeviation.Rows[0].Cells[1].Value = bRight;
+                dgvDeviation.Rows[0].Cells[1].Style.BackColor = System.Drawing.Color.White;
                 dgvDeviation.Rows[0].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
+            }
+            // ðŸ› ï¸ CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL EN dgvDeviation
+            // =========================================================================
+            if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
+            {
+                int targetRowIdx = dgvDeviation.Rows.Count - 1;
+
+                // 1. CALCULO INTERNO IZQUIERDO: Formula =+ABS(H20)*0.1 (Basado en dC / DeltaChroma)
+                double calculoInternoChroma = Math.Abs(res.DeltaChroma) * 10.0;
+                dgvDeviation.Rows[targetRowIdx].Cells[0].Value = Math.Round(calculoInternoChroma, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+                // 2. CALCULO INTERNO DERECHO: Formula =+ABS(I20)*0.1 (Basado en dH / DeltaHue)
+                double calculoInternoHue = Math.Abs(res.DeltaHue) * 10.0;
+                dgvDeviation.Rows[targetRowIdx].Cells[1].Value = Math.Round(calculoInternoHue, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+                dgvDeviation.Rows[targetRowIdx].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
+                dgvDeviation.Rows[targetRowIdx].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
+                
+                dgvDeviation.Rows[targetRowIdx].Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                dgvDeviation.Rows[targetRowIdx].Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
 
             // -------------------------------------------------------------------------
-            // PARTE B: CONCATENACION DINÁMICA DE PARÁMETROS CMC (Bloque Inferior)
+            // PARTE B: CONCATENACION DINAMICA DE PARAMETROS CMC (Bloque Inferior)
             // -------------------------------------------------------------------------
             if (lblSL != null)      { lblSL.Text      = $"{res.SL.ToString("0.000")}";       lblSL.ForeColor      = System.Drawing.Color.Black; }
             if (lblSC != null)      { lblSC.Text      = $"{res.SC.ToString("0.000")}";       lblSC.ForeColor      = System.Drawing.Color.Black; }
@@ -714,6 +810,33 @@ namespace Color
             if (lblSH != null)      { lblSH.Text      = $"{res.SH.ToString("0.000")}";      lblSH.ForeColor      = System.Drawing.Color.Black; }
             if (lblT != null)       { lblT.Text       = $"{res.T_factor.ToString("0.000")}";  lblT.ForeColor       = System.Drawing.Color.Black; }
             if (lblF != null)       { lblF.Text       = $"{res.F_factor.ToString("0.000")}";  lblF.ForeColor       = System.Drawing.Color.Black; }
+        }
+        // =========================================================================
+        // CALCULO CRUZADO CMC(D65) vs CMC(TL84) - Solo para el bloque TL84
+        // =========================================================================
+        public void SetSpecialCrossCmcResult(double cmcD65, double cmcTL84)
+        {
+            if (lblMiLeft != null && lblMiRight != null)
+            {
+                // 1. Valor absoluto de la diferencia entre iluminantes
+                double diferenciaAbsolutaCmc = Math.Abs(cmcD65 - cmcTL84);
+
+                // 2. Formato entero rigido + sufijo %
+                string resultadoStr = diferenciaAbsolutaCmc.ToString("0", CultureInfo.InvariantCulture) + "%";
+
+                // 3. Asignacion simetrica en los labels MI del Bloque 3
+                lblMiLeft.Text  = resultadoStr;
+                lblMiRight.Text = resultadoStr;
+
+                lblMiLeft.ForeColor  = System.Drawing.Color.Black;
+                lblMiRight.ForeColor = System.Drawing.Color.Black;
+                lblMiLeft.BackColor  = System.Drawing.Color.FromArgb(245, 245, 245);
+                lblMiRight.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+
+                // Asegurarse de que sean visibles
+                lblMiLeft.Visible  = true;
+                lblMiRight.Visible = true;
+            }
         }
     }
 }

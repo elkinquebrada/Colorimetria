@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Color.Services;
 using Color.Models;
 using System;
@@ -52,8 +52,6 @@ namespace Color
         private Label lblValueSubstrate;
         private Label lblValueCountPly;
         private Label lblValueFiberType;
-
-        private double DE_MAX => Properties.Settings.Default.ToleranciaDE;
 
         public FormResultados(OcrReport report)
         {
@@ -497,6 +495,10 @@ namespace Color
                 blockD65.Invalidate();
 
                 if (tl84 != null) { blockTL84.UpdateData(tl84); blockTL84.Invalidate(); }
+
+                // === CALCULO CRUZADO TL84: CMC(D65) vs CMC(TL84) ===
+                if (tl84 != null && d65 != null)
+                    blockTL84.SetSpecialCrossCmcResult(d65.CmcValue, tl84.CmcValue);
                 if (cwf  != null) { blockCWF.UpdateData(cwf);   blockCWF.Invalidate();  }
 
                 UpdateChart(d65); _lastMainResult = d65;
