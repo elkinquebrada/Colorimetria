@@ -21,7 +21,7 @@ namespace Color
         public double DeltaE { get => _dE; set { _dE = value; InvalidateSafer(); } }
         public double ToleranceDE { get => _toleranceDE; set { _toleranceDE = value; InvalidateSafer(); } }
         public string Title { get; set; } = "Análisis CIELAB";
-        public ViewMode Mode { get; set; } = ViewMode.Relative;
+        public ViewMode Mode { get => ViewMode.Absolute; set { } } // Cliente exige vista espacial real siempre
         public string InstructionMessage { get; set; } = "";
 
         public double AbsoluteL { get; set; } = 50.0;
@@ -63,15 +63,19 @@ namespace Color
                 g.FillRectangle(backBrush, this.ClientRectangle);
             }
 
-            // CORRECCIÓN 2: Cálculo de área dinámico para Pantalla Completa
-            int margin = 50;
+            // CORRECCIÓN 2: Distribución de espacio para que los cuadros no pisen la gráfica
+            int rightPanelWidth = 220; // Espacio reservado para cuadros térmicos y la barra de luminosidad
+            int leftPanelWidth = Math.Max(150, this.Width - rightPanelWidth);
+            
+            int verticalPadding = 90; // Padding para alojar titulos, viñetas y tooltips
 
-            // Calculamos un tamaño cuadrado basado en el lado más corto disponible
-            int size = Math.Min(this.Width - (margin * 2), this.Height - (margin * 2) - 20);
+            // Calculamos un tamaño cuadrado para el diagrama polar (sólo en el panel izquierdo)
+            int size = Math.Min(leftPanelWidth - 60, this.Height - verticalPadding);
+            if (size < 50) size = 50;
             
             Rectangle chartArea = new Rectangle(
-                (this.Width - size) / 2,
-                (this.Height - size) / 2 + 10,
+                (leftPanelWidth - size) / 2 + 25, // desplazar 25 a la derecha para que no corte el texto 'Verde'
+                (this.Height - size) / 2 + 5,
                 size,
                 size
             );
@@ -82,7 +86,7 @@ namespace Color
             {
                 using (Font f = new Font("Segoe UI", 12, FontStyle.Bold))
                 {
-                    g.DrawString(Title, f, Brushes.MidnightBlue, margin, 10);
+                    g.DrawString(Title, f, Brushes.MidnightBlue, 15, 10);
                 }
             }
 
@@ -109,10 +113,11 @@ namespace Color
             // Etiquetas de los Ejes
             using (Font axisFont = new Font("Segoe UI", 9, FontStyle.Bold))
             {
-                g.DrawString("Amarillo (+b*)", axisFont, Brushes.Gold, center.X - 40, chartArea.Top - 20);
-                g.DrawString("Azul (-b*)", axisFont, Brushes.RoyalBlue, center.X - 30, chartArea.Bottom + 5);
-                g.DrawString("Verde (-a*)", axisFont, Brushes.ForestGreen, chartArea.Left - 80, center.Y - 10);
-                g.DrawString("Rojo (+a*)", axisFont, Brushes.Crimson, chartArea.Right + 5, center.Y - 10);
+                g.DrawString("Amarillo (+b*)", axisFont, Brushes.Gold, center.X - 45, chartArea.Top - 18);
+                g.DrawString("Azul (-b*)", axisFont, Brushes.RoyalBlue, center.X - 30, chartArea.Bottom + 4);
+                g.DrawString("Verde (-a*)", axisFont, Brushes.ForestGreen, chartArea.Left - 75, center.Y - 8);
+                // Mover Rojo un poco arriba para evadir herramienta tooltip
+                g.DrawString("Rojo (+a*)", axisFont, Brushes.Crimson, chartArea.Right + 3, center.Y - 15);
             }
 
             // --- Lógica de Dibujo de Puntos (Inmersión) ---
@@ -134,27 +139,24 @@ namespace Color
             );
 
             // Tolerancia — CMC 2:1 Elipse Rotada
-            if (Mode == ViewMode.Relative)
+            double C1 = Math.Sqrt(AbsoluteA * AbsoluteA + AbsoluteB * AbsoluteB);
+            double h1_rad = Math.Atan2(AbsoluteB, AbsoluteA);
+            double h1_deg = h1_rad * 180.0 / Math.PI;
+            if (h1_deg < 0) h1_deg += 360.0;
+
+            var axes = Color.ColorimetricCalculator.CalculateCmcSemiAxes(AbsoluteL, C1, h1_deg);
+            float wC = (float)(axes.sc * ToleranceDE * scale);
+            float hH = (float)(axes.sh * ToleranceDE * scale);
+
+            using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.8f))
             {
-                double C1 = Math.Sqrt(AbsoluteA * AbsoluteA + AbsoluteB * AbsoluteB);
-                double h1_rad = Math.Atan2(AbsoluteB, AbsoluteA);
-                double h1_deg = h1_rad * 180.0 / Math.PI;
-                if (h1_deg < 0) h1_deg += 360.0;
-
-                var axes = Color.ColorimetricCalculator.CalculateCmcSemiAxes(AbsoluteL, C1, h1_deg);
-                float wC = (float)(axes.sc * ToleranceDE * scale);
-                float hH = (float)(axes.sh * ToleranceDE * scale);
-
-                using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.8f))
-                {
-                    tolPen.DashStyle = DashStyle.Dash;
-                    
-                    GraphicsState state = g.Save();
-                    g.TranslateTransform(center.X, center.Y);
-                    g.RotateTransform((float)(-h1_deg));
-                    g.DrawEllipse(tolPen, -wC, -hH, wC * 2, hH * 2);
-                    g.Restore(state);
-                }
+                tolPen.DashStyle = DashStyle.Dash;
+                
+                GraphicsState state = g.Save();
+                g.TranslateTransform(pStd.X, pStd.Y); // Elipse centrada en la posición real del estándar
+                g.RotateTransform((float)(-h1_deg));
+                g.DrawEllipse(tolPen, -wC, -hH, wC * 2, hH * 2);
+                g.Restore(state);
             }
 
             // Vector Tendencial
@@ -173,10 +175,8 @@ namespace Color
             g.FillEllipse(Brushes.Red, pLot.X - 4, pLot.Y - 4, 8, 8);
             g.DrawEllipse(Pens.White, pLot.X - 4, pLot.Y - 4, 8, 8);
             
-            // Tooltip flotante de datos
-            string info = Mode == ViewMode.Relative 
-                ? $"Δa: {DeltaA:F2}\nΔb: {DeltaB:F2}\nΔE: {DeltaE:F2}"
-                : $"Lote: a*={LotA:F1}, b*={LotB:F1}";
+            // Tooltip flotante de datos con todos los detalles
+            string info = $"Lote: a*={LotA:F1}, b*={LotB:F1}\nΔa: {DeltaA:F2}\nΔb: {DeltaB:F2}\nΔE: {DeltaE:F2}";
             Size box = TextRenderer.MeasureText(info, this.Font);
             Rectangle rectInfo = new Rectangle((int)pLot.X + 10, (int)pLot.Y - 20, box.Width + 10, box.Height + 5);
             
@@ -184,19 +184,22 @@ namespace Color
             g.DrawString(info, this.Font, Brushes.White, rectInfo.X + 5, rectInfo.Y + 2);
 
             // Leyenda de Puntos
-            using (Font fLegend = new Font("Segoe UI", 9, FontStyle.Bold))
+            using (Font fLegend = new Font("Segoe UI", 8.5f, FontStyle.Bold))
             {
-                g.FillEllipse(Brushes.LimeGreen, margin, chartArea.Bottom + 10, 12, 12);
-                g.DrawString("Estándar (Objetivo)", fLegend, Brushes.Black, margin + 15, chartArea.Bottom + 8);
+                int legendY = chartArea.Bottom + 25; // Más abajo para separarla de Azul (-b*)
+                g.FillEllipse(Brushes.LimeGreen, 15, legendY + 2, 12, 12);
+                g.DrawString("Estándar (Objetivo)", fLegend, Brushes.Black, 30, legendY);
                 
-                g.FillEllipse(Brushes.Red, margin + 180, chartArea.Bottom + 10, 12, 12);
-                g.DrawString("Lote (Resultado)", fLegend, Brushes.Black, margin + 195, chartArea.Bottom + 8);
+                g.FillEllipse(Brushes.Red, 160, legendY + 2, 12, 12);
+                g.DrawString("Lote (Resultado)", fLegend, Brushes.Black, 175, legendY);
             }
 
-            // Renderizar componentes adicionales perdidos
-            int lWidth = 60;
-            DrawComparisonSamples(g, this.Width - lWidth - 140, margin);
-            DrawLightnessAxis(g, this.Width - lWidth + 10, chartArea.Top, lWidth - 30, chartArea.Height);
+            // Renderizar componentes adicionales lateralmente sin superponer
+            int rightStartX = leftPanelWidth + 5;
+            int lWidth = 35;
+            
+            DrawComparisonSamples(g, rightStartX, chartArea.Top);
+            DrawLightnessAxis(g, rightStartX + 160, chartArea.Top, lWidth, chartArea.Height);
         }
 
         private void DrawChromaticCircle(Graphics g, Point center, int radius, double maxLabValue)
@@ -259,7 +262,7 @@ namespace Color
 
         private void DrawComparisonSamples(Graphics g, int x, int y)
         {
-            int sw = 80, sh = 80;
+            int sw = 70, sh = 70; // Cuadros compactos para optimizar distribución
             Rectangle rStd = new Rectangle(x, y, sw, sh);
             Rectangle rLot = new Rectangle(x + sw + 10, y, sw, sh);
 

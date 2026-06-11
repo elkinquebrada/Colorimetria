@@ -20,6 +20,8 @@ namespace Color
         private Label lblCmcStatus;   
         private Label lblMiLeft;      
         private Label lblMiRight;     
+        private Label lblBrighter;
+        private Label lblYellower;
 
         private Label lblSL, lblSC, lblH_Angle, lblSH, lblT, lblF;
 
@@ -97,11 +99,11 @@ namespace Color
             dgvDiagnostic.ColumnHeadersVisible = false;
 
             // Fila 0: Valores numéricos de Delta
-            int rd0 = dgvDiagnostic.Rows.Add("Δ", "0.75", "0.43", "0.44");
+            int rd0 = dgvDiagnostic.Rows.Add("?�", "0.75", "0.43", "0.44");
             dgvDiagnostic.Rows[rd0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
             // Fila 1: Texto de Diagnóstico (Claro, Rojo, Amarillo)
-            int rd1 = dgvDiagnostic.Rows.Add("Δ", "Claro (Thin)", "Rojo", "Amarillo");
+            int rd1 = dgvDiagnostic.Rows.Add("?�", "Claro (Thin)", "Rojo", "Amarillo");
 
             // Celda Claro (Fondo Azul, Texto Blanco)
             dgvDiagnostic.Rows[rd1].Cells[1].Style.Font = new Font(dgvDiagnostic.Font, FontStyle.Bold);
@@ -125,11 +127,11 @@ namespace Color
             dgvActions.Columns[0].Width = 55;
             dgvActions.ColumnHeadersVisible = false;
 
-            int ra0 = dgvActions.Rows.Add("Acción", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
+            int ra0 = dgvActions.Rows.Add("Accion", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
             dgvActions.Rows[ra0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
             // Fila 1: Porcentajes numéricos
-            int ra1 = dgvActions.Rows.Add("Acción", "2%", "6%", "7%");
+            int ra1 = dgvActions.Rows.Add("Accion", "2%", "6%", "7%");
 
             dgvActions.CellPainting += new DataGridViewCellPaintingEventHandler(DgvActions_CellPainting);
 
@@ -192,16 +194,16 @@ namespace Color
             pnlStatusMiddle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
             pnlStatusMiddle.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-            Label lblBrighter = new Label();
-            lblBrighter.Text = "Brighter";
+            lblBrighter = new Label();
+            lblBrighter.Text = "-";
             lblBrighter.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
             lblBrighter.ForeColor = System.Drawing.Color.White;
             lblBrighter.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             lblBrighter.Dock = DockStyle.Fill;
             lblBrighter.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
 
-            Label lblYellower = new Label();
-            lblYellower.Text = "Yellower (Redder)";
+            lblYellower = new Label();
+            lblYellower.Text = "-";
             lblYellower.BackColor = System.Drawing.Color.White;
             lblYellower.ForeColor = System.Drawing.Color.Black;
             lblYellower.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -214,7 +216,7 @@ namespace Color
             pnlMiddle.Controls.Add(pnlStatusMiddle, 0, 1);
 
             // -----------------------------------------------------------------
-            // 3. Componente Inferior: Desviación (Duller / Bluer)
+            // 3. Componente Inferior: Desviacion (Duller / Bluer)
             // -----------------------------------------------------------------
 
             dgvDeviation = CreateBaseGrid(2);
@@ -251,7 +253,7 @@ namespace Color
                 CellBorderStyle = TableLayoutPanelCellBorderStyle.None
             };
 
-            // Distribución exacta de columnas en C# 7.3 (Usando floats explícitos válidos)
+            // Distribucion exacta de columnas en C# 7.3 (Usando floats explicitos validos)
             for (int i = 0; i < 5; i++)
             {
                 pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.0f));
@@ -316,7 +318,7 @@ namespace Color
             pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("T"),  4, 2);
             pnlCmcCombo.Controls.Add(CreateSubHeaderLabel("F"),  5, 2);
 
-            // --- FILA 3: Sub-Valores Numéricos ---
+            // --- FILA 3: Sub-Valores Numericos ---
             lblSL      = CreateSubValueLabel("1.055");
             lblSC      = CreateSubValueLabel("1.195");
             lblH_Angle = CreateSubValueLabel("137.43");
@@ -359,7 +361,7 @@ namespace Color
             pnlCmcCombo.Controls.Add(lblMiHeader, 0, 5);
             pnlCmcCombo.SetColumnSpan(lblMiHeader, 6);
 
-            // --- FILA 6: Valores Numéricos MI ---
+            // --- FILA 6: Valores Numericos MI ---
             lblMiLeft = CreateSubValueLabel("0.80");
             lblMiLeft.Font = new Font("Segoe UI", 11.0f, FontStyle.Bold);
 
@@ -392,7 +394,7 @@ namespace Color
                 {
                     Rectangle rectFila1 = dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
 
-                    //rectángulo fusionado de la primera celda
+                    //rectangulo fusionado de la primera celda
                     Rectangle rectFusionado = e.CellBounds;
                     rectFusionado.Height += rectFila1.Height;
 
@@ -442,7 +444,7 @@ namespace Color
 
                     Font fontAccion = new Font("Segoe UI", 9.0f, FontStyle.Bold);
                     TextFormatFlags flagsCentrado = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter;
-                    TextRenderer.DrawText(e.Graphics, "Acción", fontAccion, rectFusionado, System.Drawing.Color.White, flagsCentrado);
+                    TextRenderer.DrawText(e.Graphics, "Accion", fontAccion, rectFusionado, System.Drawing.Color.White, flagsCentrado);
                 }
 
                 using (Pen penBorde = new Pen(dgv.GridColor))
@@ -537,7 +539,7 @@ namespace Color
         }
 
         // =================================================================
-        // ACTUALIZACIÓN DE DATOS DINÁMICOS (Corregida de forma segura)
+        // ACTUALIZACION DE DATOS DINA�MICOS (Corregida de forma segura)
         // =================================================================
         public void UpdateTolerances(double de, double dl, double dc, double dh)
         {
@@ -606,8 +608,8 @@ namespace Color
             if (lblF != null) lblF.Text = res.F_factor.ToString("0.000", CultureInfo.InvariantCulture);
 
             // --- Estado Global OK / FAIL (Fila 4) ---
-            bool aprobado = res.Pass; 
-            lblCmcStatus.Text      = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
+            bool aprobado = res.Pass;
+            lblCmcStatus.Text = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
             lblCmcStatus.ForeColor = aprobado
                 ? System.Drawing.Color.FromArgb(0, 153, 0)
                 : System.Drawing.Color.FromArgb(180, 0, 0);
@@ -615,7 +617,7 @@ namespace Color
                 ? System.Drawing.Color.FromArgb(230, 255, 230)
                 : System.Drawing.Color.FromArgb(255, 220, 220);
 
-            // Estado Semafórico del CMC Tolerancia
+            // Estado Semaforico del CMC Tolerancia
             if (res.CmcValue > _deAprobado)
             {
                 lblCmcValue.BackColor = System.Drawing.ColorTranslator.FromHtml("#FFD6D6");
@@ -627,7 +629,7 @@ namespace Color
                 lblCmcValue.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0); 
             }
 
-            // Estado semafórico de Lightness (DL)
+            // Estado semaforico de Lightness (DL)
             if (Math.Abs(res.CmcLightness) > _dlAprobado)
             {
                 lblLightness.BackColor = System.Drawing.ColorTranslator.FromHtml("#FFD6D6");
@@ -639,7 +641,7 @@ namespace Color
                 lblLightness.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0);
             }
 
-            // Estado semafórico de Chroma (DC)
+            // Estado semaforico de Chroma (DC)
             if (Math.Abs(res.CmcChroma) > _dcAprobado)
             {
                 lblChroma.BackColor = System.Drawing.ColorTranslator.FromHtml("#FFD6D6");
@@ -651,7 +653,7 @@ namespace Color
                 lblChroma.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0);
             }
 
-            // Estado semafórico de Hue (DH)
+            // Estado semaforico de Hue (DH)
             if (Math.Abs(res.CmcHue) > _dhAprobado)
             {
                 lblHue.BackColor = System.Drawing.ColorTranslator.FromHtml("#FFD6D6");
@@ -668,8 +670,50 @@ namespace Color
             dgvActions.Rows[1].Cells[2].Value = Math.Abs(Math.Round(res.PercentA, 0)) + "%";
             dgvActions.Rows[1].Cells[3].Value = Math.Abs(Math.Round(res.PercentB, 0)) + "%";
 
-            // ¡Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
+            ProcesarYMostrarDiagnostico(res);
+
+            // �Truco clave! Forzamos un refresco visual inmediato del control para pintar las etiquetas anidadas
             lblIlluminantName.Refresh();
+        }
+
+        private void ProcesarYMostrarDiagnostico(ColorCorrectionResult res)
+        {
+            if (res == null) return;
+
+            // -------------------------------------------------------------------------
+            // PARTE A: DIAGNOSTICO VISUAL Y MATRIZ DE COLOR OPUESTO
+            // -------------------------------------------------------------------------
+
+            // 1. Construimos dinámicamente el string de cuadrante
+            string dirA = res.DeltaA >= 0 ? "Redder" : "Greener";
+            string dirB = res.DeltaB >= 0 ? "Yellower" : "Bluer";
+            string hueLabel = $"{dirB} ({dirA})";
+
+            // 2. Ejecutamos las reglas lógicas que mapean las fórmulas de Excel
+            ColorDecisionResult decision = ColorDecisionEngine.EvaluarDesviacion(res.DeltaL, hueLabel);
+
+            // 3. Asignamos los textos dinámicos a las etiquetas de diagnóstico
+            if (lblBrighter != null) lblBrighter.Text = decision.Brightness;
+            if (lblYellower != null) lblYellower.Text = decision.QuadrantLabel;
+
+            // 4. Rellenamos la grilla de desviaciones con saltos de línea visuales
+            if (dgvDeviation.Rows.Count > 0)
+            {
+                dgvDeviation.Rows[0].Cells[0].Value = decision.DeviationCell0;
+                dgvDeviation.Rows[0].Cells[1].Value = decision.OppositeColor.Replace(" (", "\n(");
+                dgvDeviation.Rows[0].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
+                dgvDeviation.Rows[0].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
+            }
+
+            // -------------------------------------------------------------------------
+            // PARTE B: CONCATENACION DINÁMICA DE PARÁMETROS CMC (Bloque Inferior)
+            // -------------------------------------------------------------------------
+            if (lblSL != null)      { lblSL.Text      = $"{res.SL.ToString("0.000")}";       lblSL.ForeColor      = System.Drawing.Color.Black; }
+            if (lblSC != null)      { lblSC.Text      = $"{res.SC.ToString("0.000")}";       lblSC.ForeColor      = System.Drawing.Color.Black; }
+            if (lblH_Angle != null) { lblH_Angle.Text = $"{res.StdH.ToString("0.00")}";      lblH_Angle.ForeColor = System.Drawing.Color.Black; }
+            if (lblSH != null)      { lblSH.Text      = $"{res.SH.ToString("0.000")}";      lblSH.ForeColor      = System.Drawing.Color.Black; }
+            if (lblT != null)       { lblT.Text       = $"{res.T_factor.ToString("0.000")}";  lblT.ForeColor       = System.Drawing.Color.Black; }
+            if (lblF != null)       { lblF.Text       = $"{res.F_factor.ToString("0.000")}";  lblF.ForeColor       = System.Drawing.Color.Black; }
         }
     }
 }

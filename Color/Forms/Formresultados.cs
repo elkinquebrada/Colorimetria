@@ -173,7 +173,7 @@ namespace Color
 
             // 1. TÍTULO IZQUIERDO: L, a, b (lot - std)
             Label lblLabTitle = new Label();
-            lblLabTitle.Text = "L, a, b (lot - std)";
+            lblLabTitle.Text = "L, a, b (Lot - Std)";
             lblLabTitle.Font = fontTitulos;
             lblLabTitle.ForeColor = negroPuro;
             Point locLabTitle = new Point(0, 5);
@@ -542,8 +542,8 @@ namespace Color
                     var lineGr = new Label { BackColor = System.Drawing.Color.Black, Size = new Size(400, 2), Location = new Point(0, 28) };
                     
                     _cielabChart.Location = new Point(0, 35);
-                    _cielabChart.Width = 450;
-                    _cielabChart.Height = 250;
+                    _cielabChart.Width = 510;
+                    _cielabChart.Height = 280;
                     
                     pnlGraficoFlow.Controls.Add(lblGrTitle);
                     pnlGraficoFlow.Controls.Add(lineGr);
