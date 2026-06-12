@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
@@ -432,9 +432,12 @@ namespace Color
 
                 if (e.RowIndex == 0)
                 {
-                    Rectangle rectFila1 = dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
                     Rectangle rectFusionado = e.CellBounds;
-                    rectFusionado.Height += rectFila1.Height;
+                    if (dgv.Rows.Count > 1)
+                    {
+                        Rectangle rectFila1 = dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
+                        rectFusionado.Height += rectFila1.Height;
+                    }
 
                     using (SolidBrush brush = new SolidBrush(azulColorimetro))
                     {
@@ -449,8 +452,13 @@ namespace Color
                 using (Pen penBorde = new Pen(dgv.GridColor))
                 {
                     e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Top, e.CellBounds.Left, e.CellBounds.Bottom);
-                    if (e.RowIndex == 1)
+                    if (e.RowIndex == 1 && dgv.Rows.Count > 1)
                     {
+                        e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                    }
+                    else if (dgv.Rows.Count == 1)
+                    {
+                        // Draw bottom border if it's the only row
                         e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
                     }
                 }
@@ -699,10 +707,74 @@ namespace Color
                 lblHue.ForeColor = System.Drawing.Color.FromArgb(0, 102, 0);
             }
 
-            // Update Actions (Tabla Inferior) - Usar Valor Absoluto por solicitud del cliente
-            dgvActions.Rows[1].Cells[1].Value = Math.Abs(Math.Round(res.PercentL, 0)) + "%";
-            dgvActions.Rows[1].Cells[2].Value = Math.Abs(Math.Round(res.PercentA, 0)) + "%";
-            dgvActions.Rows[1].Cells[3].Value = Math.Abs(Math.Round(res.PercentB, 0)) + "%";
+            // =========================================================================
+            // 🧪 PARIDAD EXCEL EXCLUSIVA: LÓGICA "AUMENTAR" EN 2 FILAS 
+            // =========================================================================
+            if (dgvActions != null && dgvActions.Rows.Count > 0)
+            {
+                // Asegurarnos de que existan al menos 2 filas (restituyendo la que fue borrada antes)
+                if (dgvActions.Rows.Count < 2)
+                {
+                    dgvActions.Rows.Add("Accion", "-", "-", "-");
+                }
+
+                int filaTextosAccion = 0; 
+                int filaPorcentajes = 1;  
+
+                // 1. Recuperar diagnósticos dinámicos reales del motor de color (Celdas D32, D33 y D34 de Excel)
+                string diagL = ColorimetricCalculator.GetLuminosityDiagnosis(res.DeltaL); 
+                string diagA = ColorimetricCalculator.GetEjeADiagnosis(res.DeltaA);       
+                string diagB = ColorimetricCalculator.GetEjeBDiagnosis(res.DeltaB);       
+
+                // 2. Procesar matemáticamente los TRES porcentajes absolutos en formato Entero Rígido ("0")
+                string pctLStr = Math.Abs(Math.Round(res.PercentL, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
+                string pctAStr = Math.Abs(Math.Round(res.PercentA, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
+                string pctBStr = Math.Abs(Math.Round(res.PercentB, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+                // ---------------------------------------------------------------------
+                // Mapeo Fórmula 1 (Luminosidad L*) -> Condicional Estricto Excel
+                // ---------------------------------------------------------------------
+                string accionLStr = "";
+                if (res.DeltaL > 0 && diagL.Contains("Claro"))       accionLStr = "Aumentar [ ]"; 
+                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Aumentar ";
+                else accionLStr = "Aumentar [ ]";
+
+                // ---------------------------------------------------------------------
+                // Mapeo Fórmula 2 (Eje a* Rojo/Verde) -> Condicional Estricto Excel
+                // ---------------------------------------------------------------------
+                string accionAStr = "";
+                if (diagA == "Rojo")       accionAStr = "Aumentar Verde"; 
+                else if (diagA == "Verde") accionAStr = "Aumentar Rojo";
+                else accionAStr = (res.DeltaA < 0) ? "Aumentar Rojo" : "Aumentar Verde";
+
+                // ---------------------------------------------------------------------
+                // Mapeo Fórmula 3 (Eje b* Amarillo/Azul) -> Condicional Estricto Excel
+                // ---------------------------------------------------------------------
+                string accionBStr = "";
+                if (diagB == "Amarillo")   accionBStr = "Aumentar Azul"; 
+                else if (diagB == "Azul")  accionBStr = "Aumentar Amarillo";
+                else accionBStr = (res.DeltaB < 0) ? "Aumentar Amarillo" : "Aumentar Azul";
+
+                // 3. INYECCIÓN EN LA INTERFAZ GRÁFICA (Fila 0 - Textos)
+                dgvActions.Rows[filaTextosAccion].Cells[1].Value = accionLStr;
+                dgvActions.Rows[filaTextosAccion].Cells[2].Value = accionAStr;
+                dgvActions.Rows[filaTextosAccion].Cells[3].Value = accionBStr;
+
+                // 4. INYECCIÓN EN LA INTERFAZ GRÁFICA (Fila 1 - Porcentajes)
+                dgvActions.Rows[filaPorcentajes].Cells[1].Value = pctLStr;
+                dgvActions.Rows[filaPorcentajes].Cells[2].Value = pctAStr;
+                dgvActions.Rows[filaPorcentajes].Cells[3].Value = pctBStr;
+
+                // 5. HOMOLOGACIÓN VISUAL DE FUENTES (Textos)
+                dgvActions.Rows[filaTextosAccion].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
+                dgvActions.Rows[filaTextosAccion].Cells[2].Style.ForeColor = (accionAStr.Contains("Verde")) ? System.Drawing.Color.Black : System.Drawing.Color.Black;
+                dgvActions.Rows[filaTextosAccion].Cells[3].Style.ForeColor = (accionBStr.Contains("Azul")) ? System.Drawing.Color.Black : System.Drawing.Color.Black;
+
+                // HOMOLOGACIÓN VISUAL DE FUENTES (Porcentajes)
+                dgvActions.Rows[filaPorcentajes].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
+                dgvActions.Rows[filaPorcentajes].Cells[2].Style.ForeColor = (accionAStr.Contains("Verde")) ? System.Drawing.Color.Black : System.Drawing.Color.Black;
+                dgvActions.Rows[filaPorcentajes].Cells[3].Style.ForeColor = (accionBStr.Contains("Azul")) ? System.Drawing.Color.Black : System.Drawing.Color.Black;
+            }
 
             ProcesarYMostrarDiagnostico(res);
 
@@ -712,7 +784,26 @@ namespace Color
             bool esIluminanteA = (textIlluminant == "A" || textIlluminant == "CWF");
 
             if (lblCmcStatus != null)
+            {
                 lblCmcStatus.Visible = !esIluminanteA;
+                
+                // Configuracion especial SOLICITADA EN BLOQUE 3 exclusivamente para TL84: 
+                // Ocultar el 'ok' (y evitar que deje su espacio vacio) respetando estrictamente a D65.
+                if (textIlluminant == "TL84")
+                {
+                    lblCmcStatus.Visible = false;
+                    
+                    if (lblCmcStatus.Parent != null && lblCmcStatus.Parent is System.Windows.Forms.TableLayoutPanel)
+                    {
+                        System.Windows.Forms.TableLayoutPanel tlp = (System.Windows.Forms.TableLayoutPanel)lblCmcStatus.Parent;
+                        int rowIndex = tlp.GetRow(lblCmcStatus);
+                        if (rowIndex >= 0 && rowIndex < tlp.RowStyles.Count)
+                        {
+                            tlp.RowStyles[rowIndex].Height = 0.0f;
+                        }
+                    }
+                }
+            }
 
             if (lblMiLeft != null)
                 lblMiLeft.Visible = !esIluminanteA;
@@ -814,28 +905,44 @@ namespace Color
         // =========================================================================
         // CALCULO CRUZADO CMC(D65) vs CMC(TL84) - Solo para el bloque TL84
         // =========================================================================
-        public void SetSpecialCrossCmcResult(double cmcD65, double cmcTL84)
+                public void SetSpecialCrossCmcResult(double cmcD65, double cmcTL84)
         {
             if (lblMiLeft != null && lblMiRight != null)
             {
-                // 1. Valor absoluto de la diferencia entre iluminantes
+                // 1. Valor absoluto
                 double diferenciaAbsolutaCmc = Math.Abs(cmcD65 - cmcTL84);
 
-                // 2. Formato entero rigido + sufijo %
-                string resultadoStr = diferenciaAbsolutaCmc.ToString("0", CultureInfo.InvariantCulture) + "%";
+                // 2. Formato de 2 decimales sin %
+                string resultadoStr = diferenciaAbsolutaCmc.ToString("0.00", CultureInfo.InvariantCulture);
 
-                // 3. Asignacion simetrica en los labels MI del Bloque 3
-                lblMiLeft.Text  = resultadoStr;
-                lblMiRight.Text = resultadoStr;
+                // 3. Asignar solo a lblMiLeft y expandirlo
+                lblMiLeft.Text = resultadoStr;
+                lblMiLeft.ForeColor = System.Drawing.Color.FromArgb(238, 108, 38); // Color coral/naranja simulando imagen
+                lblMiLeft.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+                lblMiLeft.Visible = true;
 
-                lblMiLeft.ForeColor  = System.Drawing.Color.Black;
-                lblMiRight.ForeColor = System.Drawing.Color.Black;
-                lblMiLeft.BackColor  = System.Drawing.Color.FromArgb(245, 245, 245);
-                lblMiRight.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+                // Ocultar la celda derecha para generar impresion de celda unica
+                lblMiRight.Visible = false;
 
-                // Asegurarse de que sean visibles
-                lblMiLeft.Visible  = true;
-                lblMiRight.Visible = true;
+                // Expandir la celda izquierda en el TableLayoutPanel (ColSpan = 6)
+                if (lblMiLeft.Parent != null && lblMiLeft.Parent is System.Windows.Forms.TableLayoutPanel)
+                {
+                    System.Windows.Forms.TableLayoutPanel tlp = (System.Windows.Forms.TableLayoutPanel)lblMiLeft.Parent;
+                    tlp.SetColumnSpan(lblMiLeft, 6);
+                }
+
+                // Ocultar la etiqueta "Indice de Metamerismo (MI)" si no ha sido ocultada
+                if (lblMiLeft.Parent != null)
+                {
+                    foreach (System.Windows.Forms.Control ctl in lblMiLeft.Parent.Controls)
+                    {
+                        if (ctl is System.Windows.Forms.Label && 
+                            ctl.Text != null && ctl.Text.Contains("Metamerismo"))
+                        {
+                            ctl.Visible = false;
+                        }
+                    }
+                }
             }
         }
     }

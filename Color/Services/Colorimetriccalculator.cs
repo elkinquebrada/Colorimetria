@@ -175,7 +175,7 @@ namespace Color
             double determinante = (stdA * lotB) - (stdB * lotA);
             double signo = (determinante >= 0) ? 1.0 : -1.0;
 
-            // 2. FORMULA GEOMeTRICA DIRECTA CIE 
+            // 2. FORMULA GEOMETRICA DIRECTA CIE 
             double cStd = Math.Sqrt((stdA * stdA) + (stdB * stdB));
             double cLot = Math.Sqrt((lotA * lotA) + (lotB * lotB));
 
@@ -236,10 +236,8 @@ namespace Color
             return value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
         }
 
-
-
         // =========================================================================
-        // ðŸ› ï¸ EXTENSION DEL MOTOR: EVALUACIONES CROMATICAS INDEPENDIENTES (PARIDAD EXCEL)
+        //  EXTENSION DEL MOTOR: EVALUACIONES CROMATICAS INDEPENDIENTES (PARIDAD EXCEL)
         // =========================================================================
 
         public static string GetLuminosityDiagnosis(double deltaL)
