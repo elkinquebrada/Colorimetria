@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -47,7 +47,9 @@ namespace Color
         public double DeltaA { get; set; }
         public double DeltaB { get; set; }
         public double DeltaChroma { get; set; }
+        public double DeltaC { get => DeltaChroma; set => DeltaChroma = value; }
         public double DeltaHue { get; set; }
+        public double DeltaH { get => DeltaHue; set => DeltaHue = value; }
         public double DeltaE { get; set; }
         public double CmcValue { get; set; }
 
@@ -83,6 +85,16 @@ namespace Color
         public string RecommendationC => ColorimetricCalculator.GetRecommendationC_Expert(DeltaL, DeltaChroma, Math.Abs(PercentChroma), SecondaryDyeName, PrimaryDyeName);
 
         public bool Pass { get; set; } = true;
+
+        // NUEVAS PROPIEDADES: Factores Puros del Excel Maestro (Sin ramas condicionales)
+        public double FactorL_Pure { get; set; }
+        public double FactorC_Pure { get; set; }
+        public double FactorH_Pure { get; set; }
+
+        // Listas de salida para el almacenamiento de las nuevas concentraciones
+        public List<double> RecetaR1_Luminosidad { get; set; } = new List<double>();
+        public List<double> RecetaR2_Croma { get; set; } = new List<double>();
+        public List<double> RecetaR3_Tono { get; set; } = new List<double>();
     }
 
     public sealed class ToleranceResult
@@ -98,6 +110,56 @@ namespace Color
     // ========================================================================
     public static class ColorimetricCalculator
     {
+        public static void CalcularNuevasRecetasMaestras(ColorCorrectionResult res, List<double> concentracionesIniciales)
+        {
+            if (res == null || concentracionesIniciales == null) return;
+
+            // Extraemos los factores exactos del Excel para lograr Paridad Absoluta
+            res.FactorL_Pure = (res.StdL != 0) ? Math.Abs(res.DeltaL) / Math.Abs(res.StdL) : 0.0;
+            double factorA_Pure = (res.StdA != 0) ? Math.Abs(res.DeltaA) / Math.Abs(res.StdA) : 0.0;
+            double factorH_CMC = Math.Abs(res.DeltaHue) * 0.1; 
+
+            res.RecetaR1_Luminosidad.Clear();
+            res.RecetaR2_Croma.Clear();
+            res.RecetaR3_Tono.Clear();
+
+            bool signPositive = res.DeltaL > 0;
+
+            for (int i = 0; i < concentracionesIniciales.Count; i++)
+            {
+                double conOrig = concentracionesIniciales[i];
+
+                // --- RECETA 1 (Equivalencia Columna D en Excel) --
+                double fR1 = res.FactorL_Pure;
+                double r1 = signPositive
+                    ? Math.Ceiling((conOrig * (1.0 + fR1)) * 10000.0) / 10000.0
+                    : Math.Ceiling((conOrig * (1.0 - fR1)) * 10000.0) / 10000.0;
+                res.RecetaR1_Luminosidad.Add(r1);
+
+                // --- RECETA 2 (Equivalencia Columna H en Excel) ---
+                double fR2 = 0.0;
+                if (i == 0) fR2 = factorH_CMC;
+                else if (i == 1) fR2 = res.FactorL_Pure;
+                else fR2 = factorA_Pure;
+
+                double r2 = signPositive
+                    ? Math.Ceiling((conOrig * (1.0 + fR2)) * 10000.0) / 10000.0
+                    : Math.Ceiling((conOrig * (1.0 - fR2)) * 10000.0) / 10000.0;
+                res.RecetaR2_Croma.Add(r2);
+
+                // --- RECETA 3 (Equivalencia Columna L en Excel) ---
+                double fR3 = 0.0;
+                if (i == 0) fR3 = res.FactorL_Pure;
+                else if (i == 1) fR3 = factorA_Pure;
+                else fR3 = res.FactorL_Pure;
+
+                double r3 = signPositive
+                    ? Math.Ceiling((conOrig * (1.0 + fR3)) * 10000.0) / 10000.0
+                    : Math.Ceiling((conOrig * (1.0 - fR3)) * 10000.0) / 10000.0;
+                res.RecetaR3_Tono.Add(r3);
+            }
+        }
+
         public static List<ColorCorrectionResult> CalculateAllIlluminants(Color.OcrReport report)
         {
             var results = new List<ColorCorrectionResult>();
@@ -232,7 +294,6 @@ namespace Color
 
         public static string FormatDelta(double value)
         {
-            // Tercer argumento corregido: cero real se muestra como 0.00 sin signo forzado
             return value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
         }
 

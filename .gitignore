@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Archivos específicos de mi script de extracción
+Color/LogicDocs/xlsx_extracted/
+*.exe
+build_output.txt
+extracted_formulas.txt
+formulas_list.txt
+parsed_formulas.txt
+parsed_values.txt
