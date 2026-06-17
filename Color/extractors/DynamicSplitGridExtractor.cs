@@ -13,17 +13,6 @@ namespace Color
     // Extractor de receta por columnas geométricas independientes
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Segmenta la franja de colorantes de la imagen en columnas verticales
-    /// independientes (Código | Nombre | Concentración) y retorna únicamente
-    /// filas de colorantes puros, sin ruido de químicos auxiliares.
-    ///
-    /// Opera bajo dos modos:
-    ///  • tableBounds != null → Formato combinado (LegacyCombinedFormat):
-    ///    la receta útil termina exactamente donde empieza la tabla CMC inferior.
-    ///  • tableBounds == null → Ticket plano (DynamicSplitGridFormat):
-    ///    se usa el cuadrante central superior estándar.
-    /// </summary>
     public sealed class DynamicSplitGridExtractor
     {
         // ── Rutas de Tesseract ────────────────────────────────────────────────
@@ -33,32 +22,13 @@ namespace Color
 
         // ── Proporciones geométricas (fracciones del ancho total) ─────────────
 
-        /// <summary>
-        /// Columna 0: Código de colorante (primeros 15 % del ancho).
-        /// </summary>
         private const double COL_CODE_WIDTH  = 0.15;
-
-        /// <summary>
-        /// Columna 1: Nombre del colorante (siguiente 38 % del ancho).
-        /// </summary>
         private const double COL_NAME_WIDTH  = 0.38;
-
-        /// <summary>
-        /// Columna 2: Concentración % (siguiente 15 % del ancho).
-        /// </summary>
         private const double COL_PCT_WIDTH   = 0.15;
 
         // ── Proporciones geométricas (fracciones de la altura total) ──────────
 
-        /// <summary>
-        /// Modo LegacyCombinedFormat: la franja de colorantes ocupa el
-        /// 22 % de la altura, terminando en el borde superior de la tabla CMC.
-        /// </summary>
         private const double RECIPE_ZONE_HEIGHT_COMBINED = 0.22;
-
-        /// <summary>
-        /// Modo DynamicSplitGridFormat: zona superior estándar (18 % – 43 %).
-        /// </summary>
         private const double RECIPE_ZONE_TOP_FLAT   = 0.18;
         private const double RECIPE_ZONE_HEIGHT_FLAT = 0.25;
 
@@ -71,15 +41,6 @@ namespace Color
 
         // ── API pública ───────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Extrae la lista de colorantes de la imagen usando segmentación
-        /// geométrica de columnas.
-        /// </summary>
-        /// <param name="imagePath">Ruta al archivo PNG.</param>
-        /// <param name="tableBounds">
-        ///   Coordenadas de la tabla CMC inferior en el espacio de la imagen
-        ///   original. Pase <c>null</c> para modo ticket plano.
-        /// </param>
         public List<RecipeItem> ExtractRecipePositional(
             string imagePath,
             System.Drawing.Rectangle? tableBounds = null)
@@ -91,9 +52,7 @@ namespace Color
                 return ExtractFromBitmap(bmp, tableBounds);
         }
 
-        /// <summary>
         /// Extrae la lista de colorantes directamente desde un Bitmap ya cargado.
-        /// </summary>
         public List<RecipeItem> ExtractFromBitmap(
             Bitmap bmp,
             System.Drawing.Rectangle? tableBounds = null)
@@ -109,8 +68,6 @@ namespace Color
 
             if (tableBounds.HasValue && tableBounds.Value.Y > 0)
             {
-                // Formato combinado: la receta termina donde empieza la tabla CMC.
-                // Tomamos el 22 % de altura hacia arriba desde ese límite.
                 int recipeBottom = tableBounds.Value.Y;
                 int rawHeight    = (int)(imgHeight * RECIPE_ZONE_HEIGHT_COMBINED);
                 zoneTop    = Math.Max(0, recipeBottom - rawHeight);

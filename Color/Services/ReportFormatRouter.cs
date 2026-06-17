@@ -10,55 +10,22 @@ namespace Color.Services
     // Clasificación geométrica del formato de imagen de reporte
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Tipo de formato detectado por análisis estructural de líneas.
-    /// </summary>
     public enum ReportFormatType
     {
-        /// <summary>
-        /// Reporte completo: encabezado + receta + tabla CMC inferior.
-        /// </summary>
         LegacyCombinedFormat,
-
-        /// <summary>
-        /// Ticket plano de receta sin tabla CMC (solo matriz de puntos).
-        /// </summary>
         DynamicSplitGridFormat,
-
-        /// <summary>
-        /// No se pudo determinar el formato; se aplica la ruta de ticket plano.
-        /// </summary>
         UnknownFallback
     }
 
-    /// <summary>
-    /// Analizador estructural autónomo que clasifica el tipo de imagen
-    /// utilizando detección morfológica de líneas horizontales (OpenCV).
-    /// Opera sin referencias a palabras clave del contenido textual.
-    /// </summary>
     public static class ReportFormatRouter
     {
         // ── Configuración de detección ────────────────────────────────────────
 
-        /// <summary>
-        /// Fracción mínima del ancho de imagen que debe tener una línea
-        /// para considerarse estructural (25 %).
-        /// </summary>
         private const double MIN_LINE_WIDTH_FRACTION = 0.25;
-
-        /// <summary>
-        /// Número mínimo de líneas horizontales estructurales que deben
-        /// detectarse en la mitad inferior para clasificar como LegacyCombinedFormat.
-        /// </summary>
         private const int STRUCTURAL_LINES_THRESHOLD = 4;
 
         // ── API pública ───────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Determina el formato del reporte mediante análisis geométrico de líneas.
-        /// </summary>
-        /// <param name="imagePath">Ruta absoluta a la imagen PNG.</param>
-        /// <returns>El tipo de formato detectado.</returns>
         public static ReportFormatType DetermineFormat(string imagePath)
         {
             if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
@@ -124,10 +91,6 @@ namespace Color.Services
 
         // ── Utilidad de carga ────────────────────────────────────────────────
 
-        /// <summary>
-        /// Carga una imagen en formato 24 bpp RGB con fondo blanco,
-        /// resolviendo transparencias y formatos de color no estándar.
-        /// </summary>
         public static Bitmap LoadUniversalImage24bpp(string imagePath)
         {
             using (var stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))

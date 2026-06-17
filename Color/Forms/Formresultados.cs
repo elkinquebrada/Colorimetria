@@ -685,7 +685,7 @@ namespace Color
             dgvCorrectiveRecipe.Rows.Clear();
             dgvCorrectiveRecipe.Columns.Clear();
 
-            dgvCorrectiveRecipe.Columns.Add("colComponente", "Componente / Colorante");
+            dgvCorrectiveRecipe.Columns.Add("colColorante", " Colorante");
             dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 %");
             dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 %");
             dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 %");
@@ -720,7 +720,7 @@ namespace Color
                 double r2 = res.RecetaR2_Croma[i];
                 double r3 = res.RecetaR3_Tono[i];
 
-                dgvCorrectiveRecipe.Rows[idx].Cells["colComponente"].Value = _shadeData.Recipe[i].Name;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Value = _shadeData.Recipe[i].Name;
 
                 double varR1 = Math.Abs((orig > 0) ? ((r1 / orig) - 1.0) : 0.0);
                 double varR2 = Math.Abs((orig > 0) ? ((r2 / orig) - 1.0) : 0.0);
@@ -754,7 +754,7 @@ namespace Color
 
             // 3. FILA TOTAL CON VARIACIÓN NETAS GLOBAL ALGEBRAICA (=+D57/D11-1)
             int totalIdx = dgvCorrectiveRecipe.Rows.Add();
-            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colComponente"].Value = "TOTAL";
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colColorante"].Value = "TOTAL";
 
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Con"].Value = totalR1;
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Part"].Value = 1.00;

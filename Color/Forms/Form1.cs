@@ -377,11 +377,7 @@ namespace Color
 
         // ── Orquestador del pipeline geométrico ───────────────────────────────
 
-        /// <summary>
         /// Clasifica el reporte y extrae la receta únicamente mediante
-        /// análisis geométrico (sin búsqueda de palabras clave).
-        /// El resultado siempre contiene exclusivamente las filas de colorantes.
-        /// </summary>
         private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)
         {
             // 1. Clasificación estructural autónoma
@@ -389,7 +385,6 @@ namespace Color
                 Color.Services.ReportFormatRouter.DetermineFormat(imagePath);
 
             // 2. Extracción de metadatos de texto (ShadeName, LotNo, etc.)
-            //    a través del extractor original — sin cambiar esa lógica.
             var baseResult = _shadeExtractor.ExtractFromBitmap(bmp);
 
             // 3. Extraer receta geométrica según el tipo detectado
@@ -402,7 +397,7 @@ namespace Color
                     // Detectar tabla CMC inferior con el detector existente
                     var deteccion = ColrTableDetector.Detect(bmp);
                     if (deteccion != null)
-                        deteccion.ScaledImage?.Dispose(); // liberar imagen escalada
+                        deteccion.ScaledImage?.Dispose(); 
 
                     System.Drawing.Rectangle? tableBounds =
                         (deteccion != null && deteccion.Success && deteccion.TableBounds.Y > 0)
