@@ -174,7 +174,7 @@ namespace Color
             int lblDeltaIdx = dgvChromaHue.Rows.Add("dC", "dH");
             dgvChromaHue.Rows[lblDeltaIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
-            // Fila 4: Valores Delta (Resultado del cÃ¡lculo)
+            // Fila 4: Valores Delta (Resultado del calculo)
             int deltaChromaIdx = dgvChromaHue.Rows.Add("0.00", "-0.62");
             DataGridViewCellStyle deltaStyle = dgvChromaHue.Rows[deltaChromaIdx].DefaultCellStyle;
             deltaStyle.Font = new Font(dgvChromaHue.Font, FontStyle.Regular);
@@ -253,7 +253,7 @@ namespace Color
                 CellBorderStyle = TableLayoutPanelCellBorderStyle.None
             };
 
-            // Distribucion exacta de columnas en C# 7.3 (Usando floats explicitos validos)
+            // Distribucion exacta de columnas (Usando floats explicitos validos)
             for (int i = 0; i < 5; i++)
             {
                 pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.0f));
@@ -458,7 +458,6 @@ namespace Color
                     }
                     else if (dgv.Rows.Count == 1)
                     {
-                        // Draw bottom border if it's the only row
                         e.Graphics.DrawLine(penBorde, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
                     }
                 }

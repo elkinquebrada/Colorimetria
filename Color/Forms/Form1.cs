@@ -18,8 +18,11 @@ namespace Color
         private Button btnCambiarRight;
 
         // Extractor de receta e instancia de resultado
-        private readonly ShadeReportExtractor _shadeExtractor = new ShadeReportExtractor(@".\tessdata");
-        private readonly TextileMetadataExtractor _textileExtractor = new TextileMetadataExtractor(@".\tessdata");
+        private readonly ShadeReportExtractor       _shadeExtractor    = new ShadeReportExtractor(@".\tessdata");
+        private readonly TextileMetadataExtractor    _textileExtractor  = new TextileMetadataExtractor(@".\tessdata");
+        private readonly DynamicSplitGridExtractor   _splitExtractor    = new DynamicSplitGridExtractor(@".\tessdata");
+        // Ruta de la imagen del Shade History Report actualmente cargada
+        private string _lastShadeImagePath;
         private ShadeExtractionResult _lastShadeResult;
         private Color.Models.TextileMetadata _lastTextileMetadata;
 
@@ -146,13 +149,12 @@ namespace Color
             // --- VALIDACIÓN ESTRICTA DE FORMATO DE SHADE HISTORY REPORT ---
             if (etiqueta == "Shade History Report")
             {
-                lblStatus.Text = "Validando formato 'Shade History Report'...";
+                lblStatus.Text = "Clasificando y extrayendo receta...";
                 lblStatus.ForeColor = System.Drawing.Color.Blue;
                 Application.DoEvents();
 
-                // 1. Extraer datos
-                var validacion = _shadeExtractor.ExtractFromBitmap(tempBmp);
-                _lastShadeResult = validacion;
+                _lastShadeImagePath = path;
+                _lastShadeResult    = OnShadeHistoryImageLoaded(path, tempBmp);
             }
             else if (etiqueta == "PASS / FAIL")
             {
@@ -372,6 +374,60 @@ namespace Color
                 foreach (var i in result.Recipe) sb.AppendLine($"{i.Code} - {i.Name}: {i.Percentage}%");
             return sb.ToString();
         }
+
+        // ── Orquestador del pipeline geométrico ───────────────────────────────
+
+        /// <summary>
+        /// Clasifica el reporte y extrae la receta únicamente mediante
+        /// análisis geométrico (sin búsqueda de palabras clave).
+        /// El resultado siempre contiene exclusivamente las filas de colorantes.
+        /// </summary>
+        private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)
+        {
+            // 1. Clasificación estructural autónoma
+            Color.Services.ReportFormatType tipoFormato =
+                Color.Services.ReportFormatRouter.DetermineFormat(imagePath);
+
+            // 2. Extracción de metadatos de texto (ShadeName, LotNo, etc.)
+            //    a través del extractor original — sin cambiar esa lógica.
+            var baseResult = _shadeExtractor.ExtractFromBitmap(bmp);
+
+            // 3. Extraer receta geométrica según el tipo detectado
+            List<RecipeItem> recetaGeometrica;
+
+            switch (tipoFormato)
+            {
+                case Color.Services.ReportFormatType.LegacyCombinedFormat:
+                {
+                    // Detectar tabla CMC inferior con el detector existente
+                    var deteccion = ColrTableDetector.Detect(bmp);
+                    if (deteccion != null)
+                        deteccion.ScaledImage?.Dispose(); // liberar imagen escalada
+
+                    System.Drawing.Rectangle? tableBounds =
+                        (deteccion != null && deteccion.Success && deteccion.TableBounds.Y > 0)
+                            ? deteccion.TableBounds
+                            : (System.Drawing.Rectangle?)null;
+
+                    recetaGeometrica = _splitExtractor.ExtractFromBitmap(bmp, tableBounds);
+                    break;
+                }
+
+                case Color.Services.ReportFormatType.DynamicSplitGridFormat:
+                case Color.Services.ReportFormatType.UnknownFallback:
+                default:
+                    recetaGeometrica = _splitExtractor.ExtractFromBitmap(bmp, null);
+                    break;
+            }
+
+            // 4. Si la extracción geométrica produjo resultados, usarlos;
+            //    de lo contrario conservar el resultado del extractor base.
+            if (recetaGeometrica != null && recetaGeometrica.Count > 0)
+                baseResult.Recipe = recetaGeometrica;
+
+            return baseResult;
+        }
+
         #endregion
     }
 }

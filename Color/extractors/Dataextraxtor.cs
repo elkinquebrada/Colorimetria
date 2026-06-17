@@ -721,7 +721,6 @@ namespace Color
             }
             if (!anyNeeds) return;
 
-            // AQUÍ se crean mat y gray
             using (var mat = OpenCvSharp.Extensions.BitmapConverter.ToMat(original))
             using (var gray = new Mat())
             {
@@ -898,6 +897,7 @@ namespace Color
             catch { return string.Empty; }
             finally { if (File.Exists(tmp)) File.Delete(tmp); }
         }
+
         /// Binarización por umbral Otsu — C# 7.3, sin unsafe, usa Marshal.Copy para velocidad.
         private static Bitmap BinarizeOtsu(Bitmap src)
         {
@@ -3110,6 +3110,7 @@ namespace Color
         private static string ExtractTag(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+
             // Captura inteligente: quitamos el número inicial y preservamos la etiqueta
             string tag = Regex.Replace(raw, @"^\-?[0-9]+\.?[0-9]*", "").Trim();
             
@@ -3130,10 +3131,9 @@ namespace Color
             if (u.Contains("BLUER")) return "Bluish";
             if (u.Contains("YELLOWER")) return "Yellowish";
             
-            return tag; // Retornar original si no hay match
+            return tag; 
         }
 
-        /// Devuelve true si la cadena contiene SOLO caracteres numéricos (dígitos, punto, signo negativo).
         /// Usado para distinguir filas de valores CMC de filas de etiquetas (Thin, Duller, etc.).
         private static bool IsNumericOnly(string s)
         {
@@ -3169,6 +3169,7 @@ namespace Color
         private static double SafeParse(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return 0.0;
+
             // ETAPA 1: Extraer solo el componente numérico 
             string numPart = Regex.Match(s.Replace(',', '.'), @"\-?\d+\.?\d*").Value;
             if (string.IsNullOrEmpty(numPart)) return 0.0;

@@ -36,7 +36,6 @@ namespace Color.Services
         // =====================================================================
         // API PUBLICA
         // =====================================================================
-
         /// Extrae los metadatos del encabezado superior izquierdo de la imagen.
         public TextileMetadata Extract(string imagePath)
         {
@@ -54,7 +53,6 @@ namespace Color.Services
         }
 
         /// Sobrecarga que acepta directamente un Bitmap en memoria
-
         public TextileMetadata ExtractFromBitmap(Bitmap original)
         {
             var meta = new TextileMetadata();
@@ -73,6 +71,7 @@ namespace Color.Services
 
                 using (var roi = original.Clone(roiRect, original.PixelFormat))
                 {
+
                     // ── 2. Escalado adaptativo basado en nitidez medida ─────────────────────
                     float sharpness = MeasureSharpness(roi);
                     int scaleFactor;
@@ -172,12 +171,9 @@ namespace Color.Services
             }
         }
 
-
-
         // =====================================================================
         // PARSER DE CLAVE-VALOR
         // =====================================================================
-
         /// Mapea las lineas del texto OCR a los campos del modelo usando
         private static void ParseKeyValue(string text, TextileMetadata meta)
         {
@@ -260,7 +256,6 @@ namespace Color.Services
         // =====================================================================
         // PROCESAMIENTO DE IMAGEN — HEREDADO DE Dataextraxtor.cs
         // =====================================================================
-
         /// Identica a MeasureSharpness de ColorimetricDataExtractor.
         private static float MeasureSharpness(Bitmap src)
         {
