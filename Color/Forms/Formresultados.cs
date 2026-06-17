@@ -693,8 +693,11 @@ namespace Color
             string[] colsVar = { "colR1_Var", "colR2_Var", "colR3_Var" };
             foreach (var c in new[] { "colR1_Con", "colR2_Con", "colR3_Con" }) dgvCorrectiveRecipe.Columns[c].DefaultCellStyle.Format = "N5";
             foreach (var p in new[] { "colR1_Part", "colR2_Part", "colR3_Part" }) dgvCorrectiveRecipe.Columns[p].DefaultCellStyle.Format = "P1";
-            foreach (var v in colsVar) dgvCorrectiveRecipe.Columns[v].DefaultCellStyle.Format = "P0";
 
+            foreach (var v in colsVar)
+            {
+                dgvCorrectiveRecipe.Columns[v].DefaultCellStyle.Format = "0%;-0%;0%";
+            }
             // Extraer lista de concentraciones iniciales y ejecutar el nuevo motor limpio
             List<double> conOriginales = _shadeData.Recipe.Select(x => ParsePercentageValue(x.Percentage)).ToList();
             Color.ColorimetricCalculator.CalcularNuevasRecetasMaestras(res, conOriginales);
@@ -767,7 +770,7 @@ namespace Color
 
             dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.Font = new System.Drawing.Font(dgvCorrectiveRecipe.Font, System.Drawing.FontStyle.Bold);
             dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            // Re-pintar las tres celdas de Variación global del TOTAL estrictamente en Negro
+
             foreach (var col in colsVar) dgvCorrectiveRecipe.Rows[totalIdx].Cells[col].Style.ForeColor = System.Drawing.Color.Black;
         }
 
@@ -784,10 +787,120 @@ namespace Color
         {
             try
             {
-                MessageBox.Show("Reporte Guardado Exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                btnGuardar.Enabled = false; btnGuardar.Text = "✔ Guardado";
+                // Seleccionar la fuente de resultados disponible
+                var todosLosResultados = _resultsLegacy ?? new List<EngineRes>();
+
+                if (todosLosResultados.Count == 0 && _lastMainResult != null)
+                    todosLosResultados = new List<EngineRes> { _lastMainResult };
+
+                if (todosLosResultados.Count == 0)
+                {
+                    MessageBox.Show("No hay resultados de análisis para guardar.", "Sin datos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string shadeName = _shadeData?.ShadeName ?? "N/A";
+                DateTime fechaActual = DateTime.Now;
+
+                int registrosGuardados = 0;
+
+                foreach (var res in todosLosResultados)
+                {
+                    // Calcular recetas si aún no se han calculado
+                    List<double> conOriginales = _shadeData?.Recipe?
+                        .Select(x => ParsePercentageValue(x.Percentage))
+                        .ToList() ?? new List<double>();
+
+                    if (conOriginales.Count > 0 && (res.RecetaR1_Luminosidad == null || res.RecetaR1_Luminosidad.Count == 0))
+                        EngineCalc.CalcularNuevasRecetasMaestras(res, conOriginales);
+
+                    // Obtener nombres de recetas R1, R2, R3 (primeros 3 colorantes o lo que haya)
+                    string r1Name = conOriginales.Count > 0 && _shadeData?.Recipe?.Count > 0
+                        ? _shadeData.Recipe[0].Name : "---";
+                    string r2Name = conOriginales.Count > 1 && _shadeData?.Recipe?.Count > 1
+                        ? _shadeData.Recipe[1].Name : "---";
+                    string r3Name = conOriginales.Count > 2 && _shadeData?.Recipe?.Count > 2
+                        ? _shadeData.Recipe[2].Name : "---";
+
+                    // Diagnósticos del motor
+                    string diagL = res.DiagnosticoL ?? "";
+                    string diagC = res.DiagnosisC ?? "";
+                    string diagH = res.DiagnosisH ?? "";
+
+                    // Impacto = porcentaje de factor (como texto)
+                    string impL = ((double)res.FactorL * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                    string impC = ((double)res.FactorC * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                    string impH = ((double)res.FactorH * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+                    // Recomendaciones (usar el motor de diagnóstico)
+                    string recL = EngineCalc.GetLuminosityDiagnosis(res.DeltaL);
+                    string recC = res.RecommendationC ?? "";
+                    string recH = EngineCalc.GetEngineeringDiagnosis("H", res.DeltaHue, "");
+
+                    // Si hay ingredientes, guardar uno por colorante
+                    if (_shadeData?.Recipe != null && _shadeData.Recipe.Count > 0)
+                    {
+                        foreach (var ing in _shadeData.Recipe)
+                        {
+                            decimal concOrig = (decimal)ParsePercentageValue(ing.Percentage);
+
+                            Color.Services.HistorialService.GuardarRegistroMaestro(
+                                shadeName:      shadeName,
+                                fecha:          fechaActual,
+                                iluminante:     res.Illuminant,
+                                dyeName:        ing.Name ?? ing.Code ?? "N/A",
+                                concOriginal:   concOrig,
+                                r1:             r1Name,
+                                r2:             r2Name,
+                                r3:             r3Name,
+                                impL:           impL,  diagL: diagL, recL: recL,
+                                impC:           impC,  diagC: diagC, recC: recC,
+                                impH:           impH,  diagH: diagH, recH: recH,
+                                factorA:        ((double)res.FactorA).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
+                                factorB:        ((double)res.FactorB).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
+                                deltaE:         res.DeltaE.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)
+                            );
+                            registrosGuardados++;
+                        }
+                    }
+                    else
+                    {
+                        // Sin receta: guardar un registro resumen por iluminante
+                        Color.Services.HistorialService.GuardarRegistroMaestro(
+                            shadeName:      shadeName,
+                            fecha:          fechaActual,
+                            iluminante:     res.Illuminant,
+                            dyeName:        "N/A",
+                            concOriginal:   0m,
+                            r1:             "---", r2: "---", r3: "---",
+                            impL:           impL,  diagL: diagL, recL: recL,
+                            impC:           impC,  diagC: diagC, recC: recC,
+                            impH:           impH,  diagH: diagH, recH: recH,
+                            factorA:        ((double)res.FactorA).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
+                            factorB:        ((double)res.FactorB).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
+                            deltaE:         res.DeltaE.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)
+                        );
+                        registrosGuardados++;
+                    }
+                }
+
+                MessageBox.Show(
+                    $"Análisis guardado exitosamente.\n{registrosGuardados} registro(s) escritos en la base de datos.",
+                    "Guardado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                btnGuardar.Enabled = false;
+                btnGuardar.Text = "✔ Guardado";
             }
-            catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Error al guardar en la base de datos:\n" + ex.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         private double ParsePercentageValue(string val)

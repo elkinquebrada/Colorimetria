@@ -120,7 +120,7 @@ namespace Color
             dgvDiagnostic.CellPainting += new DataGridViewCellPaintingEventHandler(DgvDiagnostic_CellPainting);
 
             // =================================================================
-            // --- 3. Grid Inferior: Acciones de Correccion (dgvActions) ---
+            // --- 3. Grid Inferior: Acciones de Correccion ---
             // =================================================================
             dgvActions = CreateBaseGrid(4);
             dgvActions.Columns[0].Width = 55;
@@ -336,7 +336,7 @@ namespace Color
             // --- FILA 4: Estado Global OK / FAIL ---
             lblCmcStatus = new Label
             {
-                Text = "ok",
+                Text = "Ok",
                 Font = new Font("Segoe UI", 16.0f, FontStyle.Bold),
                 BackColor = System.Drawing.Color.White,
                 ForeColor = System.Drawing.Color.Black,
@@ -708,11 +708,11 @@ namespace Color
             }
 
             // =========================================================================
-            // 🧪 PARIDAD EXCEL EXCLUSIVA: LÓGICA "AUMENTAR" EN 2 FILAS 
+            //  PARIDAD EXCEL EXCLUSIVA: LÓGICA "AUMENTAR" EN 2 FILAS 
             // =========================================================================
             if (dgvActions != null && dgvActions.Rows.Count > 0)
             {
-                // Asegurarnos de que existan al menos 2 filas (restituyendo la que fue borrada antes)
+              
                 if (dgvActions.Rows.Count < 2)
                 {
                     dgvActions.Rows.Add("Accion", "-", "-", "-");
@@ -787,8 +787,6 @@ namespace Color
             {
                 lblCmcStatus.Visible = !esIluminanteA;
                 
-                // Configuracion especial SOLICITADA EN BLOQUE 3 exclusivamente para TL84: 
-                // Ocultar el 'ok' (y evitar que deje su espacio vacio) respetando estrictamente a D65.
                 if (textIlluminant == "TL84")
                 {
                     lblCmcStatus.Visible = false;
@@ -871,8 +869,7 @@ namespace Color
                 dgvDeviation.Rows[0].Cells[1].Style.BackColor = System.Drawing.Color.White;
                 dgvDeviation.Rows[0].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
             }
-            // ðŸ› ï¸ CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL EN dgvDeviation
-            // =========================================================================
+            //  CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL EN dgvDeviation
             if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
             {
                 int targetRowIdx = dgvDeviation.Rows.Count - 1;
@@ -917,7 +914,7 @@ namespace Color
 
                 // 3. Asignar solo a lblMiLeft y expandirlo
                 lblMiLeft.Text = resultadoStr;
-                lblMiLeft.ForeColor = System.Drawing.Color.FromArgb(238, 108, 38); // Color coral/naranja simulando imagen
+                lblMiLeft.ForeColor = System.Drawing.Color.FromArgb(238, 108, 38); 
                 lblMiLeft.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
                 lblMiLeft.Visible = true;
 

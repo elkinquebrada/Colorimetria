@@ -294,12 +294,12 @@ namespace Color
 
         public static string FormatDelta(double value)
         {
-            return value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
+            return value.ToString("0.00;-0.00;0.00", CultureInfo.InvariantCulture);
         }
 
-        // =========================================================================
+        // ============================================================================
         //  EXTENSION DEL MOTOR: EVALUACIONES CROMATICAS INDEPENDIENTES (PARIDAD EXCEL)
-        // =========================================================================
+        // ============================================================================
 
         public static string GetLuminosityDiagnosis(double deltaL)
         {
