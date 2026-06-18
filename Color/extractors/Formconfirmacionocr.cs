@@ -1,9 +1,11 @@
 using Color;
+using Color.Services;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Linq;
@@ -25,6 +27,10 @@ namespace Colorimetria
         private List<ColorimetricRow> _rows;
         private OcrReport _report;
         private ShadeExtractionResult _shadeResult;
+
+        // ===== Pipeline de extracción (para procesamiento asíncrono) =====
+        private string _lastImagePath;   // Ruta del Shade History Report (si se cargó desde archivo)
+        private readonly string pathTessData = @".\tessdata";
 
         // ===== UI =====
         private DataGridView dgvData;
@@ -567,6 +573,147 @@ namespace Colorimetria
             }
 
             txtRaw.Text = BuildTextView();
+        }
+
+        // =========================================================
+        // PIPELINE DE EXTRACCIÓN (Idéntico a Form1.OnShadeHistoryImageLoaded)
+        // Permite re-procesar el Shade History Report desde el formulario
+        // cuando la imagen está disponible pero no el resultado pre-calculado.
+        // REQUERIMIENTO 1 (LegacyCombinedFormat)  → ShadeReportExtractor
+        // REQUERIMIENTO 2 (DynamicSplitGridFormat) → DynamicSplitGridExtractor EXCLUSIVAMENTE
+        // =========================================================
+        private Task ProcessImageAsync(string tempFile)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    // 1. Clasificar el formato del reporte (igual que en Form1)
+                    ReportFormatType format = ReportFormatRouter.DetermineFormat(tempFile);
+
+                    if (format == ReportFormatType.LegacyCombinedFormat)
+                    {
+                        // ── REQUERIMIENTO 1: Reporte Largo ──
+                        // ShadeReportExtractor maneja el pipeline completo (receta + Lab + Batch)
+                        var extractor = new ShadeReportExtractor(pathTessData);
+                        using (Bitmap bmp = ReportFormatRouter.LoadUniversalImage24bpp(tempFile))
+                        {
+                            var rawResult = extractor.ExtractFromBitmap(bmp);
+
+                            // Limpiar porcentajes a valores numéricos puros
+                            var finalRecipe = new List<RecipeItem>();
+                            foreach (var item in rawResult.Recipe ?? new List<RecipeItem>())
+                            {
+                                string pctDigits = Regex.Replace(item.Percentage ?? "", @"[^0-9\.]", "");
+                                double cleanPct = 0;
+                                double.TryParse(pctDigits, NumberStyles.Any, CultureInfo.InvariantCulture, out cleanPct);
+                                finalRecipe.Add(new RecipeItem
+                                {
+                                    Code       = item.Code,
+                                    Name       = item.Name,
+                                    Percentage = cleanPct.ToString(CultureInfo.InvariantCulture)
+                                });
+                            }
+                            rawResult.Recipe = finalRecipe;
+                            _shadeResult = rawResult;
+                        }
+                    }
+                    else
+                    {
+                        // ── REQUERIMIENTO 2: Ticket Plano (Matriz de Puntos) ──
+                        // DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE.
+                        // Previene lectura de encabezados vacíos o "TOTAL PARTICIPATION / FAIL" del pie.
+                        var cleanRecipeItems = DynamicSplitGridExtractor.ExtractRecipePositional(
+                            tempFile, null, pathTessData);
+
+                        var finalRecipe = new List<RecipeItem>();
+                        foreach (var item in cleanRecipeItems)
+                        {
+                            string pctDigits = Regex.Replace(item.Percentage ?? "", @"[^0-9\.]", "");
+                            double cleanPct = 0;
+                            double.TryParse(pctDigits, NumberStyles.Any, CultureInfo.InvariantCulture, out cleanPct);
+                            finalRecipe.Add(new RecipeItem
+                            {
+                                Code       = item.Code,
+                                Name       = item.Name,
+                                Percentage = cleanPct.ToString(CultureInfo.InvariantCulture)
+                            });
+                        }
+
+                        _shadeResult = new ShadeExtractionResult
+                        {
+                            Recipe = finalRecipe
+                        };
+                    }
+
+                    // Actualizar el puente global para que FormResultados lo pueda leer
+                    Color.ShadeReportExtractor.LastResult = _shadeResult;
+
+                    // Rellenar grillas en el hilo de la interfaz de usuario
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        PopulateDatosGenerales();
+                        PopulateRecetaGrid();
+                        PopulateLabGrid();
+                        PopulateCmcGrid();
+
+                        txtRaw.Text = string.Format(
+                            "[Procesamiento Completado]\r\nFormato Detectado: {0}\r\nElementos en receta: {1}",
+                            format,
+                            _shadeResult?.Recipe?.Count ?? 0);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        MessageBox.Show(
+                            "Error al procesar la imagen en el formulario de confirmación: " + ex.Message,
+                            "Error de Extracción",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    });
+                }
+            });
+        }
+
+        // ── Métodos de refresco de grillas (invocan los loaders existentes) ────
+
+        private void PopulateDatosGenerales()
+        {
+            // Recargar la grilla de mediciones con la lista actual de _rows
+            LoadMeasuresSection();
+        }
+
+        private void PopulateRecetaGrid()
+        {
+            // Recargar la grilla de receta con el _shadeResult actual
+            if (_shadeResult != null)
+                LoadRecetaSection(_shadeResult);
+        }
+
+        private void PopulateLabGrid()
+        {
+            // Sincronizar StdL con datos de mediciones si aún no está disponible
+            if (_shadeResult != null && _report != null && _report.Measures != null)
+            {
+                var d65Std = _report.Measures.Find(m => m.Illuminant == "D65" && m.Type == "Std");
+                if (d65Std != null && string.IsNullOrWhiteSpace(_shadeResult.StdL))
+                {
+                    _shadeResult.StdL = d65Std.L.ToString("F2", CultureInfo.InvariantCulture);
+                    _shadeResult.StdA = d65Std.A.ToString("F2", CultureInfo.InvariantCulture);
+                    _shadeResult.StdB = d65Std.B.ToString("F2", CultureInfo.InvariantCulture);
+                }
+            }
+            if (_shadeResult != null)
+                LoadLabSection(_shadeResult);
+        }
+
+        private void PopulateCmcGrid()
+        {
+            // Recargar la grilla CMC si hay datos de reporte
+            if (_report != null)
+                LoadCmcSection(_report.CmcDifferences ?? new List<CmcDifferenceRow>());
         }
 
 

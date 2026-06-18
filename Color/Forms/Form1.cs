@@ -375,52 +375,150 @@ namespace Color
             return sb.ToString();
         }
 
-        // ── Orquestador del pipeline geométrico ───────────────────────────────
+        // ── Orquestador del pipeline geométrico (DESACOPLADO) ─────────────────
 
-        /// Clasifica el reporte y extrae la receta únicamente mediante
+        /// Clasifica el reporte y extrae la receta con lógica limpia y desacoplada.
+        /// REQUERIMIENTO 1 (Legacy): ShadeReportExtractor maneja todo el pipeline.
+        /// REQUERIMIENTO 2 (Tickets planos): DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE.
         private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)
         {
-            // 1. Clasificación estructural autónoma
-            Color.Services.ReportFormatType tipoFormato =
+            // 1. El Clasificador identifica qué tipo de reporte envió el usuario
+            Color.Services.ReportFormatType format =
                 Color.Services.ReportFormatRouter.DetermineFormat(imagePath);
 
-            // 2. Extracción de metadatos de texto (ShadeName, LotNo, etc.)
-            var baseResult = _shadeExtractor.ExtractFromBitmap(bmp);
+            ShadeExtractionResult shadeResult;
 
-            // 3. Extraer receta geométrica según el tipo detectado
-            List<RecipeItem> recetaGeometrica;
-
-            switch (tipoFormato)
+            if (format == Color.Services.ReportFormatType.LegacyCombinedFormat)
             {
-                case Color.Services.ReportFormatType.LegacyCombinedFormat:
+                // ══════════════════════════════════════════════════════════════
+                // REQUERIMIENTO 1: Reporte Completo (Extractor Tradicional)
+                // ══════════════════════════════════════════════════════════════
+                shadeResult = _shadeExtractor.ExtractFromBitmap(bmp);
+
+                // Limpiar porcentajes a valores numéricos puros
+                if (shadeResult.Recipe != null)
                 {
-                    // Detectar tabla CMC inferior con el detector existente
-                    var deteccion = ColrTableDetector.Detect(bmp);
-                    if (deteccion != null)
-                        deteccion.ScaledImage?.Dispose(); 
-
-                    System.Drawing.Rectangle? tableBounds =
-                        (deteccion != null && deteccion.Success && deteccion.TableBounds.Y > 0)
-                            ? deteccion.TableBounds
-                            : (System.Drawing.Rectangle?)null;
-
-                    recetaGeometrica = _splitExtractor.ExtractFromBitmap(bmp, tableBounds);
-                    break;
+                    shadeResult.Recipe = CleanRecipeItems(shadeResult.Recipe);
                 }
 
-                case Color.Services.ReportFormatType.DynamicSplitGridFormat:
-                case Color.Services.ReportFormatType.UnknownFallback:
-                default:
-                    recetaGeometrica = _splitExtractor.ExtractFromBitmap(bmp, null);
-                    break;
+                // Diagnóstico y fallback si el tradicional no encontró receta
+                if (shadeResult.Recipe == null || shadeResult.Recipe.Count == 0)
+                {
+                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined→FALLBACK a Split");
+                    var fallbackItems = _splitExtractor.ExtractFromBitmap(bmp, null);
+                    if (fallbackItems != null && fallbackItems.Count > 0)
+                    {
+                        shadeResult.Recipe = CleanRecipeItems(fallbackItems);
+                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "Fallback Split → OK");
+                    }
+                    else
+                    {
+                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined → VACÍO (ambos fallaron)");
+                    }
+                }
+                else
+                {
+                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined → OK");
+                }
+            }
+            else
+            {
+                // ══════════════════════════════════════════════════════════════
+                // REQUERIMIENTO 2: Tickets planos de matriz de puntos
+                // DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE para estos
+                // reportes. Recorta en 3 columnas verticales independientes
+                // para que los textos no se atropellen.
+                // ══════════════════════════════════════════════════════════════
+                var cleanRecipeItems = _splitExtractor.ExtractFromBitmap(bmp, null);
+
+                // ── FALLBACK: si el split no encontró nada, probar el extractor tradicional ──
+                if (cleanRecipeItems == null || cleanRecipeItems.Count == 0)
+                {
+                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Split→FALLBACK a Traditional");
+                    var fallback = _shadeExtractor.ExtractFromBitmap(bmp);
+                    if (fallback?.Recipe != null && fallback.Recipe.Count > 0)
+                    {
+                        cleanRecipeItems = fallback.Recipe;
+                        WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Fallback Traditional → OK");
+                    }
+                }
+                else
+                {
+                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Split → OK");
+                }
+
+                var finalRecipe = CleanRecipeItems(cleanRecipeItems ?? new List<RecipeItem>());
+
+                // Inicializa el resultado solo con la receta pura para la grilla visual
+                shadeResult = new ShadeExtractionResult
+                {
+                    Recipe = finalRecipe
+                };
             }
 
-            // 4. Si la extracción geométrica produjo resultados, usarlos;
-            //    de lo contrario conservar el resultado del extractor base.
-            if (recetaGeometrica != null && recetaGeometrica.Count > 0)
-                baseResult.Recipe = recetaGeometrica;
+            return shadeResult;
+        }
 
-            return baseResult;
+        /// Limpia porcentajes a valores numéricos puros.
+        private static List<RecipeItem> CleanRecipeItems(List<RecipeItem> items)
+        {
+            var clean = new List<RecipeItem>();
+            foreach (var item in items)
+            {
+                string pctDigits = System.Text.RegularExpressions.Regex.Replace(
+                    item.Percentage ?? "", @"[^0-9\.]", "");
+                double cleanPct = 0;
+                double.TryParse(pctDigits,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out cleanPct);
+                clean.Add(new RecipeItem
+                {
+                    Code = item.Code,
+                    Name = item.Name,
+                    Percentage = cleanPct.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
+            }
+            return clean;
+        }
+
+        /// Escribe diagnóstico completo en C:\Temp\shade_diag.txt para debugging.
+        private static void WriteDiag(string imagePath, Bitmap bmp,
+            Color.Services.ReportFormatType format,
+            List<RecipeItem> items, string etapa)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(@"C:\Temp");
+                string logPath = @"C:\Temp\shade_diag.txt";
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("══════════════════════════════════════════════");
+                sb.AppendLine($"[{DateTime.Now:HH:mm:ss}] ETAPA: {etapa}");
+                sb.AppendLine($"Imagen : {System.IO.Path.GetFileName(imagePath)}");
+                sb.AppendLine($"Tamaño : {bmp?.Width}x{bmp?.Height} px");
+                sb.AppendLine($"Formato: {format}");
+
+                // Calcular zona que usa DynamicSplitGridExtractor para ticket plano
+                if (bmp != null)
+                {
+                    int zoneTop    = (int)(bmp.Height * 0.18);
+                    int zoneHeight = (int)(bmp.Height * 0.25);
+                    sb.AppendLine($"Zona Split: top={zoneTop}px, h={zoneHeight}px, bot={zoneTop + zoneHeight}px");
+                    sb.AppendLine($"Col CODE : 0..{(int)(bmp.Width * 0.15)}px");
+                    sb.AppendLine($"Col NAME : {(int)(bmp.Width * 0.15)}..{(int)(bmp.Width * 0.53)}px");
+                    sb.AppendLine($"Col PCT  : {(int)(bmp.Width * 0.53)}..{(int)(bmp.Width * 0.68)}px");
+                }
+
+                int count = items?.Count ?? 0;
+                sb.AppendLine($"Items encontrados: {count}");
+                if (items != null)
+                    foreach (var it in items)
+                        sb.AppendLine($"  → [{it.Code}] {it.Name} | {it.Percentage}");
+
+                sb.AppendLine();
+                System.IO.File.AppendAllText(logPath, sb.ToString());
+            }
+            catch { /* Diagnóstico no crítico */ }
         }
 
         #endregion
