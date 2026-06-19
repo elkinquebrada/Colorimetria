@@ -21,7 +21,7 @@ namespace Color
         public double DeltaE { get => _dE; set { _dE = value; InvalidateSafer(); } }
         public double ToleranceDE { get => _toleranceDE; set { _toleranceDE = value; InvalidateSafer(); } }
         public string Title { get; set; } = "Análisis CIELAB";
-        public ViewMode Mode { get => ViewMode.Absolute; set { } } // Cliente exige vista espacial real siempre
+        public ViewMode Mode { get => ViewMode.Absolute; set { } } //  vista espacial real 
         public string InstructionMessage { get; set; } = "";
 
         public double AbsoluteL { get; set; } = 50.0;
@@ -116,6 +116,7 @@ namespace Color
                 g.DrawString("Amarillo (+b*)", axisFont, Brushes.Gold, center.X - 45, chartArea.Top - 18);
                 g.DrawString("Azul (-b*)", axisFont, Brushes.RoyalBlue, center.X - 30, chartArea.Bottom + 4);
                 g.DrawString("Verde (-a*)", axisFont, Brushes.ForestGreen, chartArea.Left - 75, center.Y - 8);
+
                 // Mover Rojo un poco arriba para evadir herramienta tooltip
                 g.DrawString("Rojo (+a*)", axisFont, Brushes.Crimson, chartArea.Right + 3, center.Y - 15);
             }
