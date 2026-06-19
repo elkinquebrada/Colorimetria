@@ -459,7 +459,7 @@ namespace Color
                 return NormalizeOCRLine(text);
             }
 
-            // Columnas numéricas de medición (L, a, b, Chroma, Hue) — limpieza estricta
+            // Columnas numéricas de medición (L, a, b, Chroma, Hue) 
             if (col >= 2 && col <= 6)
             {
                 text = text
@@ -889,7 +889,7 @@ namespace Color
                     }
                     finally
                     {
-                        // MEJORA 7: resetear whitelist para no contaminar llamadas OCR globales
+                        // resetear whitelist para no contaminar llamadas OCR globales
                         eng.SetVariable("tessedit_char_whitelist", "");
                     }
                 }
@@ -1106,7 +1106,7 @@ namespace Color
             return result;
         }
 
-        // OCR  (C# 7.3) — FIX: usa System.Drawing.Imaging.ImageFormat.Png
+        // OCR: usa System.Drawing.Imaging.ImageFormat.Png
         private string RunOCR(Bitmap bmp)
         {
             string tmp = Path.Combine(Path.GetTempPath(), string.Format("ocr_{0:N}.png", Guid.NewGuid()));
@@ -1169,16 +1169,17 @@ namespace Color
                 string bNorm = sbNorm.ToString().Trim();
                 string bRaw = sbRaw.ToString().Trim();
 
-                bool hasStd = Regex.IsMatch(bNorm, @"\b(STD|5TD)\b");
+                bool hasStd = Regex.IsMatch(bNorm, @"\b(STD|5TD|ST[D0O]|S[T1]D)\b");
                 bool hasLot = Regex.IsMatch(bNorm, @"\bLOT\b");
 
-                if (hasStd && hasLot)
-                {
-                    int lotN = FindWordIndex(bNorm, "LOT");
-                    int lotR = FindWordIndex(bRaw, "LOT");
+                int lotN = FindWordIndex(bNorm, "LOT");
+                int lotR = FindWordIndex(bRaw, "LOT");
 
-                    string stdR = lotR >= 0 ? bRaw.Substring(0, lotR) : bRaw;
-                    string lotR2 = lotR >= 0 ? bRaw.Substring(lotR) : "";
+                // Si encontramos LOT bastante adelantado, sabemos que la primera parte es del STD,
+                if (hasLot && lotR > 8)
+                {
+                    string stdR = bRaw.Substring(0, lotR);
+                    string lotR2 = bRaw.Substring(lotR);
 
                     var stdRow = ParseMeasureLine(stdR, illuminant, "Std", report.ParseLog);
                     if (stdRow != null) report.Measures.Add(stdRow);
@@ -1202,7 +1203,7 @@ namespace Color
                     var cmc = ParseCmcFromStdPart(stdR, lotTailNorm, illuminant, report.ParseLog);
                     if (cmc != null) report.CmcDifferences.Add(cmc);
                 }
-                else if (hasStd)
+                else if (hasStd || lotR <= 8) 
                 {
                     var stdRow = ParseMeasureLine(bRaw, illuminant, "Std", report.ParseLog);
                     if (stdRow != null) report.Measures.Add(stdRow);
@@ -1231,7 +1232,7 @@ namespace Color
             report.Measures = DedupAndSort(report.Measures);
             report.CmcDifferences = DedupCmc(report.CmcDifferences);
 
-            // CAMBIO 3 — Resumen de extracción al final del log para diagnóstico rápido
+            // Resumen de extracción al final del log para diagnóstico rápido
             int totalMeasures = report.Measures.Count;
             int needsReview = 0;
             foreach (var r in report.Measures) { if (r.NeedsReview) needsReview++; }
@@ -1299,7 +1300,6 @@ namespace Color
                     tokens[base_], tokens[base_ + 1], tokens[base_ + 2],
                     tokens[base_ + 3], tokens[base_ + 4]));
 
-            // Eliminar FIX UNIVERSAL (/10) y FIX UNIVERSAL INVERSO (x10): 
             {
                 double vH_pre = ParseHueDouble(tokens[base_ + 4]);
                 bool hueValid = vH_pre >= 1.0 && vH_pre <= 360.0;
@@ -1428,7 +1428,7 @@ namespace Color
                 // Tolerancia: mayor entre 5% de Chroma y 1.5 unidades
                 double chromaTol = Math.Max(vC * 0.05, 1.5);
 
-                // MEJORA 4: cuando la coherencia interna es excelente 
+                //  cuando la coherencia interna es excelente 
                 if (chromaErr < 0.3)
                 {
                     vC = Math.Round(chromaCalc, 2);
@@ -2591,7 +2591,7 @@ namespace Color
             t = Regex.Replace(t, @"\bFl1\b", "F11");
             t = Regex.Replace(t, @"\bF1I\b", "F11");
 
-            // ── MEJORA 6: iluminantes adicionales no cubiertos antes ──────────────
+            // ──  iluminantes adicionales no cubiertos antes ──────────────
             t = Regex.Replace(t, @"\bUY\b", "UV");
             t = Regex.Replace(t, @"\bCWF1\b", "CWF");
             t = Regex.Replace(t, @"\bD6S5\b", "D65");
@@ -2955,10 +2955,25 @@ namespace Color
                 string type = NormalizeType(typeRaw);
                 if (string.IsNullOrWhiteSpace(type))
                 {
-                    string combined = NormUpper(illRaw);
-                    if (combined.Contains("STD")) type = "Std";
+                    string combined = illRaw.ToUpperInvariant();
+                    if (combined.Contains("STD") || combined.Contains("5TD")) type = "Std";
                     else if (combined.Contains("LOT")) type = "Lot";
                 }
+                
+                // Deducción Posicional (Fallback Estructural) si no se pudo leer el tipo
+                if (string.IsNullOrWhiteSpace(type))
+                {
+                    // Si encontró el iluminante explícitamente en la columna 0, es altamente probable que sea STD
+                    if (!string.IsNullOrWhiteSpace(NormalizeIlluminant(illRaw))) 
+                        type = "Std";
+                    else 
+                    {
+                        // (esto evita marcar como "Lot" filas de texto CMC).
+                        double testL = SafeParse(GetCell(row, 2));
+                        if (testL > 0) type = "Lot";
+                    }
+                }
+
                 if (string.IsNullOrWhiteSpace(type))
                 {
                     // ETAPA 1: Verificar si esta fila contiene etiquetas CMC (Thin, Duller, etc.)
@@ -3179,7 +3194,7 @@ namespace Color
         }
     }
     // ══════════════════════════════════════════════════════════════════════════
-    // LOCAL CORRECTOR — Portado de ClaudeService (ColorimetriaAPI)
+    // LOCAL CORRECTOR — Portado de (ColorimetriaAPI)
     // ══════════════════════════════════════════════════════════════════════════
     public class LocalCorrectionResult
     {

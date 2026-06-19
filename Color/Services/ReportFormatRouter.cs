@@ -3,7 +3,7 @@ using System.Drawing;
 using System.IO;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
-
+using Tesseract;
 namespace Color.Services
 {
     // ─────────────────────────────────────────────────────────────────────────
@@ -31,58 +31,66 @@ namespace Color.Services
             if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
                 return ReportFormatType.UnknownFallback;
 
+            string tessdataPath = @".\tessdata";
             try
             {
                 using (Bitmap bmp = LoadUniversalImage24bpp(imagePath))
                 using (Mat src = BitmapConverter.ToMat(bmp))
-                using (Mat gray = new Mat())
-                using (Mat binary = new Mat())
                 {
-                    // 1. Convertir a escala de grises
-                    Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
-
-                    // 2. Umbral adaptativo para binarizar el texto/líneas
-                    Cv2.AdaptiveThreshold(gray, binary, 255,
-                        AdaptiveThresholdTypes.MeanC,
-                        ThresholdTypes.BinaryInv,
-                        blockSize: 15,
-                        c: 4);
-
-                    // 3. Analizar SOLO la mitad inferior (donde aparece la tabla CMC)
-                    int lowerY   = src.Height / 2;
-                    int lowerH   = src.Height - lowerY;
-                    var lowerRoi = new OpenCvSharp.Rect(0, lowerY, src.Width, lowerH);
-
-                    using (Mat lower = new Mat(binary, lowerRoi))
+                    // Recortar SOLO el 15% superior de la imagen para escaneo rápido
+                    int topH = (int)(src.Height * 0.15);
+                    var topRoi = new OpenCvSharp.Rect(0, 0, src.Width, topH);
+                    
+                    using (Mat topMat = new Mat(src, topRoi))
+                    using (Mat gray = new Mat())
+                    using (Mat scaled = new Mat())
                     {
-                        // 4. Detectar líneas con Probabilistic Hough Transform
-                        int minLineLength = (int)(src.Width * MIN_LINE_WIDTH_FRACTION);
-
-                        LineSegmentPoint[] lines = Cv2.HoughLinesP(
-                            lower,
-                            rho:          1,
-                            theta:        Cv2.PI / 180,
-                            threshold:    50,
-                            minLineLength: minLineLength,
-                            maxLineGap:   10);
-
-                        // 5. Contar únicamente las líneas casi horizontales (Δy ≤ 3 px)
-                        int horizontalCount = 0;
-                        foreach (var line in lines)
+                        Cv2.CvtColor(topMat, gray, ColorConversionCodes.BGR2GRAY);
+                        // Escalar 2x para lectura rápida y nítida
+                        Cv2.Resize(gray, scaled, new OpenCvSharp.Size(gray.Width * 2, gray.Height * 2), 0, 0, InterpolationFlags.Cubic);
+                        
+                        using (Bitmap topBmp = BitmapConverter.ToBitmap(scaled))
+                        using (var engine = new TesseractEngine(tessdataPath, "eng+spa", EngineMode.Default))
+                        using (var page = engine.Process(topBmp, PageSegMode.SingleBlock))
                         {
-                            if (Math.Abs(line.P1.Y - line.P2.Y) <= 3)
-                                horizontalCount++;
+                            string ocrText = page.GetText()?.ToUpper() ?? "";
+                            
+                            // Evaluación determinística rápida de palabras clave exclusivas
+                            if (ocrText.Contains("BULK") || ocrText.Contains("CHEESES") || ocrText.Contains("COL GROUP"))
+                            {
+                                return ReportFormatType.DynamicSplitGridFormat;
+                            }
+                            
+                            if (ocrText.Contains("PASS / FAIL") || ocrText.Contains("SHADE HISTORY") || ocrText.Contains("EQUATION"))
+                            {
+                                return ReportFormatType.LegacyCombinedFormat;
+                            }
                         }
-
-                        // 6. Si hay suficientes líneas estructurales → formato combinado completo
-                        if (horizontalCount >= STRUCTURAL_LINES_THRESHOLD)
-                            return ReportFormatType.LegacyCombinedFormat;
+                    }
+                    
+                    // Si el OCR no detecta palabras clave contundentes, aplicamos heurística geométrica de fallback (Hough Lines)
+                    using (Mat gray = new Mat())
+                    using (Mat binary = new Mat())
+                    {
+                        Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
+                        Cv2.AdaptiveThreshold(gray, binary, 255, AdaptiveThresholdTypes.MeanC, ThresholdTypes.BinaryInv, 15, 4);
+                        
+                        int lowerY = src.Height / 2;
+                        int lowerH = src.Height - lowerY;
+                        using (Mat lower = new Mat(binary, new OpenCvSharp.Rect(0, lowerY, src.Width, lowerH)))
+                        {
+                            int minLineLength = (int)(src.Width * MIN_LINE_WIDTH_FRACTION);
+                            var lines = Cv2.HoughLinesP(lower, 1, Cv2.PI / 180, 50, minLineLength, 10);
+                            int horiz = 0;
+                            foreach (var line in lines) { if (Math.Abs(line.P1.Y - line.P2.Y) <= 3) horiz++; }
+                            
+                            if (horiz >= STRUCTURAL_LINES_THRESHOLD) return ReportFormatType.LegacyCombinedFormat;
+                        }
                     }
                 }
             }
             catch
             {
-                // Ante cualquier error de procesamiento, usar la ruta más segura
                 return ReportFormatType.UnknownFallback;
             }
 

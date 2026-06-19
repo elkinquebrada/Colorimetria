@@ -29,7 +29,7 @@ namespace Colorimetria
         private ShadeExtractionResult _shadeResult;
 
         // ===== Pipeline de extracción (para procesamiento asíncrono) =====
-        private string _lastImagePath;   // Ruta del Shade History Report (si se cargó desde archivo)
+        private string _lastImagePath;  
         private readonly string pathTessData = @".\tessdata";
 
         // ===== UI =====
@@ -221,7 +221,7 @@ namespace Colorimetria
                 Location = new Point(20, 45)
             };
 
-            // ---- TabControl con UNA sola pestaña ("Combinado") ----
+            // ---- TabControl con una sola pestaña ("Combinado") ----
             tabControl = new TabControl
             {
                 Location = new Point(20, 75),
@@ -576,12 +576,9 @@ namespace Colorimetria
         }
 
         // =========================================================
-        // PIPELINE DE EXTRACCIÓN (Idéntico a Form1.OnShadeHistoryImageLoaded)
-        // Permite re-procesar el Shade History Report desde el formulario
-        // cuando la imagen está disponible pero no el resultado pre-calculado.
-        // REQUERIMIENTO 1 (LegacyCombinedFormat)  → ShadeReportExtractor
-        // REQUERIMIENTO 2 (DynamicSplitGridFormat) → DynamicSplitGridExtractor EXCLUSIVAMENTE
+        // PIPELINE DE EXTRACCIÓN 
         // =========================================================
+
         private Task ProcessImageAsync(string tempFile)
         {
             return Task.Run(() =>
@@ -593,36 +590,60 @@ namespace Colorimetria
 
                     if (format == ReportFormatType.LegacyCombinedFormat)
                     {
-                        // ── REQUERIMIENTO 1: Reporte Largo ──
+       
                         // ShadeReportExtractor maneja el pipeline completo (receta + Lab + Batch)
                         var extractor = new ShadeReportExtractor(pathTessData);
                         using (Bitmap bmp = ReportFormatRouter.LoadUniversalImage24bpp(tempFile))
                         {
                             var rawResult = extractor.ExtractFromBitmap(bmp);
 
-                            // Limpiar porcentajes a valores numéricos puros
-                            var finalRecipe = new List<RecipeItem>();
-                            foreach (var item in rawResult.Recipe ?? new List<RecipeItem>())
+                            // FALLBACK: Si no se extrae receta con el parser legacy, probamos con DynamicSplitGrid
+                            if (rawResult.Recipe == null || rawResult.Recipe.Count == 0)
                             {
-                                string pctDigits = Regex.Replace(item.Percentage ?? "", @"[^0-9\.]", "");
-                                double cleanPct = 0;
-                                double.TryParse(pctDigits, NumberStyles.Any, CultureInfo.InvariantCulture, out cleanPct);
-                                finalRecipe.Add(new RecipeItem
+                                var cleanRecipeItems = DynamicSplitGridExtractor.ExtractRecipePositional(tempFile, null, pathTessData);
+                                var finalRecipe = new List<RecipeItem>();
+                                foreach (var item in cleanRecipeItems)
                                 {
-                                    Code       = item.Code,
-                                    Name       = item.Name,
-                                    Percentage = cleanPct.ToString(CultureInfo.InvariantCulture)
-                                });
+                                    string pctDigits = Regex.Replace(item.Percentage ?? "", @"[^0-9\.]", "");
+                                    double cleanPct = 0;
+                                    double.TryParse(pctDigits, NumberStyles.Any, CultureInfo.InvariantCulture, out cleanPct);
+                                    finalRecipe.Add(new RecipeItem
+                                    {
+                                        Code       = item.Code,
+                                        Name       = item.Name,
+                                        Percentage = cleanPct.ToString(CultureInfo.InvariantCulture)
+                                    });
+                                }
+                                rawResult.Recipe = finalRecipe;
                             }
-                            rawResult.Recipe = finalRecipe;
+                            else
+                            {
+                                // Limpiar porcentajes a valores numéricos puros
+                                var finalRecipe = new List<RecipeItem>();
+                                foreach (var item in rawResult.Recipe)
+                                {
+                                    string pctDigits = Regex.Replace(item.Percentage ?? "", @"[^0-9\.]", "");
+                                    double cleanPct = 0;
+                                    double.TryParse(pctDigits, NumberStyles.Any, CultureInfo.InvariantCulture, out cleanPct);
+                                    finalRecipe.Add(new RecipeItem
+                                    {
+                                        Code       = item.Code,
+                                        Name       = item.Name,
+                                        Percentage = cleanPct.ToString(CultureInfo.InvariantCulture)
+                                    });
+                                }
+                                rawResult.Recipe = finalRecipe;
+                            }
                             _shadeResult = rawResult;
+                            
+                            // ASEGURAR PASO DE DATOS A UI
+                            if (_report == null) { _report = new OcrReport(); }
+                            _report.Recipe = rawResult.Recipe;
                         }
                     }
                     else
                     {
                         // ── REQUERIMIENTO 2: Ticket Plano (Matriz de Puntos) ──
-                        // DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE.
-                        // Previene lectura de encabezados vacíos o "TOTAL PARTICIPATION / FAIL" del pie.
                         var cleanRecipeItems = DynamicSplitGridExtractor.ExtractRecipePositional(
                             tempFile, null, pathTessData);
 
@@ -640,10 +661,11 @@ namespace Colorimetria
                             });
                         }
 
-                        _shadeResult = new ShadeExtractionResult
-                        {
-                            Recipe = finalRecipe
-                        };
+                        _shadeResult = new ShadeExtractionResult { Recipe = finalRecipe };
+
+                        // VÍNCULO CRÍTICO DE ACTIVACIÓN:
+                        if (_report == null) { _report = new OcrReport(); }
+                        _report.Recipe = finalRecipe; // Permite el volcado de datos inmediato en el dgvReceta
                     }
 
                     // Actualizar el puente global para que FormResultados lo pueda leer

@@ -5,12 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Tesseract;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using Color.Services;
 
 namespace Color
 {
     // ─────────────────────────────────────────────────────────────────────────
-    // Extractor de receta por columnas geométricas independientes - CORREGIDO
+    // Extractor de receta por columnas geométricas independientes
     // ─────────────────────────────────────────────────────────────────────────
 
     public sealed class DynamicSplitGridExtractor : IDisposable
@@ -20,143 +22,101 @@ namespace Color
         private TesseractEngine _engine;
         private readonly object _lock = new object();
 
-        // ── Proporciones geométricas (fracciones del ancho total) ─────────────
-        private const double COL_CODE_WIDTH = 0.15;
-        private const double COL_NAME_WIDTH = 0.38;
-        private const double COL_PCT_WIDTH = 0.15;
-
         // ── Proporciones geométricas (fracciones de la altura total) ──────────
+
         private const double RECIPE_ZONE_HEIGHT_COMBINED = 0.22;
-        private const double RECIPE_ZONE_TOP_FLAT = 0.18;
+        private const double RECIPE_ZONE_TOP_FLAT   = 0.18;
         private const double RECIPE_ZONE_HEIGHT_FLAT = 0.25;
 
         // ── Constructor ───────────────────────────────────────────────────────
-        public DynamicSplitGridExtractor(string tessDataPath = @".\\tessdata")
+
+        public DynamicSplitGridExtractor(string tessDataPath = @".\tessdata")
         {
             _tessDataPath = tessDataPath;
         }
 
-        // ── API Pública de Extracción ────────────────────────────────────────
-        public List<ColoranteData> ExtractRecipe(Bitmap sourceBmp)
+        // ── API pública ───────────────────────────────────────────────────────
+
+        public List<RecipeItem> ExtractRecipePositional(
+            string imagePath,
+            System.Drawing.Rectangle? tableBounds = null)
         {
-            var rawLines = ExtractRawLinesFromGrid(sourceBmp);
-            return FilterAndCleanRecipeLines(rawLines);
+            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+                return new List<RecipeItem>();
+
+            using (Bitmap bmp = ReportFormatRouter.LoadUniversalImage24bpp(imagePath))
+                return ExtractFromBitmap(bmp, tableBounds);
         }
 
-        // ── Segmentación Geométrica de la Imagen ──────────────────────────────
-        private List<string> ExtractRawLinesFromGrid(Bitmap bmp)
+        // ── API estática (permite invocar sin instancia pre-creada) ───────────
+
+        public static List<RecipeItem> ExtractRecipePositional(
+            string imagePath,
+            System.Drawing.Rectangle? tableBounds,
+            string tessDataPath)
         {
-            List<string> lines = new List<string>();
+            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+                return new List<RecipeItem>();
 
-            // Calculamos el área aproximada donde se encuentra la tabla de colorantes
-            int startY = (int)(bmp.Height * RECIPE_ZONE_TOP_FLAT);
-            int zoneHeight = (int)(bmp.Height * RECIPE_ZONE_HEIGHT_FLAT);
-
-            if (startY + zoneHeight > bmp.Height)
-                zoneHeight = bmp.Height - startY;
-
-            // Definimos el ancho de corte de la zona de interés
-            int targetWidth = (int)(bmp.Width * (COL_CODE_WIDTH + COL_NAME_WIDTH + COL_PCT_WIDTH + 0.05));
-            if (targetWidth > bmp.Width) targetWidth = bmp.Width;
-
-            Rectangle recipeRegion = new Rectangle(0, startY, targetWidth, zoneHeight);
-
-            using (Bitmap croppedZone = CropImage(bmp, recipeRegion))
-            {
-                string rawText = RunTesseractOnBitmap(croppedZone);
-                if (!string.IsNullOrEmpty(rawText))
-                {
-                    var split = rawText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
-                    lines.AddRange(split);
-                }
-            }
-
-            return lines;
+            string path = string.IsNullOrWhiteSpace(tessDataPath) ? @".\tessdata" : tessDataPath;
+            using (var instance = new DynamicSplitGridExtractor(path))
+            using (Bitmap bmp = ReportFormatRouter.LoadUniversalImage24bpp(imagePath))
+                return instance.ExtractFromBitmap(bmp, tableBounds);
         }
 
-        // ── MÉTODO NUEVO: Filtro y limpieza estricta de datos (OCR Sanitization) ──
-        private List<ColoranteData> FilterAndCleanRecipeLines(List<string> rawLines)
+        /// Extrae la lista de colorantes directamente desde un Bitmap ya cargado.
+        public List<RecipeItem> ExtractFromBitmap(
+            Bitmap bmp,
+            System.Drawing.Rectangle? tableBounds = null)
         {
-            List<ColoranteData> validRecipe = new List<ColoranteData>();
+            var recipeItems = new List<RecipeItem>();
+            if (bmp == null) return recipeItems;
 
-            foreach (var line in rawLines)
+            int imgWidth  = bmp.Width;
+            int imgHeight = bmp.Height;
+
+            // Procesamos la imagen COMPLETA ya que la posición de los datos varía drásticamente
+            var region = new System.Drawing.Rectangle(0, 0, imgWidth, imgHeight);
+            string rawText = ExtractTextWithOpenCv(bmp, region);
+            var lines = rawText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            // ──  Parseo y limpieza de líneas ────────────────────────────────
+            return FilterAndCleanRecipeLines(lines);
+        }
+
+        // ── Procesamiento con OpenCV + OCR ────────────────────────────────────
+
+        private string ExtractTextWithOpenCv(Bitmap originalBmp, System.Drawing.Rectangle region)
+        {
+            region = System.Drawing.Rectangle.Intersect(
+                region,
+                new System.Drawing.Rectangle(0, 0, originalBmp.Width, originalBmp.Height));
+            if (region.IsEmpty) return string.Empty;
+
+            using (Bitmap regionBmp = originalBmp.Clone(region, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
             {
-                string cleanLine = line.Trim();
-
-                // 1. Descartar líneas vacías o excesivamente cortas (ruido)
-                if (string.IsNullOrEmpty(cleanLine) || cleanLine.Length < 5)
-                    continue;
-
-                // 2. Descartar cabeceras y la fila totalizadora '[Dyes]' / 'Total'
-                string upperLine = cleanLine.ToUpper();
-                if (upperLine.Contains("DYE CODE") ||
-                    upperLine.Contains("DYE NAME") ||
-                    upperLine.Contains("CONCENTRATION") ||
-                    upperLine.Contains("PROPORTION") ||
-                    upperLine.Contains("DYES") ||
-                    upperLine.Contains("TOTAL") ||
-                    upperLine.Contains("[DYES]"))
+                using (Mat mat = BitmapConverter.ToMat(regionBmp))
+                using (Mat gray = new Mat())
+                using (Mat scaled = new Mat())
+                using (Mat bin = new Mat())
                 {
-                    continue; // Saltar fila basura
-                }
+                    // 1. Convertir a grises
+                    Cv2.CvtColor(mat, gray, ColorConversionCodes.BGR2GRAY);
+                    // 2. Escalar 3x para nitidez
+                    Cv2.Resize(gray, scaled, new OpenCvSharp.Size(gray.Width * 3, gray.Height * 3), 0, 0, InterpolationFlags.Cubic);
+                    // 3. Umbral adaptativo Otsu
+                    Cv2.Threshold(scaled, bin, 0, 255, ThresholdTypes.Otsu | ThresholdTypes.Binary);
 
-                // 3. Segmentar los componentes (Código, Nombre, Porcentaje)
-                // Buscamos separar por múltiples espacios o tabulaciones del OCR
-                var parts = Regex.Split(cleanLine, @"\s{2,}")
-                                 .Where(p => !string.IsNullOrWhiteSpace(p))
-                                 .Select(p => p.Trim())
-                                 .ToList();
-
-                // Si no se separó correctamente por espacios amplios, intentamos por espacio simple
-                if (parts.Count < 2)
-                {
-                    parts = cleanLine.Split(' ')
-                                     .Where(p => !string.IsNullOrWhiteSpace(p))
-                                     .Select(p => p.Trim())
-                                     .ToList();
-                }
-
-                if (parts.Count >= 2)
-                {
-                    string code = parts[0];
-
-                    // VALIDACIÓN DE ORO: El código de colorante debe contener obligatoriamente dígitos numéricos
-                    if (!Regex.IsMatch(code, @"\d+"))
-                        continue; // No es una fila de datos válida
-
-                    string name = parts[1];
-                    string percentage = "0%";
-
-                    // Si logramos recuperar la columna del porcentaje
-                    if (parts.Count >= 3)
+                    using (Bitmap processedBmp = BitmapConverter.ToBitmap(bin))
                     {
-                        percentage = parts[parts.Count - 1];
+                        return RunTesseractOnBitmap(processedBmp);
                     }
-
-                    validRecipe.Add(new ColoranteData
-                    {
-                        Codigo = code,
-                        Nombre = name,
-                        Porcentaje = percentage
-                    });
                 }
             }
-
-            return validRecipe;
         }
 
-        // ── Utilidades de Corte de Imagen ─────────────────────────────────────
-        private Bitmap CropImage(Bitmap src, Rectangle rect)
-        {
-            Bitmap bmp = new Bitmap(rect.Width, rect.Height, src.PixelFormat);
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.DrawImage(src, new Rectangle(0, 0, bmp.Width, bmp.Height), rect, GraphicsUnit.Pixel);
-            }
-            return bmp;
-        }
+        // ── Motor Tesseract compartido ────────────────────────────────────────
 
-        // ── Motor Tesseract Compartido con Escala 3x Optimizada ───────────────
         private string RunTesseractOnBitmap(Bitmap bmp)
         {
             try
@@ -166,19 +126,8 @@ namespace Color
                     if (_engine == null)
                         _engine = new TesseractEngine(_tessDataPath, "eng", EngineMode.Default);
 
-                    // Escalar 3x para mejorar radicalmente la detección de números y puntos decimales
-                    int scaledW = bmp.Width * 3;
-                    int scaledH = bmp.Height * 3;
-
-                    using (Bitmap scaled = new Bitmap(scaledW, scaledH))
-                    using (Graphics g = Graphics.FromImage(scaled))
-                    {
-                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        g.DrawImage(bmp, 0, 0, scaledW, scaledH);
-
-                        using (var page = _engine.Process(scaled, PageSegMode.SingleBlock))
-                            return page.GetText() ?? string.Empty;
-                    }
+                    using (var page = _engine.Process(bmp, PageSegMode.SingleBlock))
+                        return page.GetText() ?? string.Empty;
                 }
             }
             catch
@@ -187,7 +136,72 @@ namespace Color
             }
         }
 
+        // ── Parseo Estructural por Expresiones Regulares ──────────────────────
+
+        private List<RecipeItem> FilterAndCleanRecipeLines(List<string> rawLines)
+        {
+            List<RecipeItem> validRecipe = new List<RecipeItem>();
+         
+            string pattern = @"^\s*(\d{5,})\s+(.+?)\s+(\d+[.,]\d{2,})";
+
+            foreach (string rawLine in rawLines)
+            {
+                string line = rawLine.Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+                
+                string upperLine = line.ToUpper();
+                if (upperLine.Contains("DYE CODE") || upperLine.Contains("DYE NAME") ||
+                    upperLine.Contains("CONCENTRATION") || upperLine.Contains("DYES") ||
+                    upperLine.Contains("PROCESS") || upperLine.Contains("RECIPE") ||
+                    upperLine.Contains("TOTAL"))
+                {
+                    continue; 
+                }
+                
+                // Exclusión inquebrantable de los Químicos y Sales: si la fila menciona "g/l" o nombres evidentes
+                if (Regex.IsMatch(upperLine, @"G\s*[/\\]\s*[LI1|]")) continue;
+                if (upperLine.Contains("SULFATO") || upperLine.Contains("ACIDO") || upperLine.Contains("ÁCIDO") ||
+                    upperLine.Contains("CINDYE") || upperLine.Contains("INVADINE")) continue;
+                
+                // Limpieza secuencial profunda para despejar el número central
+                line = Regex.Replace(line, @"0[.,]00\s*[A-Za-z/|]*$", "", RegexOptions.IgnoreCase);
+                line = Regex.Replace(line, @"(?:%|9\/?6)\s*$", "", RegexOptions.IgnoreCase).Trim();
+                
+                line = line.Replace("|", " ").Trim();
+                
+                Match m = Regex.Match(line, pattern);
+                if (m.Success)
+                {
+                    string code = m.Groups[1].Value.Trim();
+                    string name = m.Groups[2].Value.Trim();
+                    string percentage = m.Groups[3].Value.Trim().Replace(",", ".");
+                    
+                    // Si la captura del nombre arrastró un símbolo de porcentaje (a menos que realmente sea parte del nombre como 100%)
+                    if (name.EndsWith("%") && Regex.IsMatch(name, @"\s+%$"))
+                        name = name.Substring(0, name.Length - 1).Trim();
+
+                    // TRATAMIENTO QUIRÚRGICO DE DAÑOS OCR:
+                    if (percentage.StartsWith("3001.") && percentage.Length > 6)
+                    {
+                        name += " 300"; 
+                        percentage = "1." + percentage.Substring(5); 
+                    }
+                    
+                    // Si el remanente comienza en punto, ponerle un cero.
+                    if (percentage.StartsWith(".")) percentage = "0" + percentage;
+
+                    validRecipe.Add(new RecipeItem {
+                        Code = code,
+                        Name = name,
+                        Percentage = percentage
+                    });
+                }
+            }
+            return validRecipe;
+        }
+
         // ── IDisposable ───────────────────────────────────────────────────────
+
         public void Dispose()
         {
             lock (_lock)
@@ -196,13 +210,5 @@ namespace Color
                 _engine = null;
             }
         }
-    }
-
-    // Clase auxiliar para el tipado de los datos devueltos
-    public class ColoranteData
-    {
-        public string Codigo { get; set; }
-        public string Nombre { get; set; }
-        public string Porcentaje { get; set; }
     }
 }
