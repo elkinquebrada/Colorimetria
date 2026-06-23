@@ -62,14 +62,24 @@ namespace Color
                     Image = Image.FromFile(finalPath),
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Width = 80,
-                    Height = 80,
+                    Height = 38,
+                    //  Ancla Top|Right en el formulario raíz para esquina superior derecha fija
                     Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                    BackColor = System.Drawing.Color.Transparent
+                    BackColor = System.Drawing.Color.White
                 };
-                
-                // Agregar al mainArea para que no lo cubra el panel lateral
-                logo.Location = new Point(this.mainArea.Width - logo.Width - 30, 20);
-                this.mainArea.Controls.Add(logo);
+
+                // Posición inicial en esquina superior derecha del formulario
+                logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
+
+                // Reposicionar automáticamente al redimensionar
+                this.Resize += (s, e) =>
+                {
+                    logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
+                };
+
+                // Se agrega al formulario directamente (no a mainArea ni paneles de contenido)
+                this.Controls.Add(logo);
+                // BringToFront necesario para que sea visible sobre los paneles Dock
                 logo.BringToFront();
             }
             catch { }

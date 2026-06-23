@@ -135,11 +135,17 @@ namespace Color
                 center.Y - (float)plotStdB * scale
             );
 
-            // Punto Lote (Rojo)
-            PointF pLot = new PointF(
-                center.X + (float)plotLotA * scale,
-                center.Y - (float)plotLotB * scale
-            );
+            // =========================================================================
+            // REFACTORIZACIÓN GEOMÉTRICA DEL PLANO CARTESIANO CIELAB
+            // =========================================================================
+
+            // positivos de DeltaA (Rojo) avancen de forma natural hacia la derecha del centroX.
+            float lotX = (float)(center.X + (plotLotA * scale));
+
+            // la coordenada Y en las pantallas aumenta hacia abajo (restar desplaza hacia abajo).
+            float lotY = (float)(center.Y - (plotLotB * scale)); 
+
+            PointF pLot = new PointF(lotX, lotY);
 
             // Tolerancia — CMC 2:1 Elipse Rotada
             double C1 = Math.Sqrt(AbsoluteA * AbsoluteA + AbsoluteB * AbsoluteB);

@@ -58,7 +58,7 @@ namespace Color
             _report = report ?? new OcrReport();
             InitializeComponents();
             PopulateFromReport(_report);
-            AddBrandingLogo();
+            // Logo oculto en esta pantalla por solicitud del cliente
         }
 
         public FormResultados(string _, List<EngineRes> results, List<CorrectiveRecipeResult> recipeResults = null, ShadeExtractionResult shadeData = null)
@@ -68,7 +68,7 @@ namespace Color
             _shadeData = shadeData;
             InitializeComponents();
             PopulateFromObjects(_shadeData, _resultsLegacy);
-            AddBrandingLogo();
+           
         }
 
         private void InitializeComponents()
@@ -77,9 +77,9 @@ namespace Color
             this.Size = new Size(1100, 850);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
-            this.BackColor = System.Drawing.Color.FromArgb(230, 230, 230);
+            this.BackColor = System.Drawing.Color.White;
 
-            pnlWhitePaper = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = System.Drawing.Color.FromArgb(230, 230, 230), Padding = new Padding(20) };
+            pnlWhitePaper = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = System.Drawing.Color.White, Padding = new Padding(20) };
             pnlReportFlow = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
@@ -90,6 +90,18 @@ namespace Color
                 Dock = DockStyle.Top
             };
             pnlWhitePaper.Controls.Add(pnlReportFlow);
+
+            // ── BARRA DE LOGO ESTÁTICA (Dock=Top) ────────────────────────────────
+            var pnlLogoStrip = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 50,
+                BackColor = System.Drawing.Color.White
+            };
+            this.Controls.Add(pnlLogoStrip);
+
+            // pnlWhitePaper ocupa el resto del espacio debajo de la barra del logo
+            this.Controls.Add(pnlWhitePaper);
 
             // Cuando la ventana cambia de tamaño, el FlowPanel y los bloques se adaptan al nuevo ancho
             this.Resize += (s, e) =>
@@ -450,23 +462,38 @@ namespace Color
                     if (string.IsNullOrEmpty(currentDir)) break;
                 }
 
-                // Si se encontró el archivo, creamos el PictureBox y lo acomodamos en el reporte
+                // Logo estático: se inyecta en la barra fija pnlLogoStrip (Dock=Top)
+                // Esta barra es arquitectónicamente independiente del área scrollable
                 if (!string.IsNullOrEmpty(finalPath))
                 {
-                    var logo = new PictureBox
-                    {
-                        Image = Image.FromFile(finalPath),
-                        SizeMode = PictureBoxSizeMode.Zoom,
-                        Width = 140,
-                        Height = 40,
-                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                        BackColor = System.Drawing.Color.Transparent
-                    };
+                    // Buscar la barra de logo creada en InitializeComponents
+                    var pnlLogoStrip = this.Controls.OfType<Panel>()
+                        .FirstOrDefault(p => p.Dock == DockStyle.Top && p.Height == 50);
 
-                    // Colocamos el logo flotando en la esquina superior derecha del formulario
-                    logo.Location = new Point(this.Width - logo.Width - 40, 15);
-                    this.Controls.Add(logo);
-                    logo.BringToFront();
+                    if (pnlLogoStrip != null)
+                    {
+                        var logo = new PictureBox
+                        {
+                            Image = Image.FromFile(finalPath),
+                            SizeMode = PictureBoxSizeMode.Zoom,
+                            Width = 130,
+                            Height = 44,
+                            // Anclado a la derecha dentro de la barra fija
+                            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                            BackColor = System.Drawing.Color.White,
+                            Location = new Point(pnlLogoStrip.Width - 136, 3)
+                        };
+
+                        // Reposicionar el logo dentro de la barra cuando el formulario se redimensiona
+                        this.Resize += (s, e) =>
+                        {
+                            logo.Location = new Point(pnlLogoStrip.Width - 136, 3);
+                        };
+
+                        pnlLogoStrip.Controls.Add(logo);
+                        // No se necesita BringToFront: la barra pnlLogoStrip (Dock=Top) 
+                        // está arquitectónicamente SOBRE pnlWhitePaper (Dock=Fill)
+                    }
                 }
             }
             catch (Exception)
@@ -686,9 +713,9 @@ namespace Color
             dgvCorrectiveRecipe.Columns.Clear();
 
             dgvCorrectiveRecipe.Columns.Add("colColorante", " Colorante");
-            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 %");
-            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 %");
-            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 %");
+            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 Ajuste %");
+            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 Ajuste %");
+            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 Ajuste %");
 
             string[] colsVar = { "colR1_Var", "colR2_Var", "colR3_Var" };
             foreach (var c in new[] { "colR1_Con", "colR2_Con", "colR3_Con" }) dgvCorrectiveRecipe.Columns[c].DefaultCellStyle.Format = "N5";
