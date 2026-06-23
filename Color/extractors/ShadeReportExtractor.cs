@@ -761,7 +761,7 @@ namespace Color
             return ExtractRecipe(ocrText);
         }
 
-        // REEMPLAZO IMPLEMENTADO: Extraer BatchMeasure usando Recorte dirigido
+        // Extraer BatchMeasure usando Recorte dirigido
         private BatchMeasure ExtractBatchMeasureFromBitmap(Bitmap original)
         {
             // La fila de Batch Measure está en la parte inferior (aprox 65% a 95% de la altura).

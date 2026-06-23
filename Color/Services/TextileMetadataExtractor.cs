@@ -246,13 +246,6 @@ namespace Color.Services
             return "-";
         }
 
-        private static bool MatchesAny(string key, string[] anchors)
-        {
-            foreach (var anchor in anchors)
-                if (key.Contains(anchor)) return true;
-            return false;
-        }
-
         // =====================================================================
         // PROCESAMIENTO DE IMAGEN — HEREDADO DE Dataextraxtor.cs
         // =====================================================================

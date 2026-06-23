@@ -21,7 +21,9 @@ namespace Color
         public double DeltaE { get => _dE; set { _dE = value; InvalidateSafer(); } }
         public double ToleranceDE { get => _toleranceDE; set { _toleranceDE = value; InvalidateSafer(); } }
         public string Title { get; set; } = "Análisis CIELAB";
-        public ViewMode Mode { get => ViewMode.Absolute; set { } } //  vista espacial real 
+
+        // vista espacial real desactivada por defecto
+        public ViewMode Mode { get; set; } = ViewMode.Relative; 
         public string InstructionMessage { get; set; } = "";
 
         public double AbsoluteL { get; set; } = 50.0;
@@ -34,7 +36,7 @@ namespace Color
 
         public CielabChartControl()
         {
-            // CORRECCIÓN 1: DoubleBuffered y ResizeRedraw para evitar duplicidad visual
+            // DoubleBuffered y ResizeRedraw para evitar duplicidad visual
             this.DoubleBuffered = true;
             this.ResizeRedraw = true;
             this.Size = new Size(400, 400);
@@ -63,18 +65,18 @@ namespace Color
                 g.FillRectangle(backBrush, this.ClientRectangle);
             }
 
-            // CORRECCIÓN 2: Distribución de espacio para que los cuadros no pisen la gráfica
-            int rightPanelWidth = 220; // Espacio reservado para cuadros térmicos y la barra de luminosidad
+            // Distribución de espacio para que los cuadros no pisen la gráfica
+            int rightPanelWidth = 220; 
             int leftPanelWidth = Math.Max(150, this.Width - rightPanelWidth);
             
-            int verticalPadding = 90; // Padding para alojar titulos, viñetas y tooltips
+            int verticalPadding = 90; 
 
             // Calculamos un tamaño cuadrado para el diagrama polar (sólo en el panel izquierdo)
             int size = Math.Min(leftPanelWidth - 60, this.Height - verticalPadding);
             if (size < 50) size = 50;
             
             Rectangle chartArea = new Rectangle(
-                (leftPanelWidth - size) / 2 + 25, // desplazar 25 a la derecha para que no corte el texto 'Verde'
+                (leftPanelWidth - size) / 2 + 25, 
                 (this.Height - size) / 2 + 5,
                 size,
                 size
@@ -152,9 +154,10 @@ namespace Color
             using (Pen tolPen = new Pen(System.Drawing.Color.FromArgb(200, 255, 255, 255), 1.8f))
             {
                 tolPen.DashStyle = DashStyle.Dash;
-                
+
+                // Elipse centrada en la posición real del estándar
                 GraphicsState state = g.Save();
-                g.TranslateTransform(pStd.X, pStd.Y); // Elipse centrada en la posición real del estándar
+                g.TranslateTransform(pStd.X, pStd.Y); 
                 g.RotateTransform((float)(-h1_deg));
                 g.DrawEllipse(tolPen, -wC, -hH, wC * 2, hH * 2);
                 g.Restore(state);
@@ -187,7 +190,7 @@ namespace Color
             // Leyenda de Puntos
             using (Font fLegend = new Font("Segoe UI", 8.5f, FontStyle.Bold))
             {
-                int legendY = chartArea.Bottom + 25; // Más abajo para separarla de Azul (-b*)
+                int legendY = chartArea.Bottom + 25; 
                 g.FillEllipse(Brushes.LimeGreen, 15, legendY + 2, 12, 12);
                 g.DrawString("Estándar (Objetivo)", fLegend, Brushes.Black, 30, legendY);
                 
@@ -263,7 +266,8 @@ namespace Color
 
         private void DrawComparisonSamples(Graphics g, int x, int y)
         {
-            int sw = 70, sh = 70; // Cuadros compactos para optimizar distribución
+            // Cuadros compactos para optimizar distribución
+            int sw = 70, sh = 70; 
             Rectangle rStd = new Rectangle(x, y, sw, sh);
             Rectangle rLot = new Rectangle(x + sw + 10, y, sw, sh);
 

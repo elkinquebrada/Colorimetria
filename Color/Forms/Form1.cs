@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Color.Services;
-
+using System.Threading.Tasks;
 namespace Color
 {
     public partial class Form1 : Form
@@ -132,35 +132,53 @@ namespace Color
             Cursor = Cursors.Hand
         };
 
-        private void LoadInto(PictureBox target, Label hint, string path, string etiqueta)
+        private async Task LoadIntoAsync(PictureBox target, Label hint, string path, string etiqueta)
         {
-            if (!Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase))
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            string[] allowedExts = { ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif" };
+            if (!allowedExts.Contains(ext))
             {
-                MessageBox.Show("Solo archivos PNG.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Formato de imagen no soportado. Seleccione .png, .jpg, .jpeg, .bmp, .tiff o .gif.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            Bitmap tempBmp;
-            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-            {
-                tempBmp = new Bitmap(Image.FromStream(fs));
-            }
+            Cursor = Cursors.WaitCursor;
+            lblStatus.Text = $"Analizando y extrayendo datos de {etiqueta}...";
+            lblStatus.ForeColor = System.Drawing.Color.Blue;
+            btnIniciar.Enabled = false;
 
-            // --- VALIDACIÓN ESTRICTA DE FORMATO DE SHADE HISTORY REPORT ---
-            if (etiqueta == "Shade History Report")
-            {
-                lblStatus.Text = "Clasificando y extrayendo receta...";
-                lblStatus.ForeColor = System.Drawing.Color.Blue;
-                Application.DoEvents();
+            Bitmap tempBmp = null;
+            ShadeExtractionResult shadeRes = null;
+            Color.Models.TextileMetadata textRes = null;
 
-                _lastShadeImagePath = path;
-                _lastShadeResult    = OnShadeHistoryImageLoaded(path, tempBmp);
-            }
-            else if (etiqueta == "PASS / FAIL")
+            try
             {
-                // Extraer metadatos de la imagen principal de evaluación (donde esta la cabecera completa)
-                _lastTextileMetadata = _textileExtractor.ExtractFromBitmap(tempBmp);
-            }
+                await Task.Run(() =>
+                {
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+                    {
+                        tempBmp = new Bitmap(Image.FromStream(fs));
+                    }
+
+                    if (etiqueta == "Shade History Report")
+                    {
+                        shadeRes = OnShadeHistoryImageLoaded(path, tempBmp);
+                    }
+                    else if (etiqueta == "PASS / FAIL")
+                    {
+                        textRes = _textileExtractor.ExtractFromBitmap(tempBmp);
+                    }
+                });
+
+                if (etiqueta == "Shade History Report")
+                {
+                    _lastShadeImagePath = path;
+                    _lastShadeResult = shadeRes;
+                }
+                else if (etiqueta == "PASS / FAIL")
+                {
+                    _lastTextileMetadata = textRes;
+                }
 
             // CARGA EXITOSA
             if (target.Image != null) target.Image.Dispose();
@@ -183,6 +201,12 @@ namespace Color
             }
 
             CheckIfBothImagesLoaded();
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+                btnIniciar.Enabled = true;
+            }
         }
 
         private void ActualizarLabelCarga(ref Label lbl, string text, Button btnBase, Button btnCambiar)
@@ -309,19 +333,19 @@ namespace Color
         private void UpdateHints() { if (lblLeftHint != null) lblLeftHint.Visible = picLeft.Image == null; if (lblRightHint != null) lblRightHint.Visible = picRight.Image == null; }
         private void ClearPicture(PictureBox pb) { if (pb?.Image != null) { pb.Image.Dispose(); pb.Image = null; } }
 
-        private void SelectAndLoadPng(PictureBox target, Label hint, string etiqueta)
+        private async void SelectAndLoadPng(PictureBox target, Label hint, string etiqueta)
         {
-            using (var ofd = new OpenFileDialog { Filter = "PNG|*.png" })
-                if (ofd.ShowDialog() == DialogResult.OK) LoadInto(target, hint, ofd.FileName, etiqueta);
+            using (var ofd = new OpenFileDialog { Filter = "Archivos de imagen|*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.gif|Todos los archivos|*.*" })
+                if (ofd.ShowDialog() == DialogResult.OK) await LoadIntoAsync(target, hint, ofd.FileName, etiqueta);
         }
 
         private void EnableDragDrop(Control surf, PictureBox target, Label hint, string etiqueta)
         {
             surf.AllowDrop = target.AllowDrop = true;
             surf.DragEnter += (s, e) => e.Effect = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
-            surf.DragDrop += (s, e) => {
+            surf.DragDrop += async (s, e) => {
                 var files = e.Data.GetData(DataFormats.FileDrop) as string[];
-                if (files != null && files.Length > 0) LoadInto(target, hint, files[0], etiqueta);
+                if (files != null && files.Length > 0) await LoadIntoAsync(target, hint, files[0], etiqueta);
             };
         }
 
@@ -378,8 +402,6 @@ namespace Color
         // ── Orquestador del pipeline geométrico (DESACOPLADO) ─────────────────
 
         /// Clasifica el reporte y extrae la receta con lógica limpia y desacoplada.
-        /// REQUERIMIENTO 1 (Legacy): ShadeReportExtractor maneja todo el pipeline.
-        /// REQUERIMIENTO 2 (Tickets planos): DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE.
         private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)
         {
             // 1. El Clasificador identifica qué tipo de reporte envió el usuario
@@ -425,9 +447,6 @@ namespace Color
             {
                 // ══════════════════════════════════════════════════════════════
                 // REQUERIMIENTO 2: Tickets planos de matriz de puntos
-                // DynamicSplitGridExtractor SE USA EXCLUSIVAMENTE para estos
-                // reportes. Recorta en 3 columnas verticales independientes
-                // para que los textos no se atropellen.
                 // ══════════════════════════════════════════════════════════════
                 var cleanRecipeItems = _splitExtractor.ExtractFromBitmap(bmp, null);
 

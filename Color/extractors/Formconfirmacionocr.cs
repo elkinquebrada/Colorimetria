@@ -665,7 +665,7 @@ namespace Colorimetria
 
                         // VÍNCULO CRÍTICO DE ACTIVACIÓN:
                         if (_report == null) { _report = new OcrReport(); }
-                        _report.Recipe = finalRecipe; // Permite el volcado de datos inmediato en el dgvReceta
+                        _report.Recipe = finalRecipe; 
                     }
 
                     // Actualizar el puente global para que FormResultados lo pueda leer
