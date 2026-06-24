@@ -6,7 +6,7 @@ using Color;
 
 namespace OCR
 {
-    /// Proporciona métodos estáticos para la lectura y mapeo de datos del archivos Excel (.xlsx)
+    /// Proporciona métodos estáticos para la lectura y mapeo de datos.
     public static class ExcelReader
     {
         /// Lee la primera hoja del archivo Excel y la convierte en una estructura de listas.
@@ -86,7 +86,7 @@ namespace OCR
             {
                 using (var wb = new XLWorkbook(excelPath))
                 {
-                    // Buscamos la hoja "TOLERANCIA" de forma robusta (ignorando mayúsculas/minúsculas y espacios)
+                    // Buscamos la hoja "TOLERANCIA" de forma robusta 
                     IXLWorksheet ws = null;
                     foreach (var sheet in wb.Worksheets)
                     {
@@ -108,7 +108,7 @@ namespace OCR
                         var cellDE = ws.Cell(2, col);
                         if (cellDE.IsEmpty()) continue;
 
-                        // CORRECCIÓN: Usamos GetCellValueSafe para manejar fórmulas con referencias externas 
+                        // Usamos GetCellValueSafe para manejar fórmulas con referencias externas 
                         double de = GetCellValueAsDouble(cellDE);
                         double dl = GetCellValueAsDouble(ws.Cell(3, col));
                         double dc = GetCellValueAsDouble(ws.Cell(4, col));

@@ -133,7 +133,7 @@ namespace Color
             this.dgvHistorial.BackgroundColor = System.Drawing.Color.White;
             this.dgvHistorial.GridColor = System.Drawing.Color.FromArgb(200, 212, 228);
 
-            // Encabezados — azul oscuro #1F3864 igual que el sHeader del Excel
+            // Encabezados — azul oscuro 
             System.Windows.Forms.DataGridViewCellStyle estiloHeader =
                 new System.Windows.Forms.DataGridViewCellStyle();
             estiloHeader.BackColor = System.Drawing.Color.FromArgb(31, 56, 100);
@@ -159,7 +159,7 @@ namespace Color
             estiloCelda.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.dgvHistorial.DefaultCellStyle = estiloCelda;
 
-            // Filas alternas — azul claro #DCE6F1 (idéntico al sAlt del Excel)
+            // Filas alternas — azul claro 
             System.Windows.Forms.DataGridViewCellStyle estiloAlt =
                 new System.Windows.Forms.DataGridViewCellStyle();
             estiloAlt.BackColor = System.Drawing.Color.FromArgb(220, 230, 241);
@@ -216,7 +216,7 @@ namespace Color
             });
 
             this.dgvHistorial.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dgvHistorial.ColumnWidthChanged += (s, e) => { /* Evento manual */ }; 
+            this.dgvHistorial.ColumnWidthChanged += (s, e) => {  }; 
 
             // ──────────────────────────────────────────────────────────────
             // pnlPie  (barra inferior blanca — igual que FormResultados)
@@ -299,7 +299,7 @@ namespace Color
                                            System.Drawing.FontStyle.Regular,
                                            System.Drawing.GraphicsUnit.Point, 0);
 
-            // Orden de capas: pnlTitulo (top) → pnlGroupHeaders (top) → dgvHistorial (fill) → pnlPie (bottom)
+            // Orden de capas: pnlTitulo (top) 
             this.Controls.Add(this.dgvHistorial);
             this.Controls.Add(this.pnlPie);
             this.Controls.Add(this.pnlGroupHeaders);

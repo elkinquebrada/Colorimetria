@@ -22,7 +22,7 @@ namespace Color
         private TesseractEngine _engine;
         private readonly object _lock = new object();
 
-        // ── Proporciones geométricas (fracciones de la altura total) ──────────
+        // ── Proporciones geométricas ──────────
 
         private const double RECIPE_ZONE_HEIGHT_COMBINED = 0.22;
         private const double RECIPE_ZONE_TOP_FLAT   = 0.18;
@@ -75,7 +75,7 @@ namespace Color
             int imgWidth  = bmp.Width;
             int imgHeight = bmp.Height;
 
-            // Procesamos la imagen COMPLETA ya que la posición de los datos varía drásticamente
+            // Procesamos la imagen completa ya que la posición de los datos varía drásticamente
             var region = new System.Drawing.Rectangle(0, 0, imgWidth, imgHeight);
             string rawText = ExtractTextWithOpenCv(bmp, region);
             var lines = rawText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -176,7 +176,7 @@ namespace Color
                     string name = m.Groups[2].Value.Trim();
                     string percentage = m.Groups[3].Value.Trim().Replace(",", ".");
                     
-                    // Si la captura del nombre arrastró un símbolo de porcentaje (a menos que realmente sea parte del nombre como 100%)
+                    // Si la captura del nombre arrastró un símbolo de porcentaje 
                     if (name.EndsWith("%") && Regex.IsMatch(name, @"\s+%$"))
                         name = name.Substring(0, name.Length - 1).Trim();
 

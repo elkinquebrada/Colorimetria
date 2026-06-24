@@ -145,7 +145,7 @@ namespace Color.Tolerancias
                             _manualProfile.DE = 0; _manualProfile.DL = 0; _manualProfile.DC = 0; _manualProfile.DH = 0;
                         }
 
-                        // 3. ACTUALIZACIÓN VISUAL: Mostramos los valores calculados con 3 decimales
+                        // 3. valores calculados con 3 decimales
                         lblBody.Text = $"\nL  {_manualProfile.DL:0.000}\nC  {_manualProfile.DC:0.000}\nHue  {_manualProfile.DH:0.000}";
                     };
 

@@ -6,7 +6,7 @@ using ClosedXML.Excel;
 
 namespace OCR
 {
-    /// Extrae texto desde imágenes usando OCR, reconstruye una tabla
+    /// Extrae texto desde imágenes usando OCR.
     public class ReportExtractor
     {
         private readonly string _tessdata;
@@ -84,7 +84,7 @@ namespace OCR
 
             foreach (var w in words)
             {
-                // ¿Nueva fila?
+                
                 if (Math.Abs(w.Y - currentRowY) > tolerance)
                 {
                     if (currentRow != null)

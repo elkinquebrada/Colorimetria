@@ -8,7 +8,7 @@ using System.Globalization;
 
 namespace Color
 {
-    /// Cliente para la API REST de corrección colorimétrica.
+    /// API REST de corrección colorimétrica.
     public class ColorimetriaApiClient
     {
         private readonly string _apiBaseUrl;

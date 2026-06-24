@@ -50,7 +50,7 @@ namespace Color
 
             result.QuadrantLabel = cleanHue;
 
-            // 4. CORRECCIÓN DEL CUADRO BLANCO (Equivalente exacto a =+XLOOKUP(H33,E62:E63,F62:F63,""))
+            // 4. (Equivalente exacto a =+XLOOKUP(H33,E62:E63,F62:F63,""))
             result.DeviationCell0 = result.Brightness;
 
             return result;

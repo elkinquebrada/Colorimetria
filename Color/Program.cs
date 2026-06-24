@@ -16,8 +16,7 @@ namespace Color
             // Define la resolución de renderizado de texto de forma estándar para mayor compatibilidad.
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Inicia el bucle de mensajes de la aplicación en el hilo actual 
-            // y abre el formulario principal (Form1).
+            // Inicia el bucle de mensajes de la aplicación en el hilo actual y abre el formulario principal (Form1).
             Application.Run(new Form1());
         }
     }

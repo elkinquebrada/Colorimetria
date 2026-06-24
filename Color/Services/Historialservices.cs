@@ -46,7 +46,6 @@ namespace Color.Services
                     File.WriteAllText(rutaArchivo, header, Encoding.UTF8);
                 }
 
-                // Anexar directamente (Permite múltiples registros por ShadeName - Paridad Industrial)
                 File.AppendAllText(rutaArchivo, nuevaLinea + Environment.NewLine, Encoding.UTF8);
             }
             catch { }
@@ -94,16 +93,16 @@ namespace Color.Services
                         }
                         else if (celdas.Length == 21)
                         {
-                            // Migración: Omitir DyeCode (índice 3)
+                            // Migración: Omitir DyeCode 
                             for (int j = 0; j <= 2; j++) lista.Add(celdas[j]);
                             for (int j = 4; j < celdas.Length; j++) lista.Add(celdas[j]);
                             dt.Rows.Add(lista.ToArray());
                         }
                         else if (celdas.Length == 18)
                         {
-                            // Formato antiguo de 18: [0:Shade, 1:Fecha, 2:Ilu, 3:Code, 4:Name, 5:Conc, 6:R1, 7:R2, 8:R3, ...]
+                            // [0:Shade, 1:Fecha, 2:Ilu, 3:Code, 4:Name, 5:Conc, 6:R1, 7:R2, 8:R3, ...]
                             for (int j = 0; j <= 2; j++) lista.Add(celdas[j]);
-                            lista.Add(celdas[4]); // Name
+                            lista.Add(celdas[4]);
                             for (int j = 5; j < 18; j++) lista.Add(celdas[j]);
                             lista.Add("0"); lista.Add("0"); lista.Add("0"); 
                             dt.Rows.Add(lista.ToArray());

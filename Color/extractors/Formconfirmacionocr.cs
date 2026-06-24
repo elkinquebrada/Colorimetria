@@ -146,7 +146,6 @@ namespace Colorimetria
             HookSizingEvents();
             AddBrandingLogo();
 
-            // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
         }
 
@@ -160,11 +159,10 @@ namespace Colorimetria
             LoadData();
             HookSizingEvents();
 
-            // ===== NUEVO =====
             this.Load += FormConfirmacionOCR_Load;
         }
         // =========================================================
-        // NUEVO: Load → mostrar delante y minimizar MainForm
+        //  Load → mostrar delante y minimizar MainForm
         // =========================================================
         private void FormConfirmacionOCR_Load(object sender, EventArgs e)
         {
@@ -423,7 +421,7 @@ namespace Colorimetria
 
         private void ApplySplitRatio()
         {
-            // Layout es TableLayoutPanel, no requiere ajuste de splitter
+           
         }
 
         private DataGridView BuildMeasuresGrid()
@@ -489,7 +487,7 @@ namespace Colorimetria
                 GridColor = SysColor.FromArgb(180, 180, 180),
                 BorderStyle = BorderStyle.None,
 
-                // Partimos midiendo por contenido; tras cargar filas, cambiaremos a Fill
+                // Partimos midiendo por contenido; tras cargar filas, 
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 26 },
@@ -554,7 +552,6 @@ namespace Colorimetria
             if (_shadeResult != null)
             {
                 
-                // intentamos rescatarlos de las mediciones (D65 Std) que suelen ser más precisas
                 if (_report != null && _report.Measures != null)
                 {
                     var d65Std = _report.Measures.Find(m => m.Illuminant == "D65" && m.Type == "Std");
@@ -1129,7 +1126,6 @@ namespace Colorimetria
                 lblDatosReceta.Text = "SHADE HISTORY REPORT (RECETA)";
             }
 
-            // ✔ CORREGIDO: ya no evaluamos shade.Success
             if (shade == null ||
                 shade.Recipe == null ||
                 shade.Recipe.Count == 0)

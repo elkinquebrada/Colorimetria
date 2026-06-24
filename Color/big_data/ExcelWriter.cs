@@ -8,11 +8,11 @@ using Color;
 namespace OCR
 {
     
-    /// REGLA DE ORO: El Excel recibe EXCLUSIVAMENTE los valores numéricos del OCR.
+    /// REGLA DE ORO: El Excel recibe los valores numéricos del OCR.
     public static class ExcelWriter
     {
         // ──────────────────────────────────────────────────────────────────────
-        // PUNTO DE ENTRADA PRINCIPAL — llamado automáticamente desde FormResultados
+        // PUNTO DE ENTRADA PRINCIPAL
         // ──────────────────────────────────────────────────────────────────────
 
         public static bool WriteAll(
@@ -93,7 +93,7 @@ namespace OCR
                 SetNumericCell(ws, 5, 3, lotD65.B);
             }
 
-            // --- Tabla expandida por iluminante (R15–R20, columnas D=4, E=5, F=6) ---
+            // --- Tabla expandida por iluminante  ---
             var iluminantOrder = new[] { "D65", "TL84", "A" };
             int baseRow = 15;
 

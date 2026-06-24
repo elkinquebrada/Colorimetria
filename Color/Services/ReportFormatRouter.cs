@@ -46,6 +46,7 @@ namespace Color.Services
                     using (Mat scaled = new Mat())
                     {
                         Cv2.CvtColor(topMat, gray, ColorConversionCodes.BGR2GRAY);
+
                         // Escalar 2x para lectura rápida y nítida
                         Cv2.Resize(gray, scaled, new OpenCvSharp.Size(gray.Width * 2, gray.Height * 2), 0, 0, InterpolationFlags.Cubic);
                         

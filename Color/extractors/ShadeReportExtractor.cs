@@ -63,7 +63,7 @@ namespace Color
         public string LotNo { get; set; }
         public string DtMain { get; set; }
 
-        // NUEVOS: Valores L* a* b* del Estándar (Std L A B)
+        // Valores L* a* b* del Estándar (Std L A B)
         public string StdL { get; set; }
         public string StdA { get; set; }
         public string StdB { get; set; }
@@ -105,7 +105,7 @@ namespace Color
             @"([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([+-]?\d+(?:[.,]\d+)?)\s+([FP])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        // Regex para extraer el DT Main del encabezado (ej: "DT Main: DFC12")
+        // Regex para extraer el DT Main del encabezado 
         private static readonly Regex DtMainRegex = new Regex(
             @"DT\s*Main[:\s]+([A-Z0-9]+)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -147,7 +147,7 @@ namespace Color
             string tmp = Path.Combine(Path.GetTempPath(),
                                       "ocr_" + Guid.NewGuid().ToString("N") + ".png");
 
-            // MEJORA: Si la imagen es pequeña, escalar 2x antes de procesar para mejorar OCR
+            // Si la imagen es pequeña, escalar 2x antes de procesar para mejorar OCR
             if (bmp.Width < 1200 || bmp.Height < 1000)
             {
                 int newW = bmp.Width * 2;
@@ -218,7 +218,7 @@ namespace Color
         {
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
 
-            // 1. Intento con Regex principal (que busca la palabra "Std")
+            // Intento con Regex principal (que busca la palabra "Std")
             var m = StdLabRegex.Match(ocrText);
             if (m.Success)
             {
@@ -227,7 +227,7 @@ namespace Color
                         NormalizeLabValue(m.Groups[3].Value));
             }
 
-            // 2. Fallback: Buscar los primeros 3 números en la parte superior del reporte (donde suele estar el estándar)
+            // Fallback: Busca los primeros 3 números en la parte superior del reporte (donde suele estar el estándar)
             var mNum = Regex.Matches(ocrText, @"[-+]?\d+(?:\s?[.,]\s?\d+)?");
             if (mNum.Count >= 3)
             {
@@ -257,7 +257,7 @@ namespace Color
             }
             catch { }
 
-            // Intentar mejorar DT Main con OCR dirigido sobre el encabezado central del reporte
+            // Intenta mejorar DT Main con OCR dirigido sobre el encabezado central del reporte
             try
             {
                 var dtMain = ExtractDtMainFromBitmap(bmp);
@@ -312,7 +312,7 @@ namespace Color
         {
             var list = new List<RecipeItem>();
 
-            // --- PASO 0: ANCLAJE DE BLOQUE (Para evitar capturar datos de la tabla Batch) ---
+            // --- ANCLAJE DE BLOQUE (Para evitar capturar datos de la tabla Batch) ---
             string recipeArea = ocrText;
             int startIdx = ocrText.IndexOf("Recipe Version", StringComparison.OrdinalIgnoreCase);
             if (startIdx < 0) startIdx = ocrText.IndexOf("Recipe Number", StringComparison.OrdinalIgnoreCase); 
@@ -330,7 +330,7 @@ namespace Color
                 recipeArea = ocrText.Substring(startIdx, Math.Min(ocrText.Length - startIdx, 2000));
             }
 
-            // --- PASO 1: EXTRACCIÓN CRUDA Y DETECCIÓN DE CONTEXTO ---
+            // --- EXTRACCIÓN CRUDA Y DETECCIÓN DE CONTEXTO ---
             var matches = RecipeRegex.Matches(recipeArea);
             var rawResults = new List<(string code, string name, string pctRaw, string digits)>();
             var decimalCounts = new List<int>();
@@ -366,7 +366,7 @@ namespace Color
                                               .First().Key;
             }
 
-            // --- PASO 2: REPARACIÓN INTELIGENTE BASADA EN CONTEXTO ---
+            // --- REPARACIÓN INTELIGENTE BASADA EN CONTEXTO ---
             foreach (var item in rawResults)
             {
                 string name = item.name;
@@ -383,19 +383,19 @@ namespace Color
 
                 if (missingDigits > 0 && hasConfusionEvidence)
                 {
-                    // Reparación inteligente: solo si hay evidencia de colapso OCR (L -> 1.1)
+                    // Reparación inteligente: solo si hay evidencia de colapso OCR 
                     if (missingDigits == 1 && digits.StartsWith("1"))
                     {
-                        // Ej: L7826 -> 1.17826 (en contexto de 5 decimales)
+                        // ( contexto de 5 decimales)
                         pctRaw = "1.1" + digits.Substring(1);
                     }
                     else if (missingDigits == 2)
                     {
-                        // Ej: L7826 (donde L colapsó "1.1")
+                      
                         pctRaw = "1.1" + digits;
                     }
 
-                    // Limpiar el carácter de confusión del nombre si era una letra pegada
+                    // Limpiar el carácter de confusión del nombre si es una letra pegada
                     if (char.IsLetter(lastCharName)) name = name.Substring(0, name.Length - 1).Trim();
                 }
                 else if (!pctRaw.Contains(".") && digits.Length >= 4)
@@ -550,7 +550,7 @@ namespace Color
         }
 
         //-------------------------------------------------------------------
-        // REEMPLAZO Y NUEVOS (Recorte dirigido de alta fidelidad)
+        //  (Recorte dirigido de alta fidelidad)
         //-------------------------------------------------------------------
         private string ExtractDtMainFromBitmap(Bitmap original)
         {
@@ -635,7 +635,7 @@ namespace Color
                 if (File.Exists(tmp)) File.Delete(tmp);
             }
 
-            // Expresión regular para ubicar "Shade Name:" y capturar hasta antes de "Dyehouse:" o el fin de la línea
+            // Expresión regular para ubicar "Shade Name:" 
             var match = Regex.Match(ocrText, @"Shade Name:\s*(.+?)(?=\s*Dyehouse:|\s*$)", RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
             if (match.Success)
@@ -648,7 +648,7 @@ namespace Color
 
         private (string L, string A, string B)? ExtractStdLabFromBitmap(Bitmap original)
         {
-            // Localización de la banda Std L A B (mejorada con pre-procesamiento OpenCV)
+            // Localización de la banda Std L A B 
             int top = (int)(original.Height * 0.15);
             int bot = (int)(original.Height * 0.95);
             int h = bot - top;
@@ -698,8 +698,8 @@ namespace Color
             // Eliminar espacios y limpiar caracteres no numericos (excepto punto y signo)
             string clean = Regex.Replace(val, @"[^\d.-]", "");
 
-            // Si tiene 4 dígitos sin punto (ej: 3093), asumimos que el punto va antes de los últimos 2 (30.93)
-            // Si tiene 3 dígitos sin punto (ej: 860), asumimos 8.60
+            // Si tiene 4 dígitos sin punto 
+            // Si tiene 3 dígitos sin punto 
             if (!clean.Contains(".") && clean.Length >= 3)
             {
                 int len = clean.Length;
@@ -711,7 +711,7 @@ namespace Color
 
         private List<RecipeItem> ExtractRecipeFromCrop(Bitmap original)
         {
-            // MEJORA: Uso de OpenCV para pre-procesamiento avanzado
+            // Uso de OpenCV para pre-procesamiento avanzado
             string ocrText = string.Empty;
             try
             {
@@ -764,7 +764,7 @@ namespace Color
         // Extraer BatchMeasure usando Recorte dirigido
         private BatchMeasure ExtractBatchMeasureFromBitmap(Bitmap original)
         {
-            // La fila de Batch Measure está en la parte inferior (aprox 65% a 95% de la altura).
+            // (aprox 65% a 95% de la altura).
             int top = (int)(original.Height * 0.55);
             int h = (int)(original.Height * 0.43);
 
@@ -808,7 +808,7 @@ namespace Color
 
             if (string.IsNullOrWhiteSpace(ocrText)) return null;
 
-            // Para proteger de comas decimales europeas o confusas:
+            // Para proteger de comas decimales confusas:
             ocrText = ocrText.Replace(',', '.').Replace('O', '0').Replace('o', '0');
             string[] lines = ocrText.Split('\n');
 
@@ -816,7 +816,7 @@ namespace Color
             {
                 var line = raw.Trim();
 
-                // Miremos si la línea termina en un 'P' o 'F' aislado
+                // si la línea termina en un 'P' o 'F' aislado
                 var pfMatch = Regex.Match(line, @"\b([FfPp])\s*$");
                 if (!pfMatch.Success) continue;
 
@@ -833,7 +833,7 @@ namespace Color
                     }
                 }
 
-                // Necesitamos al menos los 7 valores de Lab + dL dC dH dE
+                // 7 valores de Lab + dL dC dH dE
                 if (nums.Count >= 7)
                 {
                     int start = nums.Count - 7;

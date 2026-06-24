@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace Color
 {
-    // Renombrado a FormDetalleCielab para evitar colisiones con metadatos antiguos
+    // FormDetalleCielab
     public class FormDetalleCielab : Form
     {
         private CielabChartControl chartFull;
@@ -84,7 +84,7 @@ namespace Color
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.BackColor = System.Drawing.Color.FromArgb(245, 245, 250);
 
-            // 1. Cabecera (Título Premium)
+            // Cabecera (Título Premium)
             lblTitle = new Label
             {
                 Dock = DockStyle.Top,
@@ -96,7 +96,7 @@ namespace Color
                 Text = "Análisis de Colorimetría"
             };
 
-            // 1.1 Barra de controles superior
+            // Barra de controles superior
             Panel pnlControls = new Panel 
             { 
                 Dock = DockStyle.Top, 
@@ -120,7 +120,7 @@ namespace Color
             };
             pnlControls.Controls.Add(chkViewMode);
 
-            // 2. Pie (Contenedor de botón)
+            // Pie (Contenedor de botón)
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 70, BackColor = System.Drawing.Color.FromArgb(230, 230, 235) };
             btnClose = new Button
             {
@@ -160,7 +160,7 @@ namespace Color
                 btnSave.Top = (pnlBottom.Height - btnSave.Height) / 2;
             };
 
-            // 3. Área Central con SplitContainer
+            // Área Central con SplitContainer
             var split = new SplitContainer
             {
                 Dock = DockStyle.Fill,

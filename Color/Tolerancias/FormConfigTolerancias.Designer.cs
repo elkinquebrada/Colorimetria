@@ -34,6 +34,7 @@ namespace Color.Tolerancias
             this.flowCards.Size = new System.Drawing.Size(560, 240);
             this.flowCards.AutoScroll = true;
             this.flowCards.WrapContents = false;
+
             // Center the flow layout if there's enough space
             this.flowCards.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 

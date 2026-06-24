@@ -27,7 +27,7 @@ namespace Color
             this.btnCerrar.Text = "← Regresar";
             this.btnCerrar.Click += (s, e) => this.Close();
 
-            // Asegurar posición en el panel (fuerza bruta para evitar errores del diseñador)
+            // Asegurar posición en el panel (fuerza bruta para evitar errores)
             this.btnCerrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             this.btnExportar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             this.btnBorrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -140,7 +140,7 @@ namespace Color
                 lblCalculoRecetaHeader.Width = x4 - x3;
                 lblCalculoRecetaHeader.Text = "FORMULACIÓN Y CONCENTRACIONES";
 
-                // El grupo 3 (NUEVO): Diagnóstico Experto
+                // El grupo 3: Diagnóstico Experto
                 if (dgvHistorial.Columns.Count > 8)
                 {
                     int x5 = dgvHistorial.GetColumnDisplayRectangle(8, true).X;
@@ -237,7 +237,8 @@ namespace Color
                     sb.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
                     sb.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
                     sb.AppendLine("<Styles>");
-                    sb.AppendLine("<Style ss:ID=\"sHeader\"><Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/><Font ss:Bold=\"1\" ss:Color=\"#FFFFFF\" ss:Size=\"10\"/><Interior ss:Color=\"#1F3864\" ss:Pattern=\"Solid\"/></Style>");
+                    sb.AppendLine("<Style ss:ID=\"sHeader\"><Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\" ss:WrapText=\"1\"/><Font ss:Bold=\"1\" " +
+                        "ss:Color=\"#FFFFFF\" ss:Size=\"10\"/><Interior ss:Color=\"#1F3864\" ss:Pattern=\"Solid\"/></Style>");
                     sb.AppendLine("<Style ss:ID=\"sRow\"><Font ss:Size=\"10\"/></Style>");
                     sb.AppendLine("</Styles>");
                     sb.AppendLine("<Worksheet ss:Name=\"Historial Consolidado\">");

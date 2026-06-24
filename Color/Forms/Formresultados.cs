@@ -58,7 +58,7 @@ namespace Color
             _report = report ?? new OcrReport();
             InitializeComponents();
             PopulateFromReport(_report);
-            // Logo oculto en esta pantalla por solicitud del cliente
+            
         }
 
         public FormResultados(string _, List<EngineRes> results, List<CorrectiveRecipeResult> recipeResults = null, ShadeExtractionResult shadeData = null)
@@ -288,7 +288,7 @@ namespace Color
                 lblValueCountPly.Text = "Count/Ply:             " + (!string.IsNullOrEmpty(metadata.CountPly) && metadata.CountPly != "-" ? metadata.CountPly : "-");
                 lblValueFiberType.Text = "Fibre Type:           " + (!string.IsNullOrEmpty(metadata.FiberType) && metadata.FiberType != "-" ? metadata.FiberType.ToUpper() : "-");
             }
-            // 3. CORRECCIÓN PARA EVITAR LA DUPLICACIÓN: Unificamos el texto en el control compuesto derecho
+            // 3. Unificamos el texto en el control compuesto derecho
             if (lblRightShadeValue != null && !string.IsNullOrEmpty(metadata.ShadeName) && metadata.ShadeName != "-")
             {
                 lblRightShadeValue.Text = "Shade Name:      " + metadata.ShadeName.ToUpper();
@@ -462,8 +462,6 @@ namespace Color
                     if (string.IsNullOrEmpty(currentDir)) break;
                 }
 
-                // Logo estático: se inyecta en la barra fija pnlLogoStrip (Dock=Top)
-                // Esta barra es arquitectónicamente independiente del área scrollable
                 if (!string.IsNullOrEmpty(finalPath))
                 {
                     // Buscar la barra de logo creada en InitializeComponents
@@ -478,6 +476,7 @@ namespace Color
                             SizeMode = PictureBoxSizeMode.Zoom,
                             Width = 130,
                             Height = 44,
+
                             // Anclado a la derecha dentro de la barra fija
                             Anchor = AnchorStyles.Top | AnchorStyles.Right,
                             BackColor = System.Drawing.Color.White,
@@ -491,8 +490,6 @@ namespace Color
                         };
 
                         pnlLogoStrip.Controls.Add(logo);
-                        // No se necesita BringToFront: la barra pnlLogoStrip (Dock=Top) 
-                        // está arquitectónicamente SOBRE pnlWhitePaper (Dock=Fill)
                     }
                 }
             }
@@ -841,7 +838,7 @@ namespace Color
                     if (conOriginales.Count > 0 && (res.RecetaR1_Luminosidad == null || res.RecetaR1_Luminosidad.Count == 0))
                         EngineCalc.CalcularNuevasRecetasMaestras(res, conOriginales);
 
-                    // Obtener nombres de recetas R1, R2, R3 (primeros 3 colorantes o lo que haya)
+                    // Obtener nombres de recetas R1, R2, R3 (tres colorantes)
                     string r1Name = conOriginales.Count > 0 && _shadeData?.Recipe?.Count > 0
                         ? _shadeData.Recipe[0].Name : "---";
                     string r2Name = conOriginales.Count > 1 && _shadeData?.Recipe?.Count > 1

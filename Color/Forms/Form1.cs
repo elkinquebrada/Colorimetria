@@ -63,12 +63,11 @@ namespace Color
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Width = 80,
                     Height = 38,
-                    //  Ancla Top|Right en el formulario raíz para esquina superior derecha fija
+                    //  Ancla Top|Right 
                     Anchor = AnchorStyles.Top | AnchorStyles.Right,
                     BackColor = System.Drawing.Color.White
                 };
 
-                // Posición inicial en esquina superior derecha del formulario
                 logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
 
                 // Reposicionar automáticamente al redimensionar
@@ -77,9 +76,9 @@ namespace Color
                     logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
                 };
 
-                // Se agrega al formulario directamente (no a mainArea ni paneles de contenido)
+                // Se agrega al formulario directamente 
                 this.Controls.Add(logo);
-                // BringToFront necesario para que sea visible sobre los paneles Dock
+               
                 logo.BringToFront();
             }
             catch { }
@@ -99,7 +98,7 @@ namespace Color
 
         private void MinimizarNavegador()
         {
-            // Desactivado para permitir multitasking según requerimiento del cliente.
+            // Desactivado para permitir multitasking.
         }
         #endregion
 
@@ -276,7 +275,7 @@ namespace Color
                         volverAConfirmar = false;
                         if (dlgConfirm.ShowDialog() == DialogResult.OK)
                         {
-                            // Sincronizar reporte con ediciones del usuario
+                            // Sincronizacion del reporte 
                             dlgConfirm.Report.Measures = dlgConfirm.RowsConfirmed;
 
                             // Motores Industriales (D65, TL84, A)
@@ -511,7 +510,7 @@ namespace Color
             return clean;
         }
 
-        /// Escribe diagnóstico completo en C:\Temp\shade_diag.txt para debugging.
+        /// Escribe diagnóstico completo 
         private static void WriteDiag(string imagePath, Bitmap bmp,
             Color.Services.ReportFormatType format,
             List<RecipeItem> items, string etapa)
@@ -547,7 +546,7 @@ namespace Color
                 sb.AppendLine();
                 System.IO.File.AppendAllText(logPath, sb.ToString());
             }
-            catch { /* Diagnóstico no crítico */ }
+            catch {  }
         }
 
         #endregion

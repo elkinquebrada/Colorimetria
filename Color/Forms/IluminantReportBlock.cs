@@ -38,7 +38,7 @@ namespace Color
 
         private void InitializeComponent()
         {
-            // El alto (240px) y el ancho son controlados desde Formresultados.cs.
+            // El alto (240px) y el ancho 
             this.MinimumSize = new Size(900, 240);
             this.BackColor = System.Drawing.Color.White;
 
@@ -91,7 +91,7 @@ namespace Color
             dgvLab.Rows[r3].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
 
             // =================================================================
-            // --- 2. Grid Central: Delta y Diagnostico (dgvDiagnostic) ---
+            // --- 2. Grid Central: Delta y Diagnostico ---
             // =================================================================
             dgvDiagnostic = CreateBaseGrid(4);
             dgvDiagnostic.Columns[0].Width = 55;
@@ -221,7 +221,7 @@ namespace Color
             dgvDeviation = CreateBaseGrid(2);
             dgvDeviation.CellBorderStyle = DataGridViewCellBorderStyle.Single; 
 
-            // Fila 0: Etiquetas descriptivas con fuente tipografica fija (Monoespaciada)
+            // Fila 0: Etiquetas descriptivas 
             int descRowIdx = dgvDeviation.Rows.Add("-", "-");
             dgvDeviation.Rows[descRowIdx].Height = 45; 
             DataGridViewCellStyle descStyle = dgvDeviation.Rows[descRowIdx].DefaultCellStyle;
@@ -583,7 +583,7 @@ namespace Color
             dgvLab.Rows[2].Cells[2].Value = res.LotA.ToString("F2", CultureInfo.InvariantCulture);
             dgvLab.Rows[2].Cells[3].Value = res.LotB.ToString("F2", CultureInfo.InvariantCulture);
 
-            // Los deltas van en dgvDiagnostic, Fila 0, columnas 1, 2, 3
+            // Los deltas van en Fila 0, columnas 1, 2, 3
             dgvDiagnostic.Rows[0].Cells[1].Value = ColorimetricCalculator.FormatDelta(res.DeltaL);
             dgvDiagnostic.Rows[0].Cells[2].Value = ColorimetricCalculator.FormatDelta(res.DeltaA);
             dgvDiagnostic.Rows[0].Cells[3].Value = ColorimetricCalculator.FormatDelta(res.DeltaB);
@@ -725,7 +725,7 @@ namespace Color
                 string diagA = ColorimetricCalculator.GetEjeADiagnosis(res.DeltaA);       
                 string diagB = ColorimetricCalculator.GetEjeBDiagnosis(res.DeltaB);       
 
-                // 2. Procesar matemáticamente los TRES porcentajes absolutos en formato Entero Rígido ("0")
+                // 2. Procesar matemáticamente los tres porcentajes absolutos en formato Entero Rígido ("0")
                 string pctLStr = Math.Abs(Math.Round(res.PercentL, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
                 string pctAStr = Math.Abs(Math.Round(res.PercentA, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
                 string pctBStr = Math.Abs(Math.Round(res.PercentB, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
@@ -837,7 +837,7 @@ namespace Color
             string oppB = res.DeltaB >= 0 ? "Bluer" : "Yellower";
             string bRight = $"{oppB}\n({oppA})";
 
-            // 2. Logica exacta de Excel para la celda tipo Brighter/Duller (basada en dC)
+            // 2. Logica exacta de Excel para la celda tipo Brighter/Duller 
             bool isBrighter = res.DeltaChroma > 0;
             string tLeft = isBrighter ? "Brighter" : "Duller";
             string bLeft = isBrighter ? "Duller" : "Brighter";
@@ -857,7 +857,7 @@ namespace Color
                 lblYellower.ForeColor = System.Drawing.Color.Black;
             }
 
-            // 4. Asignaciones a la Grilla Inferior (dgvDeviation, opuestos)
+            // 4. Asignaciones a la Grilla Inferior (opuestos)
             if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
             {
                 dgvDeviation.Rows[0].Cells[0].Value = bLeft;
@@ -868,16 +868,16 @@ namespace Color
                 dgvDeviation.Rows[0].Cells[1].Style.BackColor = System.Drawing.Color.White;
                 dgvDeviation.Rows[0].Cells[1].Style.ForeColor = System.Drawing.Color.Black;
             }
-            //  CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL EN dgvDeviation
+            //  CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL 
             if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
             {
                 int targetRowIdx = dgvDeviation.Rows.Count - 1;
 
-                // 1. CALCULO INTERNO IZQUIERDO: Formula =+ABS(H20)*0.1 (Basado en dC / DeltaChroma)
+                // 1. Formula =+ABS(H20)*0.1 (Basado en dC / DeltaChroma)
                 double calculoInternoChroma = Math.Abs(res.DeltaChroma) * 10.0;
                 dgvDeviation.Rows[targetRowIdx].Cells[0].Value = Math.Round(calculoInternoChroma, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%";
 
-                // 2. CALCULO INTERNO DERECHO: Formula =+ABS(I20)*0.1 (Basado en dH / DeltaHue)
+                // 2. Formula =+ABS(I20)*0.1 (Basado en dH / DeltaHue)
                 double calculoInternoHue = Math.Abs(res.DeltaHue) * 10.0;
                 dgvDeviation.Rows[targetRowIdx].Cells[1].Value = Math.Round(calculoInternoHue, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture) + "%";
 

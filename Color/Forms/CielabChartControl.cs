@@ -65,13 +65,13 @@ namespace Color
                 g.FillRectangle(backBrush, this.ClientRectangle);
             }
 
-            // Distribución de espacio para que los cuadros no pisen la gráfica
+            // Distribución de espacio.
             int rightPanelWidth = 220; 
             int leftPanelWidth = Math.Max(150, this.Width - rightPanelWidth);
             
             int verticalPadding = 90; 
 
-            // Calculamos un tamaño cuadrado para el diagrama polar (sólo en el panel izquierdo)
+            // Calculamos un tamaño cuadrado para el diagrama cielab.
             int size = Math.Min(leftPanelWidth - 60, this.Height - verticalPadding);
             if (size < 50) size = 50;
             
@@ -118,8 +118,6 @@ namespace Color
                 g.DrawString("Amarillo (+b*)", axisFont, Brushes.Gold, center.X - 45, chartArea.Top - 18);
                 g.DrawString("Azul (-b*)", axisFont, Brushes.RoyalBlue, center.X - 30, chartArea.Bottom + 4);
                 g.DrawString("Verde (-a*)", axisFont, Brushes.ForestGreen, chartArea.Left - 75, center.Y - 8);
-
-                // Mover Rojo un poco arriba para evadir herramienta tooltip
                 g.DrawString("Rojo (+a*)", axisFont, Brushes.Crimson, chartArea.Right + 3, center.Y - 15);
             }
 
@@ -139,10 +137,7 @@ namespace Color
             // REFACTORIZACIÓN GEOMÉTRICA DEL PLANO CARTESIANO CIELAB
             // =========================================================================
 
-            // positivos de DeltaA (Rojo) avancen de forma natural hacia la derecha del centroX.
             float lotX = (float)(center.X + (plotLotA * scale));
-
-            // la coordenada Y en las pantallas aumenta hacia abajo (restar desplaza hacia abajo).
             float lotY = (float)(center.Y - (plotLotB * scale)); 
 
             PointF pLot = new PointF(lotX, lotY);

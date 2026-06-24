@@ -86,7 +86,7 @@ namespace Color
 
         public bool Pass { get; set; } = true;
 
-        // NUEVAS PROPIEDADES: Factores Puros del Excel Maestro (Sin ramas condicionales)
+        // Factores Puros del Excel Maestro (Sin ramas condicionales)
         public double FactorL_Pure { get; set; }
         public double FactorC_Pure { get; set; }
         public double FactorH_Pure { get; set; }

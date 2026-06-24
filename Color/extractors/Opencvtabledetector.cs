@@ -57,15 +57,15 @@ namespace Color
             {
                 using (var src = BitmapConverter.ToMat(original))
                 {
-                    // 1. Preprocesar
+                    //  Preprocesar
                     using (var gray = Preprocess(src))
                     using (var hLines = new Mat())
                     using (var vLines = new Mat())
                     {
-                        // 2. Extraer líneas horizontales y verticales por morfología
+                        //  Extraer líneas horizontales y verticales por morfología
                         ExtractLines(gray, hLines, vLines, src.Width, src.Height);
 
-                        // 3. Encontrar posiciones Y de líneas H y X de líneas V
+                        //  Encontrar posiciones Y de líneas H y X de líneas V
                         var yPositions = FindLinePositions(hLines, true, src.Height, CLUSTER_TOLERANCE);
                         var xPositions = FindLinePositions(vLines, false, src.Width, CLUSTER_TOLERANCE);
 
@@ -77,7 +77,7 @@ namespace Color
                             return result;
                         }
 
-                        // 4. Verificar que la tabla ocupa área razonable
+                        //  Verificar que la tabla ocupa área razonable
                         int tableWidth = xPositions[xPositions.Count - 1] - xPositions[0];
                         if (tableWidth < src.Width * MIN_TABLE_WIDTH_PCT)
                         {
@@ -87,7 +87,7 @@ namespace Color
                             return result;
                         }
 
-                        // 5. Construir celdas desde la cuadrícula
+                        //  Construir celdas desde la cuadrícula
                         result.RowCount = yPositions.Count - 1;
                         result.ColCount = xPositions.Count - 1;
                         result.TableBounds = new Rectangle(

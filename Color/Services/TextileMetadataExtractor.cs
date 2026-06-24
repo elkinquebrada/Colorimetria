@@ -124,7 +124,7 @@ namespace Color.Services
                     }
                 }
             }
-            catch { /* Devolver meta parcial */ }
+            catch {  }
 
             return meta;
         }
@@ -249,7 +249,7 @@ namespace Color.Services
         // =====================================================================
         // PROCESAMIENTO DE IMAGEN — HEREDADO DE Dataextraxtor.cs
         // =====================================================================
-        /// Identica a MeasureSharpness de ColorimetricDataExtractor.
+     
         private static float MeasureSharpness(Bitmap src)
         {
             int w = src.Width, h = src.Height;

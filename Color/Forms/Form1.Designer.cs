@@ -79,9 +79,8 @@ namespace Color
             this.pnlLeftFrame.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.picLeft)).BeginInit();
             this.SuspendLayout();
-            // 
+         
             // leftNav
-            // 
             this.leftNav.BackColor = System.Drawing.Color.FromArgb(10, 33, 58);
             this.leftNav.Controls.Add(this.btnSalir);
             this.leftNav.Controls.Add(this.btnBaseDatos);
@@ -92,9 +91,8 @@ namespace Color
             this.leftNav.Name = "leftNav";
             this.leftNav.Size = new System.Drawing.Size(220, 720);
             this.leftNav.TabIndex = 0;
-            // 
+
             // btnSalir
-            // 
             this.btnSalir.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Bottom)));
             this.btnSalir.BackColor = System.Drawing.Color.FromArgb(220, 53, 69);
             this.btnSalir.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -110,9 +108,8 @@ namespace Color
             this.btnSalir.TabIndex = 3;
             this.btnSalir.Text = "Salir";
             this.btnSalir.UseVisualStyleBackColor = false;
-            // 
+
             // btnBaseDatos
-            // 
             this.btnBaseDatos.FlatAppearance.BorderColor = System.Drawing.Color.White;
             this.btnBaseDatos.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnBaseDatos.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -123,9 +120,8 @@ namespace Color
             this.btnBaseDatos.TabIndex = 2;
             this.btnBaseDatos.Text = "Base de datos";
             this.btnBaseDatos.UseVisualStyleBackColor = true;
-            // 
+
             // btnTolerancias
-            // 
             this.btnTolerancias.FlatAppearance.BorderColor = System.Drawing.Color.White;
             this.btnTolerancias.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnTolerancias.Font = new System.Drawing.Font("Segoe UI", 10F);
@@ -136,9 +132,8 @@ namespace Color
             this.btnTolerancias.TabIndex = 1;
             this.btnTolerancias.Text = "Config. de tolerancias";
             this.btnTolerancias.UseVisualStyleBackColor = true;
-            // 
+
             // lblBrand
-            // 
             this.lblBrand.AutoSize = true;
             this.lblBrand.Font = new System.Drawing.Font("Segoe UI Semibold", 16F, System.Drawing.FontStyle.Bold);
             this.lblBrand.ForeColor = System.Drawing.Color.White;
@@ -147,9 +142,8 @@ namespace Color
             this.lblBrand.Size = new System.Drawing.Size(162, 30);
             this.lblBrand.TabIndex = 0;
             this.lblBrand.Text = "COLORIMETRIA";
-            // 
+
             // mainArea
-            // 
             this.mainArea.BackColor = System.Drawing.Color.White;
             this.mainArea.Controls.Add(this.btnCancelarAccion);
             this.mainArea.Controls.Add(this.btnIniciar);
@@ -166,9 +160,8 @@ namespace Color
             // Ocultar títulos redundantes
             this.lblTitle.Visible = true;
             this.lblSubtitle.Visible = true;
-            // 
+
             // btnCancelarAccion
-            // 
             this.btnCancelarAccion.BackColor = System.Drawing.Color.FromArgb(90, 97, 104);
             this.btnCancelarAccion.FlatAppearance.BorderSize = 0;
             this.btnCancelarAccion.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -181,9 +174,8 @@ namespace Color
             this.btnCancelarAccion.Text = "Cancelar";
             this.btnCancelarAccion.UseVisualStyleBackColor = false;
             this.btnCancelarAccion.Visible = false;
-            // 
+
             // btnIniciar
-            // 
             this.btnIniciar.BackColor = System.Drawing.Color.FromArgb(45, 126, 247);
             this.btnIniciar.FlatAppearance.BorderSize = 0;
             this.btnIniciar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -196,9 +188,8 @@ namespace Color
             this.btnIniciar.Text = "Iniciar escaneo";
             this.btnIniciar.UseVisualStyleBackColor = false;
             this.btnIniciar.Visible = false;
-            // 
+
             // lblStatus
-            // 
             this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(60, 64, 70);
             this.lblStatus.Location = new System.Drawing.Point(230, 610);
@@ -220,9 +211,8 @@ namespace Color
             this.contentBorder.Name = "contentBorder";
             this.contentBorder.Size = new System.Drawing.Size(1000, 450);
             this.contentBorder.TabIndex = 9;
-            // 
+
             // btnCargarRight
-            // 
             this.btnCargarRight.BackColor = System.Drawing.Color.FromArgb(45, 126, 247);
             this.btnCargarRight.FlatAppearance.BorderSize = 0;
             this.btnCargarRight.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -234,9 +224,8 @@ namespace Color
             this.btnCargarRight.TabIndex = 8;
             this.btnCargarRight.Text = "CARGAR IMAGEN";
             this.btnCargarRight.UseVisualStyleBackColor = false;
-            // 
+
             // btnCargarLeft
-            // 
             this.btnCargarLeft.BackColor = System.Drawing.Color.FromArgb(45, 126, 247);
             this.btnCargarLeft.FlatAppearance.BorderSize = 0;
             this.btnCargarLeft.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -248,9 +237,8 @@ namespace Color
             this.btnCargarLeft.TabIndex = 7;
             this.btnCargarLeft.Text = "CARGAR IMAGEN";
             this.btnCargarLeft.UseVisualStyleBackColor = false;
-            // 
+
             // pnlRightFrame
-            // 
             this.pnlRightFrame.BackColor = System.Drawing.Color.White;
             this.pnlRightFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlRightFrame.Controls.Add(this.lblRightHint);
@@ -259,9 +247,8 @@ namespace Color
             this.pnlRightFrame.Name = "pnlRightFrame";
             this.pnlRightFrame.Size = new System.Drawing.Size(320, 240);
             this.pnlRightFrame.TabIndex = 6;
-            // 
+
             // lblRightHint
-            // 
             this.lblRightHint.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblRightHint.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lblRightHint.ForeColor = System.Drawing.Color.FromArgb(70, 70, 70);
@@ -271,9 +258,8 @@ namespace Color
             this.lblRightHint.TabIndex = 1;
             this.lblRightHint.Text = "Cargar Shade History Report";
             this.lblRightHint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
+
             // picRight
-            // 
             this.picRight.BackColor = System.Drawing.Color.White;
             this.picRight.Dock = System.Windows.Forms.DockStyle.Fill;
             this.picRight.Location = new System.Drawing.Point(0, 0);
@@ -282,9 +268,8 @@ namespace Color
             this.picRight.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picRight.TabIndex = 0;
             this.picRight.TabStop = false;
-            // 
+
             // pnlLeftFrame
-            // 
             this.pnlLeftFrame.BackColor = System.Drawing.Color.White;
             this.pnlLeftFrame.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlLeftFrame.Controls.Add(this.lblLeftHint);
@@ -293,9 +278,8 @@ namespace Color
             this.pnlLeftFrame.Name = "pnlLeftFrame";
             this.pnlLeftFrame.Size = new System.Drawing.Size(320, 240);
             this.pnlLeftFrame.TabIndex = 5;
-            // 
+ 
             // lblLeftHint
-            // 
             this.lblLeftHint.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblLeftHint.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lblLeftHint.ForeColor = System.Drawing.Color.FromArgb(70, 70, 70);
@@ -305,9 +289,8 @@ namespace Color
             this.lblLeftHint.TabIndex = 1;
             this.lblLeftHint.Text = "Cargar PASS / FAIL";
             this.lblLeftHint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
+
             // picLeft
-            // 
             this.picLeft.BackColor = System.Drawing.Color.White;
             this.picLeft.Dock = System.Windows.Forms.DockStyle.Fill;
             this.picLeft.Location = new System.Drawing.Point(0, 0);
@@ -316,9 +299,8 @@ namespace Color
             this.picLeft.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picLeft.TabIndex = 0;
             this.picLeft.TabStop = false;
-            // 
-            // lblRightTitle
-            // 
+
+            // lblRightTitle 
             this.lblRightTitle.AutoSize = true;
             this.lblRightTitle.Font = new System.Drawing.Font("Segoe UI Semibold", 14F, System.Drawing.FontStyle.Bold);
             this.lblRightTitle.Location = new System.Drawing.Point(560, 45);
@@ -326,9 +308,8 @@ namespace Color
             this.lblRightTitle.Size = new System.Drawing.Size(69, 25);
             this.lblRightTitle.TabIndex = 4;
             this.lblRightTitle.Text = "Shade History Report";
-            // 
-            // lblLeftTitle
-            // 
+
+            // lblLeftTitle 
             this.lblLeftTitle.AutoSize = true;
             this.lblLeftTitle.Font = new System.Drawing.Font("Segoe UI Semibold", 14F, System.Drawing.FontStyle.Bold);
             this.lblLeftTitle.Location = new System.Drawing.Point(130, 45);
@@ -336,9 +317,8 @@ namespace Color
             this.lblLeftTitle.Size = new System.Drawing.Size(111, 25);
             this.lblLeftTitle.TabIndex = 3;
             this.lblLeftTitle.Text = "PASS / FAIL";
-            // 
+
             // lblSubtitle
-            // 
             this.lblSubtitle.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(60, 64, 70);
             this.lblSubtitle.Location = new System.Drawing.Point(60, 110);
@@ -347,9 +327,8 @@ namespace Color
             this.lblSubtitle.TabIndex = 8;
             this.lblSubtitle.Text = "Analisis de Colorimetria";
             this.lblSubtitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
+
             // lblTitle
-            // 
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI Black", 20F, System.Drawing.FontStyle.Bold);
             this.lblTitle.Location = new System.Drawing.Point(60, 60);
             this.lblTitle.Name = "lblTitle";
@@ -357,9 +336,8 @@ namespace Color
             this.lblTitle.TabIndex = 7;
             this.lblTitle.Text = "COATS CADENA";
             this.lblTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
+
             // Form1
-            // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(1200, 720);

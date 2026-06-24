@@ -122,7 +122,7 @@ namespace Color
         public string DiagnosticoL { get; set; }
         public string Recomendacion { get; set; }
 
-        // --- Acceso global al último reporte procesado (para Excel export) ---
+        // --- Acceso global al último reporte procesado ---
         public static OcrReport LastReport { get; private set; }
         public static void SetLastReport(OcrReport report) { LastReport = report; }
     }
@@ -204,7 +204,6 @@ namespace Color
                     .OrderByDescending(s => s.Length)
                     .Select(Regex.Escape)) + @")\b";
 
-        /// Vacío = todos; si agregas elementos, se filtra por estos.
         public HashSet<string> AllowedIlluminants { get; } =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -226,7 +225,7 @@ namespace Color
             // Delegar al pipeline completo (OpenCV + OCR por celda)
             return ExtractReportFromBitmap(original).Measures;
         }
-        // ... dentro de la clase ColorimetricDataExtractor ...
+       
         private double ExtractDoubleSafe(Mat gray, Rectangle rect)
         {
             lock (_engineLock)
@@ -263,7 +262,7 @@ namespace Color
                     }
                 }
             }
-            catch { /* Error de límites o formato */ }
+            catch {  }
             return 0.0;
         }
         public OcrReport ExtractReportFromFile(string imagePath)
@@ -563,12 +562,12 @@ namespace Color
                         string restored;
                         if (digits.Length <= precision)
                         {
-                            // Ej: "6" -> "0.06" (si precision es 2)
+                            
                             restored = "0." + digits.PadLeft(precision, '0');
                         }
                         else
                         {
-                            // Ej: "1854" -> "18.54"
+                          
                             restored = digits.Insert(digits.Length - precision, ".");
                         }
 
@@ -898,7 +897,7 @@ namespace Color
             finally { if (File.Exists(tmp)) File.Delete(tmp); }
         }
 
-        /// Binarización por umbral Otsu — C# 7.3, sin unsafe, usa Marshal.Copy para velocidad.
+        /// Binarización por umbral para velocidad.
         private static Bitmap BinarizeOtsu(Bitmap src)
         {
             int w = src.Width, h = src.Height;
@@ -1059,7 +1058,7 @@ namespace Color
                 }
                 else
                 {
-                    // Rango normal → valores originales (sin cambio de comportamiento)
+                    // Rango normal → valores originales
                     scaleFactor = SCALE_FACTOR;
                     contrast = 1.8f;
                 }
@@ -1314,7 +1313,7 @@ namespace Color
                 bool suspiciouslySmallChroma = vL > 10.0 && vC < vL * 0.15 && vC < 5.0;
                 bool tokensMissingDigit = digL >= 2 && digA <= 1 && digB <= 1 && digC <= 1;
 
-                // GUARDIA: si L* está fuera del rango textil confiable (20-100),
+                // si L* está fuera del rango textil confiable (20-100),
                 bool lInTextileRange = vL >= 20.0 && vL <= 100.0;
 
                 if (hueValid && lInTextileRange && (suspiciouslySmallChroma || tokensMissingDigit))
@@ -1548,7 +1547,7 @@ namespace Color
             int dotIdx = s.IndexOf('.');
             if (dotIdx >= 0)
             {
-                // Con punto: solo aceptar exactamente 1 decimal (ej: "259.0", "241.6") 
+                // Con punto: solo aceptar exactamente 1 decimal 
                 string decPart = s.Substring(dotIdx + 1);
                 if (decPart.Length > 1) return false;
             }
@@ -2607,7 +2606,6 @@ namespace Color
 
         }
 
-        // NUEVO — LECTURA DESDE EXCEL (MEDICIONES)
         public OcrReport ExtractReportFromExcel(string excelPath)
         {
             var report = new OcrReport();
@@ -2960,10 +2958,10 @@ namespace Color
                     else if (combined.Contains("LOT")) type = "Lot";
                 }
                 
-                // Deducción Posicional (Fallback Estructural) si no se pudo leer el tipo
+                // Deducción Posicional (Fallback Estructural) 
                 if (string.IsNullOrWhiteSpace(type))
                 {
-                    // Si encontró el iluminante explícitamente en la columna 0, es altamente probable que sea STD
+                    
                     if (!string.IsNullOrWhiteSpace(NormalizeIlluminant(illRaw))) 
                         type = "Std";
                     else 
@@ -3293,7 +3291,7 @@ namespace Color
             double bestVal = ocrValue;
             string bestReason = null;
 
-            // Candidatos: desplazamientos de punto decimal + cambio de signo
+            // desplazamientos de punto decimal + cambio de signo
             var candidates = new List<KeyValuePair<double, string>>
             {
                 new KeyValuePair<double, string>(ocrValue / 10.0,   "Punto decimal ÷10"),

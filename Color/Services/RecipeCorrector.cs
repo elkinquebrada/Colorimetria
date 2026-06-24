@@ -64,7 +64,7 @@ namespace Color
                 .OrderByDescending(x => Math.Abs(x))
                 .ToList();
 
-            // REGLA NUEVA: Resta de valores absolutos (Ignora la ley de signos) - SOLO PARA TABLA DE FORMULACIÓN
+            // Resta de valores absolutos (Ignora la ley de signos) 
             double adj1 = Math.Abs(listaAjustes[0]);
             double adj2 = Math.Abs(listaAjustes[1]);
             double adj3 = Math.Abs(listaAjustes[2]);
@@ -91,7 +91,7 @@ namespace Color
                     Original = ing.Percentage,
                     Status = "OK",
 
-                    // REGLA NUEVA (Hybrid Algorithm): Evita el cero en negros/oscuros
+                    // Evita el cero en negros/oscuros
                     R1 = CalcularValorPropuesta(ing.Percentage, adj1),
                     R2 = CalcularValorPropuesta(ing.Percentage, adj2),
                     R3 = CalcularValorPropuesta(ing.Percentage, adj3)
@@ -121,14 +121,14 @@ namespace Color
         {
             double adjAbs = Math.Abs(valorAdj);
             
-            // Se mantiene la Resta Aritmética Estricta (Funciona bien en colores claros)
+            // Se mantiene la Resta Aritmética Estricta 
             if ((concOriginal - adjAbs) > (concOriginal * 0.15))
             {
                 return concOriginal - adjAbs;
             }
             else
             {
-                // Si el ajuste es muy agresivo (caso Negros), aplicamos reducción porcentual proporcional
+                // Si el ajuste es muy agresivo (caso Negros),
                 double factor = adjAbs / 100; 
                 return concOriginal * (1 - factor);
             }
