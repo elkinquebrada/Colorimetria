@@ -31,6 +31,7 @@ namespace Color
         private DataGridView dgvShadeHistory;
         private DataGridView dgvCorrectiveRecipe;
         private Button btnGuardar;
+        private Button btnExportarPDF;
         private Button btnCerrar;
         private Button btnRegresar;
         private CielabChartControl _cielabChart;
@@ -139,7 +140,7 @@ namespace Color
             dgvShadeHistory.ColumnCount = 4;
             dgvShadeHistory.Columns[0].HeaderText = "Dye code";
             dgvShadeHistory.Columns[1].HeaderText = "Dye name";
-            dgvShadeHistory.Columns[2].HeaderText = "Concentration ";
+            dgvShadeHistory.Columns[2].HeaderText = "[ Dye ] ";
             dgvShadeHistory.Columns[3].HeaderText = "Proportion ";
             SetupShadeHistoryPainting();
 
@@ -261,17 +262,24 @@ namespace Color
             // BOTONES
             var pnlButtons = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.White };
             btnGuardar = CreateStyledButton("Guardar", System.Drawing.Color.FromArgb(45, 126, 247));
+            btnExportarPDF = CreateStyledButton(" Exportar PDF", System.Drawing.Color.FromArgb(0, 150, 136));
             btnCerrar = CreateStyledButton("Finalizar", System.Drawing.Color.FromArgb(90, 90, 90));
-            btnRegresar = CreateStyledButton("← Regresar", System.Drawing.Color.FromArgb(180, 100, 30));
+            btnRegresar = CreateStyledButton(" Regresar", System.Drawing.Color.FromArgb(180, 100, 30));
 
             btnGuardar.Location = new Point(pnlButtons.Width - 150, 12); btnGuardar.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+            btnExportarPDF.Location = new Point(btnGuardar.Left - 160, 12); btnExportarPDF.Anchor = AnchorStyles.Right | AnchorStyles.Top;
             btnCerrar.Location = new Point(15, 12);
             btnRegresar.Location = new Point(130, 12);
 
-            pnlButtons.Controls.Add(btnGuardar); pnlButtons.Controls.Add(btnCerrar); pnlButtons.Controls.Add(btnRegresar);
+            pnlButtons.Controls.Add(btnGuardar); 
+            pnlButtons.Controls.Add(btnExportarPDF);
+            pnlButtons.Controls.Add(btnCerrar); 
+            pnlButtons.Controls.Add(btnRegresar);
+            
             this.Controls.Add(pnlWhitePaper); this.Controls.Add(pnlButtons);
 
             btnGuardar.Click += BtnGuardar_Click;
+            btnExportarPDF.Click += BtnExportarPDF_Click;
             btnCerrar.Click += (s, e) => this.Close();
             btnRegresar.Click += (s, e) => { this.DialogResult = DialogResult.Retry; this.Close(); };
         }
@@ -364,11 +372,15 @@ namespace Color
             lblTypeTolDh = CreateGridLabel("-", false); lblTypeTolDh.Font = fontTipoTol;
 
             pnl.Controls.Add(lblValTolDe, 0, 2);
+            pnl.SetRowSpan(lblValTolDe, 2);
+            lblValTolDe.TextAlign = ContentAlignment.MiddleCenter;
+            lblValTolDe.Font = new Font(lblValTolDe.Font, FontStyle.Bold);
+
             pnl.Controls.Add(lblValTolDl, 1, 2);
             pnl.Controls.Add(lblValTolDc, 2, 2);
             pnl.Controls.Add(lblValTolDh, 3, 2);
 
-            pnl.Controls.Add(lblTypeTolDe, 0, 3);
+            // lblTypeTolDe ya no se agrega para unificar la celda DE= 
             pnl.Controls.Add(lblTypeTolDl, 1, 3);
             pnl.Controls.Add(lblTypeTolDc, 2, 3);
             pnl.Controls.Add(lblTypeTolDh, 3, 3);
@@ -435,8 +447,8 @@ namespace Color
         private DataGridView CreateCorrectiveGrid()
         {
             var dgv = CreateStyledGrid(); dgv.ColumnCount = 8;
-            dgv.Columns[0].Name = "Colorante"; dgv.Columns[2].Name = "Receta 1"; dgv.Columns[3].Name = "Part %";
-            dgv.Columns[4].Name = "Receta 2"; dgv.Columns[5].Name = "Part %"; dgv.Columns[6].Name = "Receta 3"; dgv.Columns[7].Name = "Part %";
+            dgv.Columns[0].Name = "Colorante"; dgv.Columns[2].Name = "Receta 1"; dgv.Columns[3].Name = "Part ";
+            dgv.Columns[4].Name = "Receta 2"; dgv.Columns[5].Name = "Part "; dgv.Columns[6].Name = "Receta 3"; dgv.Columns[7].Name = "Part ";
             dgv.Columns[1].Visible = false;
             return dgv;
         }
@@ -555,7 +567,11 @@ namespace Color
 
                 // === CALCULO CRUZADO TL84: CMC(D65) vs CMC(TL84) ===
                 if (tl84 != null && d65 != null)
+                {
                     blockTL84.SetSpecialCrossCmcResult(d65.CmcValue, tl84.CmcValue);
+                    double mi = Math.Abs(d65.CmcValue - tl84.CmcValue);
+                    blockD65.SetVeredictoD65PorMetamerismo(mi);
+                }
                 if (cwf != null) { blockCWF.UpdateData(cwf); blockCWF.Invalidate(); }
 
                 UpdateChart(d65); _lastMainResult = d65;
@@ -710,9 +726,9 @@ namespace Color
             dgvCorrectiveRecipe.Columns.Clear();
 
             dgvCorrectiveRecipe.Columns.Add("colColorante", " Colorante");
-            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 Ajuste %");
-            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 Ajuste %");
-            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 Con. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Part. %"); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 Ajuste %");
+            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "Variacion");
+            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "Variacion");
+            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "Variacion");
 
             string[] colsVar = { "colR1_Var", "colR2_Var", "colR3_Var" };
             foreach (var c in new[] { "colR1_Con", "colR2_Con", "colR3_Con" }) dgvCorrectiveRecipe.Columns[c].DefaultCellStyle.Format = "N5";
@@ -811,9 +827,7 @@ namespace Color
         {
             try
             {
-                // Seleccionar la fuente de resultados disponible
                 var todosLosResultados = _resultsLegacy ?? new List<EngineRes>();
-
                 if (todosLosResultados.Count == 0 && _lastMainResult != null)
                     todosLosResultados = new List<EngineRes> { _lastMainResult };
 
@@ -824,107 +838,176 @@ namespace Color
                 }
 
                 string shadeName = _shadeData?.ShadeName ?? "N/A";
+                string lotNo = _shadeData?.LotNo ?? "-";
                 DateTime fechaActual = DateTime.Now;
 
-                int registrosGuardados = 0;
+                // 1. OBTENER RESULTADOS ESPECÍFICOS PARA LA ESTRUCTURA V4 (TL84 y A)
+                var resTL84 = todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
+                var resA = todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("A")) ?? todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("CWF"));
+                var resPrincipal = resTL84 ?? resA ?? todosLosResultados[0];
 
+                // Asegurar que las recetas estén calculadas en el resultado principal
+                List<double> conOriginales = _shadeData?.Recipe?.Select(x => ParsePercentageValue(x.Percentage)).ToList() ?? new List<double>();
+                if (conOriginales.Count > 0 && (resPrincipal.RecetaR1_Luminosidad == null || resPrincipal.RecetaR1_Luminosidad.Count == 0))
+                    EngineCalc.CalcularNuevasRecetasMaestras(resPrincipal, conOriginales);
+
+                // 2. GUARDAR EN SQL SERVER (ESTRUCTURA EXACTA CLIENTE V4)
+                bool guardadoSQL = false;
+                try
+                {
+                    guardadoSQL = Color.Services.HistorialService.GuardarAnalisisCompleto(
+                        shadeName, 
+                        lotNo, 
+                        resTL84, 
+                        resA, 
+                        _shadeData?.Recipe, 
+                        conOriginales);
+                }
+                catch (Exception sqlEx)
+                {
+                    MessageBox.Show("Error al guardar en SQL Server (V4):\n" + sqlEx.Message, "Error DB", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+
+                // 3. PERSISTENCIA LEGACY (CSV) - Mantenemos trazabilidad histórica por ahora
+                int registrosGuardadosCsv = 0;
                 foreach (var res in todosLosResultados)
                 {
-                    // Calcular recetas si aún no se han calculado
-                    List<double> conOriginales = _shadeData?.Recipe?
-                        .Select(x => ParsePercentageValue(x.Percentage))
-                        .ToList() ?? new List<double>();
-
                     if (conOriginales.Count > 0 && (res.RecetaR1_Luminosidad == null || res.RecetaR1_Luminosidad.Count == 0))
                         EngineCalc.CalcularNuevasRecetasMaestras(res, conOriginales);
 
-                    // Obtener nombres de recetas R1, R2, R3 (tres colorantes)
-                    string r1Name = conOriginales.Count > 0 && _shadeData?.Recipe?.Count > 0
-                        ? _shadeData.Recipe[0].Name : "---";
-                    string r2Name = conOriginales.Count > 1 && _shadeData?.Recipe?.Count > 1
-                        ? _shadeData.Recipe[1].Name : "---";
-                    string r3Name = conOriginales.Count > 2 && _shadeData?.Recipe?.Count > 2
-                        ? _shadeData.Recipe[2].Name : "---";
+                    string r1Name = conOriginales.Count > 0 && _shadeData?.Recipe?.Count > 0 ? _shadeData.Recipe[0].Name : "---";
+                    string r2Name = conOriginales.Count > 1 && _shadeData?.Recipe?.Count > 1 ? _shadeData.Recipe[1].Name : "---";
+                    string r3Name = conOriginales.Count > 2 && _shadeData?.Recipe?.Count > 2 ? _shadeData.Recipe[2].Name : "---";
 
-                    // Diagnósticos del motor
-                    string diagL = res.DiagnosticoL ?? "";
-                    string diagC = res.DiagnosisC ?? "";
-                    string diagH = res.DiagnosisH ?? "";
+                    string impL = ((double)res.FactorL * 100.0).ToString("F2", CultureInfo.InvariantCulture) + "%";
+                    string impC = ((double)res.FactorC * 100.0).ToString("F2", CultureInfo.InvariantCulture) + "%";
+                    string impH = ((double)res.FactorH * 100.0).ToString("F2", CultureInfo.InvariantCulture) + "%";
 
-                    // Impacto = porcentaje de factor (como texto)
-                    string impL = ((double)res.FactorL * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
-                    string impC = ((double)res.FactorC * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
-                    string impH = ((double)res.FactorH * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
-
-                    // Recomendaciones (usar el motor de diagnóstico)
                     string recL = EngineCalc.GetLuminosityDiagnosis(res.DeltaL);
                     string recC = res.RecommendationC ?? "";
                     string recH = EngineCalc.GetEngineeringDiagnosis("H", res.DeltaHue, "");
 
-                    // Si hay ingredientes, guardar uno por colorante
                     if (_shadeData?.Recipe != null && _shadeData.Recipe.Count > 0)
                     {
                         foreach (var ing in _shadeData.Recipe)
                         {
-                            decimal concOrig = (decimal)ParsePercentageValue(ing.Percentage);
-
                             Color.Services.HistorialService.GuardarRegistroMaestro(
-                                shadeName:      shadeName,
-                                fecha:          fechaActual,
-                                iluminante:     res.Illuminant,
-                                dyeName:        ing.Name ?? ing.Code ?? "N/A",
-                                concOriginal:   concOrig,
-                                r1:             r1Name,
-                                r2:             r2Name,
-                                r3:             r3Name,
-                                impL:           impL,  diagL: diagL, recL: recL,
-                                impC:           impC,  diagC: diagC, recC: recC,
-                                impH:           impH,  diagH: diagH, recH: recH,
-                                factorA:        ((double)res.FactorA).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
-                                factorB:        ((double)res.FactorB).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
-                                deltaE:         res.DeltaE.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)
+                                shadeName, fechaActual, res.Illuminant, ing.Name ?? ing.Code ?? "N/A",
+                                (decimal)ParsePercentageValue(ing.Percentage), r1Name, r2Name, r3Name,
+                                impL, res.DiagnosticoL, recL,
+                                impC, res.DiagnosisC, recC,
+                                impH, res.DiagnosisH, recH,
+                                ((double)res.FactorA).ToString("F5", CultureInfo.InvariantCulture),
+                                ((double)res.FactorB).ToString("F5", CultureInfo.InvariantCulture),
+                                res.DeltaE.ToString("F4", CultureInfo.InvariantCulture)
                             );
-                            registrosGuardados++;
+                            registrosGuardadosCsv++;
                         }
-                    }
-                    else
-                    {
-                        // Sin receta: guardar un registro resumen por iluminante
-                        Color.Services.HistorialService.GuardarRegistroMaestro(
-                            shadeName:      shadeName,
-                            fecha:          fechaActual,
-                            iluminante:     res.Illuminant,
-                            dyeName:        "N/A",
-                            concOriginal:   0m,
-                            r1:             "---", r2: "---", r3: "---",
-                            impL:           impL,  diagL: diagL, recL: recL,
-                            impC:           impC,  diagC: diagC, recC: recC,
-                            impH:           impH,  diagH: diagH, recH: recH,
-                            factorA:        ((double)res.FactorA).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
-                            factorB:        ((double)res.FactorB).ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
-                            deltaE:         res.DeltaE.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)
-                        );
-                        registrosGuardados++;
                     }
                 }
 
-                MessageBox.Show(
-                    $"Análisis guardado exitosamente.\n{registrosGuardados} registro(s) escritos en la base de datos.",
-                    "Guardado",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                string msg = "Análisis guardado exitosamente.\n";
+                if (guardadoSQL) msg += "✔ Sincronizado con SQL Server (Estructura V4).\n";
+                msg += $"✔ {registrosGuardadosCsv} registro(s) escritos en archivo de respaldo.";
+
+                MessageBox.Show(msg, "Guardado exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 btnGuardar.Enabled = false;
                 btnGuardar.Text = "✔ Guardado";
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    "Error al guardar en la base de datos:\n" + ex.Message,
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show("Error crítico al guardar:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void BtnExportarPDF_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (SaveFileDialog sfd = new SaveFileDialog())
+                {
+                    sfd.Filter = "PDF Files (*.pdf)|*.pdf";
+                    sfd.FileName = "Reporte_Analisis_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".pdf";
+
+                    if (sfd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        using (var pd = new System.Drawing.Printing.PrintDocument())
+                        {
+                            // Buscar impresora PDF de Windows
+                            string pdfPrinter = null;
+                            foreach (string p in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+                            {
+                                if (p.Contains("Microsoft Print to PDF")) { pdfPrinter = p; break; }
+                            }
+
+                            if (string.IsNullOrEmpty(pdfPrinter))
+                            {
+                                MessageBox.Show(this, "No se encontró la impresora 'Microsoft Print to PDF'. Por favor instálela o seleccione una impresora PDF manualmente.", "Error de Configuración", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                using (var dlg = new PrintDialog { Document = pd })
+                                {
+                                    if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                                }
+                            }
+                            else
+                            {
+                                pd.PrinterSettings.PrinterName = pdfPrinter;
+                                pd.PrinterSettings.PrintToFile = true;
+                                pd.PrinterSettings.PrintFileName = sfd.FileName;
+                            }
+
+                            pd.PrintController = new System.Drawing.Printing.StandardPrintController();
+
+                            Bitmap reportImage = CaptureFullFlowPanel(pnlReportFlow);
+                            int currentY = 0;
+
+                            pd.PrintPage += (s, ev) =>
+                            {
+                                int pageHeight = ev.MarginBounds.Height;
+                                int pageWidth = ev.MarginBounds.Width;
+                                float scale = (float)pageWidth / reportImage.Width;
+                                int drawHeight = (int)(reportImage.Height * scale);
+
+                                Rectangle srcRect = new Rectangle(0, (int)(currentY / scale), reportImage.Width, (int)(pageHeight / scale));
+                                Rectangle destRect = new Rectangle(ev.MarginBounds.Left, ev.MarginBounds.Top, pageWidth, pageHeight);
+
+                                ev.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                                ev.Graphics.DrawImage(reportImage, destRect, srcRect, GraphicsUnit.Pixel);
+
+                                currentY += pageHeight;
+                                ev.HasMorePages = currentY < drawHeight;
+                            };
+
+                            pd.Print();
+                            MessageBox.Show(this, "Archivo PDF guardado exitosamente en:\n" + sfd.FileName, "Guardado Directo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { MessageBox.Show(this, "Error al generar PDF: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        }
+
+        private Bitmap CaptureFullFlowPanel(FlowLayoutPanel pnl)
+        {
+            pnl.PerformLayout();
+            int totalHeight = pnl.Controls.Cast<Control>().Sum(c => c.Height + c.Margin.Vertical) + pnl.Padding.Vertical + 100;
+            int width = pnl.Width;
+            Bitmap bmp = new Bitmap(width, totalHeight);
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.Clear(System.Drawing.Color.White);
+                int y = pnl.Padding.Top;
+                foreach (Control c in pnl.Controls)
+                {
+                    if (!c.Visible) continue;
+                    Bitmap childBmp = new Bitmap(c.Width, c.Height);
+                    c.DrawToBitmap(childBmp, new Rectangle(0, 0, c.Width, c.Height));
+                    g.DrawImage(childBmp, c.Left, y + c.Margin.Top);
+                    y += c.Height + c.Margin.Vertical;
+                    childBmp.Dispose();
+                }
+            }
+            return bmp;
         }
 
         private double ParsePercentageValue(string val)

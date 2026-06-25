@@ -19,7 +19,7 @@ namespace ColorimetriaAPI.Models
     public class OcrReportRequest
     {
         public double ChromaThreshold { get; set; } = 0.35;
-        // Inicialización compatible con C# 7.3
+       
         public List<ColorimetricRow> Measures { get; set; } = new List<ColorimetricRow>();
     }
 

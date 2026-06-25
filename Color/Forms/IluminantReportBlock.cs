@@ -643,15 +643,11 @@ namespace Color
             // --- Estado Global OK / FAIL (Fila 4): Solo para D65 ---
             if (textIlluminant == "D65")
             {
-                bool aprobado = res.Pass;
-                lblCmcStatus.Text = !string.IsNullOrEmpty(res.GlobalStatus) ? res.GlobalStatus : (aprobado ? "Ok" : "FAIL");
-                lblCmcStatus.ForeColor = aprobado
-                ? System.Drawing.Color.FromArgb(0, 153, 0)
-                : System.Drawing.Color.FromArgb(180, 0, 0);
-                lblCmcStatus.BackColor = aprobado
-                ? System.Drawing.Color.FromArgb(230, 255, 230)
-                : System.Drawing.Color.FromArgb(255, 220, 220);
-                
+                // El veredicto de D65 en el Excel maestro depende del Índice de Metamerismo (MI)
+                // Se actualizará mediante SetVeredictoD65PorMetamerismo una vez calculado el MI cruzado
+                lblCmcStatus.Text = "-";
+                lblCmcStatus.BackColor = System.Drawing.Color.White;
+                lblCmcStatus.ForeColor = System.Drawing.Color.Black;
             }
             else if (textIlluminant == "TL84" || textIlluminant == "A" || textIlluminant == "CWF")
             {
@@ -905,7 +901,7 @@ namespace Color
         {
             if (lblMiLeft != null && lblMiRight != null)
             {
-                // 1. Valor absoluto
+                // 1. Valor absoluto (Indice de Metamerismo)
                 double diferenciaAbsolutaCmc = Math.Abs(cmcD65 - cmcTL84);
 
                 // 2. Formato de 2 decimales sin %
@@ -938,6 +934,32 @@ namespace Color
                             ctl.Visible = false;
                         }
                     }
+                }
+            }
+        }
+
+        public void SetVeredictoD65PorMetamerismo(double mi)
+        {
+            if (lblCmcStatus != null)
+            {
+                lblCmcStatus.Visible = true;
+                if (mi > 1.20)
+                {
+                    lblCmcStatus.Text = "FALLA";
+                    lblCmcStatus.ForeColor = System.Drawing.Color.FromArgb(180, 0, 0);
+                    lblCmcStatus.BackColor = System.Drawing.Color.FromArgb(255, 220, 220);
+                }
+                else if (mi > 0.80)
+                {
+                    lblCmcStatus.Text = "alerta";
+                    lblCmcStatus.ForeColor = System.Drawing.Color.FromArgb(133, 100, 4);
+                    lblCmcStatus.BackColor = System.Drawing.Color.FromArgb(255, 243, 205);
+                }
+                else
+                {
+                    lblCmcStatus.Text = "ok";
+                    lblCmcStatus.ForeColor = System.Drawing.Color.FromArgb(0, 153, 0);
+                    lblCmcStatus.BackColor = System.Drawing.Color.FromArgb(230, 255, 230);
                 }
             }
         }

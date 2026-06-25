@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Web.Http; // Único necesario para .NET 4.8
+using System.Web.Http; 
 using System.Web.Http.Description;
 
 namespace ColorimetriaAPI.Models

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Color.Services;
+using System.Data;
 using System.Threading.Tasks;
 namespace Color
 {
@@ -62,8 +63,7 @@ namespace Color
                     Image = Image.FromFile(finalPath),
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Width = 80,
-                    Height = 38,
-                    //  Ancla Top|Right 
+                    Height = 38, 
                     Anchor = AnchorStyles.Top | AnchorStyles.Right,
                     BackColor = System.Drawing.Color.White
                 };
@@ -129,6 +129,28 @@ namespace Color
             leftNav.Resize += (s, e) => PositionExitButtonAtBottom();
         }
 
+        public Bitmap RedimensionarImagenRapida(Image imgOriginal, int maxAncho)
+        {
+            if (imgOriginal.Width <= maxAncho) return new Bitmap(imgOriginal);
+
+            // Calcular proporción
+            double ratio = (double)maxAncho / imgOriginal.Width;
+            int nuevoAncho = maxAncho;
+            int nuevoAlto = (int)(imgOriginal.Height * ratio);
+
+            Bitmap bmpReducido = new Bitmap(nuevoAncho, nuevoAlto);
+            using (Graphics g = Graphics.FromImage(bmpReducido))
+            {
+                // Configuraciones de alta velocidad para evitar retrasos
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
+                
+                g.DrawImage(imgOriginal, 0, 0, nuevoAncho, nuevoAlto);
+            }
+            return bmpReducido;
+        }
+
         private Button CrearBotonCambiar() => new Button
         {
             Text = " Cambiar imagen",
@@ -166,7 +188,10 @@ namespace Color
                 {
                     using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
                     {
-                        tempBmp = new Bitmap(Image.FromStream(fs));
+                        using (var imgCruda = Image.FromStream(fs))
+                        {
+                            tempBmp = RedimensionarImagenRapida(imgCruda, 1200);
+                        }
                     }
 
                     if (etiqueta == "Shade History Report")
@@ -262,23 +287,36 @@ namespace Color
 
                 // --- TRANSICIÓN FLUIDA ---
                 this.TopMost = false;
-                this.WindowState = FormWindowState.Minimized;
 
                 OcrReport.SetLastReport(ocrMediciones);
                 using (var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult))
                 {
                     dlgConfirm.MainFormOwner = this;
 
-                    bool volverAConfirmar = true;
-                    while (volverAConfirmar)
-                    {
-                        volverAConfirmar = false;
-                        if (dlgConfirm.ShowDialog() == DialogResult.OK)
-                        {
-                            // Sincronizacion del reporte 
-                            dlgConfirm.Report.Measures = dlgConfirm.RowsConfirmed;
+                    // Flujo automatizado
+                    bool mostrarOCR = false; 
+                    bool continuar = true;
 
-                            // Motores Industriales (D65, TL84, A)
+                    while (continuar)
+                    {
+                        if (mostrarOCR)
+                        {
+                            if (dlgConfirm.ShowDialog() == DialogResult.OK) 
+                            {
+                                // Sincronizacion del reporte si el usuario corrige datos en UI
+                                dlgConfirm.Report.Measures = dlgConfirm.RowsConfirmed;
+                                mostrarOCR = false;
+                            }
+                            else
+                            {
+                                continuar = false; 
+                                break;
+                            }
+                        }
+
+                        if (!mostrarOCR)
+                        {
+                            // Motores Industriales (D65, TL84, A) (Mapeo directo)
                             var correcciones = ColorimetricCalculator.CalculateAllIlluminants(dlgConfirm.Report);
                             var mainResult = correcciones.FirstOrDefault(r => r.Illuminant == "D65") ?? correcciones.FirstOrDefault();
 
@@ -288,6 +326,7 @@ namespace Color
                                 RecipeCorrector.CalculateCorrectiveRecipe(ingredientes, mainResult) 
                             };
 
+                            // 5. REDIRECCIÓN INMEDIATA DE LA INTERFAZ a FormResultados
                             using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta, _lastShadeResult))
                             {
                                 if (_lastTextileMetadata != null)
@@ -297,7 +336,11 @@ namespace Color
 
                                 if (frmRes.ShowDialog() == DialogResult.Retry)
                                 {
-                                    volverAConfirmar = true; 
+                                    mostrarOCR = true; 
+                                }
+                                else
+                                {
+                                    continuar = false; 
                                 }
                             }
                         }
@@ -372,14 +415,30 @@ namespace Color
         {
             try
             {
-                var tabla = HistorialService.ObtenerHistorial();
+                // Prioridad 1: Intentar cargar desde SQL Server (Estructura V4)
+                DataTable tabla = null;
+                try 
+                {
+                    tabla = HistorialService.ObtenerHistorialSQL();
+                }
+                catch (Exception sqlEx) 
+                {
+                    // Si falla SQL, registrar error silencioso para el fallback
+                    Debug.WriteLine("Fallo en lectura SQL: " + sqlEx.Message);
+                }
+
+                // Prioridad 2: Si SQL no tiene datos o falló, cargar desde CSV (Legacy)
+                if (tabla == null || tabla.Rows.Count == 0)
+                {
+                    tabla = HistorialService.ObtenerHistorial();
+                }
 
                 if (tabla == null || tabla.Rows.Count == 0)
                 {
                     MessageBox.Show(
                         "La base de datos no contiene registros todavía.\n\n" +
-                        "Los registros se generan al guardar los resultados desde el botón 'Historial' dentro de un análisis.",
-                        "Base de datos vacía",
+                        "Los registros se generan al guardar resultados en SQL Server (V4) o en el archivo de respaldo.",
+                        "Sin datos",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
                     return;
@@ -391,11 +450,7 @@ namespace Color
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    "Error al abrir la base de datos: " + ex.Message,
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show("Error al abrir el historial: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

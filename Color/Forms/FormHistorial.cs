@@ -75,102 +75,87 @@ namespace Color
 
         private void ConfigurarColumnas()
         {
-            if (dgvHistorial.Columns.Count == 0) return;
-
-            // Ajuste de pesos para las 13 columnas (Estructura Unificada)
-            dgvHistorial.Columns["colShadeName"].FillWeight = 10;
-            dgvHistorial.Columns["colFechaHora"].FillWeight = 10;
-            dgvHistorial.Columns["colIluminante"].FillWeight = 5;
-            dgvHistorial.Columns["colDyeName"].FillWeight = 15;
-            dgvHistorial.Columns["colConcentration"].FillWeight = 8;
-            dgvHistorial.Columns["colReceta1"].FillWeight = 11;
-            dgvHistorial.Columns["colReceta2"].FillWeight = 11;
-            dgvHistorial.Columns["colReceta3"].FillWeight = 11;
+            // Limpiar y recrear para asegurar la estructura exacta V4
+            dgvHistorial.Columns.Clear();
             
-            // --- Nuevas Columnas de Ingeniería (Panel Izquierdo) ---
-            if (!dgvHistorial.Columns.Contains("colImpactodl"))
+            dgvHistorial.Columns.Add("colShadeName", "Shade Name");
+            dgvHistorial.Columns.Add("colLotNo", "Lot No");
+            dgvHistorial.Columns.Add("colFechaHora", "Fecha/Hora");
+            dgvHistorial.Columns.Add("colDyeCode", "Dye Code");
+            dgvHistorial.Columns.Add("colDyeName", "Dye Name");
+            dgvHistorial.Columns.Add("colConcentration", "Concentración %");
+            dgvHistorial.Columns.Add("colProportion", "Proporción %");
+
+            // Receta 1
+            dgvHistorial.Columns.Add("colR1Con", "R1 Conc.");
+            dgvHistorial.Columns.Add("colR1Part", "R1 Part.");
+            dgvHistorial.Columns.Add("colR1Ajuste", "R1 Ajuste");
+
+            // Receta 2
+            dgvHistorial.Columns.Add("colR2Con", "R2 Conc.");
+            dgvHistorial.Columns.Add("colR2Part", "R2 Part.");
+            dgvHistorial.Columns.Add("colR2Ajuste", "R2 Ajuste");
+
+            // Receta 3
+            dgvHistorial.Columns.Add("colR3Con", "R3 Conc.");
+            dgvHistorial.Columns.Add("colR3Part", "R3 Part.");
+            dgvHistorial.Columns.Add("colR3Ajuste", "R3 Ajuste");
+
+            dgvHistorial.Columns.Add("colDeltaE", "Delta E");
+            dgvHistorial.Columns.Add("colStatus", "Status");
+
+            // Estilos
+            foreach (DataGridViewColumn col in dgvHistorial.Columns)
             {
-                dgvHistorial.Columns.Add("colImpactodl", "Impacto dl");
-                dgvHistorial.Columns.Add("colAcciondl", "Accion dl");
-                dgvHistorial.Columns.Add("colRecdl", "Recomendación dl");
-                
-                dgvHistorial.Columns.Add("colImpactoda", "Impacto da");
-                dgvHistorial.Columns.Add("colAccionda", "Accion da");
-                dgvHistorial.Columns.Add("colRecda", "Recomendación da");
-                
-                dgvHistorial.Columns.Add("colImpactodb", "Impacto db");
-                dgvHistorial.Columns.Add("colAcciondb", "Accion db");
-                dgvHistorial.Columns.Add("colRecdb", "Recomendación db");
-
-
-                // Estilo suave para las columnas de texto largo
-                foreach (string col in new[] { "colAcciondl", "colRecdl", "colAccionda", "colRecda", "colAcciondb", "colRecdb" })
-                {
-                    dgvHistorial.Columns[col].FillWeight = 20;
-                    dgvHistorial.Columns[col].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-                }
+                col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
-
-            DataGridViewCellStyle center = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter };
-
-            dgvHistorial.Columns["colIluminante"].DefaultCellStyle = center;
-            dgvHistorial.Columns["colConcentration"].DefaultCellStyle = center;
-            dgvHistorial.Columns["colConcentration"].DefaultCellStyle = center;
+            dgvHistorial.Columns["colDyeName"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dgvHistorial.Columns["colDyeName"].FillWeight = 130;
         }
 
         private void AjustarAnchoCabecerasAgrupadas()
         {
-            if (dgvHistorial.Columns.Count < 9) return;
+            if (dgvHistorial.Columns.Count < 5) return;
 
             try
             {
-                // El grupo 1 abarca desde colShadeName (0) hasta colIluminante (2)
-                int x1 = dgvHistorial.GetColumnDisplayRectangle(0, true).X;
-                int x2 = dgvHistorial.GetColumnDisplayRectangle(2, true).X + dgvHistorial.GetColumnDisplayRectangle(2, true).Width;
-                
+                // Grupo 1: Datos de Lote
+                int x1 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colShadeName"].Index, true).X;
+                int x2 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colFechaHora"].Index, true).Right;
                 lblShadeHistoryHeader.Location = new Point(x1, 0);
                 lblShadeHistoryHeader.Width = x2 - x1;
-                lblShadeHistoryHeader.Text = "HISTORIAL DE ANALISIS (CABECERA)";
+                lblShadeHistoryHeader.Text = "DATOS DEL LOTE / REPORTE";
 
-                // El grupo 2 abarca desde colDyeName (3) hasta colReceta3 (7)
-                int x3 = dgvHistorial.GetColumnDisplayRectangle(3, true).X;
-                int x4 = dgvHistorial.GetColumnDisplayRectangle(7, true).X + dgvHistorial.GetColumnDisplayRectangle(7, true).Width;
- 
+                // Grupo 2: Formulación Original
+                int x3 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colDyeCode"].Index, true).X;
+                int x4 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colProportion"].Index, true).Right;
                 lblCalculoRecetaHeader.Location = new Point(x3, 0);
                 lblCalculoRecetaHeader.Width = x4 - x3;
-                lblCalculoRecetaHeader.Text = "FORMULACIÓN Y CONCENTRACIONES";
+                lblCalculoRecetaHeader.Text = "FORMULACIÓN ORIGINAL";
 
-                // El grupo 3: Diagnóstico Experto
-                if (dgvHistorial.Columns.Count > 8)
+                // Grupo 3: Recetas Correctivas (V4)
+                if (!pnlGroupHeaders.Controls.ContainsKey("lblV4Header"))
                 {
-                    int x5 = dgvHistorial.GetColumnDisplayRectangle(8, true).X;
-                    int x6 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns.Count - 1, true).X + 
-                             dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns.Count - 1, true).Width;
-
-                    if (!pnlGroupHeaders.Controls.ContainsKey("lblExpertHeader"))
+                    var lblV4 = new Label
                     {
-                        var lblExpert = new Label
-                        {
-                            Name = "lblExpertHeader",
-                            BackColor = System.Drawing.Color.FromArgb(0, 80, 160),
-                            ForeColor = System.Drawing.Color.White,
-                            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                            TextAlign = ContentAlignment.MiddleCenter,
-                            Text = "DIAGNÓSTICO EXPERTO (INGENIERÍA)",
-                            BorderStyle = BorderStyle.FixedSingle,
-                            Height = pnlGroupHeaders.Height
-                        };
-                        pnlGroupHeaders.Controls.Add(lblExpert);
-                    }
-                    
-                    var lblE = pnlGroupHeaders.Controls["lblExpertHeader"];
-                    lblE.Location = new Point(x5, 0);
-                    lblE.Width = x6 - x5;
-                    lblE.Visible = x6 > x5;
+                        Name = "lblV4Header",
+                        BackColor = System.Drawing.Color.FromArgb(0, 80, 160),
+                        ForeColor = System.Drawing.Color.White,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Text = "RECETAS CORRECTIVAS (LUMINOSIDAD / CROMA / TONO)",
+                        BorderStyle = BorderStyle.FixedSingle,
+                        Height = pnlGroupHeaders.Height
+                    };
+                    pnlGroupHeaders.Controls.Add(lblV4);
                 }
-                
-                lblShadeHistoryHeader.Height = pnlGroupHeaders.Height;
-                lblCalculoRecetaHeader.Height = pnlGroupHeaders.Height;
+
+                int x5 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colR1Con"].Index, true).X;
+                int x6 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colR3Ajuste"].Index, true).Right;
+                var lblH = pnlGroupHeaders.Controls["lblV4Header"];
+                lblH.Location = new Point(x5, 0);
+                lblH.Width = x6 - x5;
             }
             catch { }
         }
@@ -183,30 +168,41 @@ namespace Color
                 int rowIndex = dgvHistorial.Rows.Add();
                 var fila = dgvHistorial.Rows[rowIndex];
 
+                // Mapeo flexible para CSV y SQL
                 if (tabla.Columns.Contains("ShadeName")) fila.Cells["colShadeName"].Value = row["ShadeName"];
-                if (tabla.Columns.Contains("FechaHora")) fila.Cells["colFechaHora"].Value = row["FechaHora"];
-                if (tabla.Columns.Contains("Iluminante")) fila.Cells["colIluminante"].Value = row["Iluminante"];
+                if (tabla.Columns.Contains("LotNo")) fila.Cells["colLotNo"].Value = row["LotNo"];
+                
+                string colFecha = tabla.Columns.Contains("FechaRegistro") ? "FechaRegistro" : "FechaHora";
+                if (tabla.Columns.Contains(colFecha)) fila.Cells["colFechaHora"].Value = row[colFecha];
+
+                if (tabla.Columns.Contains("DyeCode")) fila.Cells["colDyeCode"].Value = row["DyeCode"];
                 if (tabla.Columns.Contains("DyeName")) fila.Cells["colDyeName"].Value = row["DyeName"];
-                if (tabla.Columns.Contains("ConcOriginal")) fila.Cells["colConcentration"].Value = row["ConcOriginal"];
-                if (tabla.Columns.Contains("Receta1")) fila.Cells["colReceta1"].Value = row["Receta1"];
-                if (tabla.Columns.Contains("Receta2")) fila.Cells["colReceta2"].Value = row["Receta2"];
-                if (tabla.Columns.Contains("Receta3")) fila.Cells["colReceta3"].Value = row["Receta3"];
 
-                // Datos de Ingeniería
-                if (tabla.Columns.Contains("Impactodl")) fila.Cells["colImpactodl"].Value = row["Impactodl"];
-                if (tabla.Columns.Contains("Diagdl")) fila.Cells["colAcciondl"].Value = row["Acciondl"];
-                if (tabla.Columns.Contains("Recdl")) fila.Cells["colRecdl"].Value = row["Recdl"];
-                
-                if (tabla.Columns.Contains("Impactoda")) fila.Cells["colImpactoda"].Value = row["Impactoda"];
-                if (tabla.Columns.Contains("Diagda")) fila.Cells["colAccionda"].Value = row["Accionda"];
-                if (tabla.Columns.Contains("Recda")) fila.Cells["colRecda"].Value = row["Recda"];
-                
-                if (tabla.Columns.Contains("Impactodb")) fila.Cells["colImpactodb"].Value = row["Impactodb"];
-                if (tabla.Columns.Contains("Diagdb")) fila.Cells["colAcciondb"].Value = row["Acciondb"];
-                if (tabla.Columns.Contains("Recdb")) fila.Cells["colRecdb"].Value = row["Recdb"];
+                string colConc = tabla.Columns.Contains("Concentration_Original") ? "Concentration_Original" : "ConcOriginal";
+                if (tabla.Columns.Contains(colConc)) fila.Cells["colConcentration"].Value = row[colConc];
 
+                if (tabla.Columns.Contains("Proportion_Original")) fila.Cells["colProportion"].Value = row["Proportion_Original"];
+
+                // Recetas V4
+                if (tabla.Columns.Contains("R1_Con")) fila.Cells["colR1Con"].Value = row["R1_Con"];
+                if (tabla.Columns.Contains("R1_Part")) fila.Cells["colR1Part"].Value = row["R1_Part"];
+                if (tabla.Columns.Contains("R1_Ajuste")) fila.Cells["colR1Ajuste"].Value = row["R1_Ajuste"];
+
+                if (tabla.Columns.Contains("R2_Con")) fila.Cells["colR2Con"].Value = row["R2_Con"];
+                if (tabla.Columns.Contains("R2_Part")) fila.Cells["colR2Part"].Value = row["R2_Part"];
+                if (tabla.Columns.Contains("R2_Ajuste")) fila.Cells["colR2Ajuste"].Value = row["R2_Ajuste"];
+
+                if (tabla.Columns.Contains("R3_Con")) fila.Cells["colR3Con"].Value = row["R3_Con"];
+                if (tabla.Columns.Contains("R3_Part")) fila.Cells["colR3Part"].Value = row["R3_Part"];
+                if (tabla.Columns.Contains("R3_Ajuste")) fila.Cells["colR3Ajuste"].Value = row["R3_Ajuste"];
+
+                string colDE = tabla.Columns.Contains("DeltaE_TL84") ? "DeltaE_TL84" : "DeltaE";
+                if (tabla.Columns.Contains(colDE)) fila.Cells["colDeltaE"].Value = row[colDE];
+
+                string colSt = tabla.Columns.Contains("Status_TL84") ? "Status_TL84" : "Status";
+                if (tabla.Columns.Contains(colSt)) fila.Cells["colStatus"].Value = row[colSt];
             }
-            lblContador.Text = "Total de registros: " + dgvHistorial.Rows.Count;
+            lblContador.Text = "Análisis encontrados: " + dgvHistorial.Rows.Count;
         }
 
         private void txtBuscar_TextChanged(object sender, EventArgs e)
@@ -275,23 +271,26 @@ namespace Color
                 if (MessageBox.Show("¿Borrar registro seleccionado?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
                     foreach (DataGridViewRow row in dgvHistorial.SelectedRows) dgvHistorial.Rows.Remove(row);
+                    
                     DataTable dt = new DataTable();
-                    dt.Columns.Add("ShadeName"); dt.Columns.Add("FechaHora"); dt.Columns.Add("Iluminante");
-                    dt.Columns.Add("DyeName"); dt.Columns.Add("ConcOriginal");
-                    dt.Columns.Add("Receta1"); dt.Columns.Add("Receta2"); dt.Columns.Add("Receta3");
-                    dt.Columns.Add("Impactodl"); dt.Columns.Add("Acciondl"); dt.Columns.Add("Recdl");
-                    dt.Columns.Add("Impactoda"); dt.Columns.Add("Accionda"); dt.Columns.Add("Recda");
-                    dt.Columns.Add("Impactodb"); dt.Columns.Add("Acciondb"); dt.Columns.Add("Recdb");
+                    dt.Columns.Add("ShadeName"); dt.Columns.Add("LotNo"); dt.Columns.Add("FechaHora"); 
+                    dt.Columns.Add("DyeCode"); dt.Columns.Add("DyeName"); dt.Columns.Add("ConcOriginal");
+                    dt.Columns.Add("PropOriginal"); 
+                    dt.Columns.Add("R1_Con"); dt.Columns.Add("R1_Part"); dt.Columns.Add("R1_Ajuste");
+                    dt.Columns.Add("R2_Con"); dt.Columns.Add("R2_Part"); dt.Columns.Add("R2_Ajuste");
+                    dt.Columns.Add("R3_Con"); dt.Columns.Add("R3_Part"); dt.Columns.Add("R3_Ajuste");
+                    dt.Columns.Add("DeltaE"); dt.Columns.Add("Status");
 
                     foreach (DataGridViewRow r in dgvHistorial.Rows)
                     {
                         dt.Rows.Add(
-                            r.Cells["colShadeName"].Value, r.Cells["colFechaHora"].Value, r.Cells["colIluminante"].Value,
-                            r.Cells["colDyeName"].Value, r.Cells["colConcentration"].Value,
-                            r.Cells["colReceta1"].Value, r.Cells["colReceta2"].Value, r.Cells["colReceta3"].Value,
-                            r.Cells["colImpactodl"].Value, r.Cells["colAcciondl"].Value, r.Cells["colRecdl"].Value,
-                            r.Cells["colImpactoda"].Value, r.Cells["colAccionda"].Value, r.Cells["colRecda"].Value,
-                            r.Cells["colImpactodb"].Value, r.Cells["colAcciondb"].Value, r.Cells["colRecdb"].Value
+                            r.Cells["colShadeName"].Value, r.Cells["colLotNo"].Value, r.Cells["colFechaHora"].Value,
+                            r.Cells["colDyeCode"].Value, r.Cells["colDyeName"].Value, r.Cells["colConcentration"].Value,
+                            r.Cells["colProportion"].Value,
+                            r.Cells["colR1Con"].Value, r.Cells["colR1Part"].Value, r.Cells["colR1Ajuste"].Value,
+                            r.Cells["colR2Con"].Value, r.Cells["colR2Part"].Value, r.Cells["colR2Ajuste"].Value,
+                            r.Cells["colR3Con"].Value, r.Cells["colR3Part"].Value, r.Cells["colR3Ajuste"].Value,
+                            r.Cells["colDeltaE"].Value, r.Cells["colStatus"].Value
                         );
                     }
                     HistorialService.GuardarHistorialCompleto(dt);
