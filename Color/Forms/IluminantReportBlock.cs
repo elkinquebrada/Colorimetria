@@ -61,21 +61,20 @@ namespace Color
             TableLayoutPanel pnlLeft = new TableLayoutPanel();
             pnlLeft.Dock = DockStyle.Fill;
             pnlLeft.ColumnCount = 1;
-            pnlLeft.RowCount = 5; // Aumentado a 5 filas para acomodar los 2 separadores grises
+            pnlLeft.RowCount = 5; 
             pnlLeft.Margin = new Padding(0, 0, 10, 0);
 
             pnlLeft.ColumnStyles.Clear();
             pnlLeft.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             pnlLeft.RowStyles.Clear();
 
-            // 👇 Distribución de filas idéntica al Bloque 2 para mantener simetría exacta
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));   // Fila 0: dgvLab (24 + 24 + 24)
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    // Fila 1: Separador Gris 1
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));   // Fila 2: dgvDiagnostic (22 + 22 + 22)
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    // Fila 3: Separador Gris 2
-            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));   // Fila 4: dgvActions (32 + 26)
+            // Distribución de filas idéntica al Bloque 2 para mantener simetría exacta
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));   
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));   
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));  
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));   
+            pnlLeft.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));  
 
-            // El alto total se acopla a las nuevas dimensiones compactas
             pnlLeft.Height = 208;
 
             System.Drawing.Color azulColorimetro = System.Drawing.Color.FromArgb(0, 122, 204);
@@ -87,7 +86,7 @@ namespace Color
             dgvLab = CreateBaseGrid(4);
             dgvLab.Margin = new Padding(0);
 
-            // 👇 Configuración de bordes suaves y eliminación de fila extra
+            // Configuración de bordes suaves y eliminación de fila extra
             dgvLab.AllowUserToAddRows = false;
             dgvLab.GridColor = grisBordeSuave;
             dgvLab.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -114,7 +113,7 @@ namespace Color
 
             pnlLeft.Controls.Add(dgvLab, 0, 0);
 
-            // 👇 Separador 1 (línea gris de transición)
+            // Separador 1 (línea gris de transición)
             var sepLeft1 = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.FromArgb(220, 220, 220), Margin = new Padding(0) };
             pnlLeft.Controls.Add(sepLeft1, 0, 1);
 
@@ -125,7 +124,7 @@ namespace Color
             dgvDiagnostic.Margin = new Padding(0);
             dgvDiagnostic.ColumnHeadersVisible = false;
 
-            // 👇 Configuración de bordes suaves y eliminación de fila extra
+            // Configuración de bordes suaves y eliminación de fila extra
             dgvDiagnostic.AllowUserToAddRows = false;
             dgvDiagnostic.GridColor = grisBordeSuave;
             dgvDiagnostic.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -144,7 +143,7 @@ namespace Color
             dgvDiagnostic.Rows[rd1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvDiagnostic.Rows[rd1].Height = 22;
 
-            // Fila 2: Texto de Diagnóstico (Compactado a 22px de alto para un look uniforme)
+            // Fila 2: Texto de Diagnóstico 
             int rd2 = dgvDiagnostic.Rows.Add("Δ", "Claro (Thin)", "Rojo", "Amarillo");
             dgvDiagnostic.Rows[rd2].Height = 22;
             dgvDiagnostic.Rows[rd2].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -165,7 +164,7 @@ namespace Color
 
             pnlLeft.Controls.Add(dgvDiagnostic, 0, 2);
 
-            // 👇 Separador 2 (línea gris de transición)
+            // Separador 2 (línea gris de transición)
             var sepLeft2 = new Panel { Dock = DockStyle.Fill, BackColor = System.Drawing.Color.FromArgb(220, 220, 220), Margin = new Padding(0) };
             pnlLeft.Controls.Add(sepLeft2, 0, 3);
 
@@ -176,7 +175,7 @@ namespace Color
             dgvActions.Margin = new Padding(0);
             dgvActions.ColumnHeadersVisible = false;
 
-            // 👇 Configuración de bordes suaves y eliminación de fila extra
+            // Configuración de bordes suaves y eliminación de fila extra
             dgvActions.AllowUserToAddRows = false;
             dgvActions.GridColor = grisBordeSuave;
             dgvActions.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -186,7 +185,7 @@ namespace Color
 
             // Fila 0: Encabezados de Acción
             int ra0 = dgvActions.Rows.Add("Accion", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
-            dgvActions.Rows[ra0].Height = 32; // Compactado e idéntico al bloque 2
+            dgvActions.Rows[ra0].Height = 32; 
             dgvActions.Rows[ra0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
             dgvActions.Rows[ra0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
@@ -218,26 +217,25 @@ namespace Color
             pnlMiddle.RowStyles.Clear();
 
             // Distribución de filas optimizada sin dejar aire inferior
-            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));   // Fila 0: TABLA 1
-            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    // Fila 1: Separador 1
-            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 76F));   // Fila 2: TABLA 2
-            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    // Fila 3: Separador 2
-            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));   // Fila 4: TABLA 3 (Se redujo a 58F al quitar la fila vacía)
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));   
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 76F));   
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));    
+            pnlMiddle.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));   
 
             // El alto total se compacta perfectamente de 222px a 218px
             pnlMiddle.Height = 218;
 
             // -----------------------------------------------------------------
-            // TABLA 1 (Excel fila 356-360): Header azul Chroma/Hue + 2 filas datos
+            // TABLA 1  Header azul Chroma/Hue + 2 filas datos
             // -----------------------------------------------------------------
             dgvChromaHue = CreateBaseGrid(2);
             dgvChromaHue.Margin = new Padding(0);
 
-            // 👇 BORDES SUAVES Y SE ESTRECHA LA FILA VACÍA INNECESARIA
             dgvChromaHue.AllowUserToAddRows = false;
-            dgvChromaHue.GridColor = System.Drawing.Color.FromArgb(195, 195, 195); // Gris suave unificado
+            dgvChromaHue.GridColor = System.Drawing.Color.FromArgb(195, 195, 195); 
             dgvChromaHue.CellBorderStyle = DataGridViewCellBorderStyle.Single;
-            dgvChromaHue.BorderStyle = BorderStyle.None; // Elimina el marco negro grueso del sistema
+            dgvChromaHue.BorderStyle = BorderStyle.None;
 
             int hChroma = dgvChromaHue.Rows.Add("Chroma", "Hue");
             dgvChromaHue.Rows[hChroma].DefaultCellStyle.BackColor = azulColorimetro;
@@ -261,12 +259,11 @@ namespace Color
             pnlMiddle.Controls.Add(sep1, 0, 1);
 
             // -----------------------------------------------------------------
-            // TABLA 2 (Excel fila 362-368): dC/dH + valores + fila Brighter/Yellower
+            // TABLA 2  dC/dH + valores + fila Brighter/Yellower
             // -----------------------------------------------------------------
             dgvDeltaChromaHue = CreateBaseGrid(2);
             dgvDeltaChromaHue.Margin = new Padding(0);
 
-            // 👇 BORDES SUAVES Y SE ESTRECHA LA FILA VACÍA INNECESARIA
             dgvDeltaChromaHue.AllowUserToAddRows = false;
             dgvDeltaChromaHue.GridColor = System.Drawing.Color.FromArgb(195, 195, 195);
             dgvDeltaChromaHue.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -276,6 +273,8 @@ namespace Color
             dgvDeltaChromaHue.Rows[dLbl].Height = 22;
             dgvDeltaChromaHue.Rows[dLbl].DefaultCellStyle.Font = new Font(dgvDeltaChromaHue.Font, FontStyle.Bold);
             dgvDeltaChromaHue.Rows[dLbl].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dgvDeltaChromaHue.Rows[dLbl].Cells[0].Style.BackColor = System.Drawing.Color.White;
+            dgvDeltaChromaHue.Rows[dLbl].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
 
             int dVal = dgvDeltaChromaHue.Rows.Add("0.00", "0.00");
             dgvDeltaChromaHue.Rows[dVal].Height = 22;
@@ -283,8 +282,8 @@ namespace Color
 
             int dStatus = dgvDeltaChromaHue.Rows.Add("Brighter", "Yellower (Redder)");
             dgvDeltaChromaHue.Rows[dStatus].Height = 32;
-            dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.BackColor = azulColorimetro;
-            dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.ForeColor = System.Drawing.Color.White;
+            dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.BackColor = System.Drawing.Color.White;
+            dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
             dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.Font = new Font(dgvDeltaChromaHue.Font, FontStyle.Bold);
             dgvDeltaChromaHue.Rows[dStatus].Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvDeltaChromaHue.Rows[dStatus].Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -296,12 +295,11 @@ namespace Color
             pnlMiddle.Controls.Add(sep2, 0, 3);
 
             // -----------------------------------------------------------------
-            // TABLA 3 (Excel fila 370-374): Duller/Bluer (texto) + fila de %
+            // TABLA 3 Duller/Bluer (texto) + fila de %
             // -----------------------------------------------------------------
             dgvDeviation = CreateBaseGrid(2);
             dgvDeviation.Margin = new Padding(0);
 
-            // 👇 BORDES SUAVES Y SE ESTRECHA LA FILA VACÍA INNECESARIA
             dgvDeviation.AllowUserToAddRows = false;
             dgvDeviation.GridColor = System.Drawing.Color.FromArgb(195, 195, 195);
             dgvDeviation.CellBorderStyle = DataGridViewCellBorderStyle.Single;
@@ -311,6 +309,8 @@ namespace Color
             dgvDeviation.Rows[dDuller].Height = 32;
             dgvDeviation.Rows[dDuller].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
             dgvDeviation.Rows[dDuller].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dgvDeviation.Rows[dDuller].Cells[0].Style.BackColor = System.Drawing.Color.White;
+            dgvDeviation.Rows[dDuller].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
 
             int dPct = dgvDeviation.Rows.Add("0%", "0%");
             dgvDeviation.Rows[dPct].Height = 26;
@@ -321,7 +321,7 @@ namespace Color
             pnlMiddle.Controls.Add(dgvDeviation, 0, 4);
 
             // =================================================================
-            //  Bloque 3 y 4 Unificados: CMC Summary, Paremetros e Iluminante 
+            //  Bloque 3 y 4 Unificados: CMC, Paremetros e Iluminante 
             // =================================================================
 
             var pnlCmcCombo = new TableLayoutPanel 
@@ -341,12 +341,11 @@ namespace Color
             pnlCmcCombo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 75.0f)); 
 
             // Definicion de alturas de filas
-            // Definicion de alturas de filas (Sincronizadas con Lab / ChromaHue)
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 28.0f)); // Header principal
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 40.0f)); // Valores (Total 68F = Sincronia)
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 28.0f)); 
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 40.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 24.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 30.0f)); 
-            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 74.0f)); // Fila status (Sincronia con Diagnostic)
+            pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 74.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Absolute, 20.0f)); 
             pnlCmcCombo.RowStyles.Add(new RowStyle(SizeType.Percent, 100.0f));
 
@@ -428,7 +427,7 @@ namespace Color
             pnlCmcCombo.Controls.Add(lblCmcStatus, 0, 4);
             pnlCmcCombo.SetColumnSpan(lblCmcStatus, 6); 
 
-            // --- FILA 5: Header i ndice de Metamerismo ---
+            // --- FILA 5: Header indice de Metamerismo ---
             var lblMiHeader = new Label
             {
                 Text = "Indice de Metamerismo (MI)",
@@ -477,7 +476,7 @@ namespace Color
 
                 e.AdvancedBorderStyle.Bottom = DataGridViewAdvancedCellBorderStyle.None;
 
-                // 2. Dibujar el simbolo Delta (Calculamos el rectangulo fusionado en CADA fila para que el clipping sea correcto)
+                // 2. Dibujar el simbolo Delta (Calculamos el rectangulo fusionado )
                 Rectangle rectFila0 = (e.RowIndex == 0) ? e.CellBounds : dgv.GetCellDisplayRectangle(e.ColumnIndex, 0, true);
                 Rectangle rectFila1 = (e.RowIndex == 1) ? e.CellBounds : dgv.GetCellDisplayRectangle(e.ColumnIndex, 1, true);
                 Rectangle rectFila2 = (e.RowIndex == 2) ? e.CellBounds : dgv.GetCellDisplayRectangle(e.ColumnIndex, 2, true);
@@ -632,7 +631,7 @@ namespace Color
         }
 
         // =================================================================
-        // ACTUALIZACION DE DATOS DINA MICOS (Corregida de forma segura)
+        // ACTUALIZACION DE DATOS DINAMICOS (Corregida de forma segura)
         // =================================================================
         public void UpdateTolerances(double de, double dl, double dc, double dh)
         {
@@ -734,8 +733,7 @@ namespace Color
             // --- Estado Global OK / FAIL (Fila 4): Solo para D65 ---
             if (textIlluminant == "D65")
             {
-                // El veredicto de D65 en el Excel maestro depende del Índice de Metamerismo (MI)
-                // Se actualizará mediante SetVeredictoD65PorMetamerismo una vez calculado el MI cruzado
+                // Índice de Metamerismo (MI)
                 lblCmcStatus.Text = "-";
                 lblCmcStatus.BackColor = System.Drawing.Color.White;
                 lblCmcStatus.ForeColor = System.Drawing.Color.Black;
@@ -807,12 +805,12 @@ namespace Color
                 int filaTextosAccion = 0; 
                 int filaPorcentajes = 1;  
 
-                // 1. Recuperar diagnósticos dinámicos reales del motor de color (Celdas D32, D33 y D34 de Excel)
+                // 1. Recuperar diagnósticos dinámicos reales del motor de color 
                 string diagL = ColorimetricCalculator.GetLuminosityDiagnosis(res.DeltaL); 
                 string diagA = ColorimetricCalculator.GetEjeADiagnosis(res.DeltaA);       
                 string diagB = ColorimetricCalculator.GetEjeBDiagnosis(res.DeltaB);       
 
-                // 2. Procesar matemáticamente los tres porcentajes absolutos en formato Entero Rígido ("0")
+                // 2. Procesar matemáticamente los tres porcentajes absolutos en formato Entero
                 string pctLStr = Math.Abs(Math.Round(res.PercentL, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
                 string pctAStr = Math.Abs(Math.Round(res.PercentA, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
                 string pctBStr = Math.Abs(Math.Round(res.PercentB, 0)).ToString("0", CultureInfo.InvariantCulture) + "%";
@@ -822,7 +820,7 @@ namespace Color
                 // ---------------------------------------------------------------------
                 string accionLStr = "";
                 if (res.DeltaL > 0 && diagL.Contains("Claro"))       accionLStr = "Aumentar [ ]"; 
-                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Aumentar ";
+                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Aumentar [ ]";
                 else accionLStr = "Aumentar [ ]";
 
                 // ---------------------------------------------------------------------
@@ -933,8 +931,8 @@ namespace Color
             if (dgvDeltaChromaHue != null && dgvDeltaChromaHue.Rows.Count >= 3)
             {
                 dgvDeltaChromaHue.Rows[2].Cells[0].Value = tLeft;
-                dgvDeltaChromaHue.Rows[2].Cells[0].Style.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
-                dgvDeltaChromaHue.Rows[2].Cells[0].Style.ForeColor = System.Drawing.Color.White;
+                dgvDeltaChromaHue.Rows[2].Cells[0].Style.BackColor = System.Drawing.Color.White;
+                dgvDeltaChromaHue.Rows[2].Cells[0].Style.ForeColor = System.Drawing.Color.Black;
 
                 dgvDeltaChromaHue.Rows[2].Cells[1].Value = tRight;
                 dgvDeltaChromaHue.Rows[2].Cells[1].Style.BackColor = System.Drawing.Color.White;
@@ -946,7 +944,7 @@ namespace Color
                 dgvDeviation.Rows[0].Cells[0].Value = bLeft;
                 dgvDeviation.Rows[0].Cells[1].Value = bRight;
             }
-            //  CA LCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL 
+            //  CALCULO INTERNO ABSOLUTO: PARIDAD CON FORMULAS EXCEL 
             if (dgvDeviation != null && dgvDeviation.Rows.Count > 0)
             {
                 int targetRowIdx = dgvDeviation.Rows.Count - 1;

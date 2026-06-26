@@ -22,6 +22,7 @@ namespace Color
         private readonly ShadeReportExtractor       _shadeExtractor    = new ShadeReportExtractor(@".\tessdata");
         private readonly TextileMetadataExtractor    _textileExtractor  = new TextileMetadataExtractor(@".\tessdata");
         private readonly DynamicSplitGridExtractor   _splitExtractor    = new DynamicSplitGridExtractor(@".\tessdata");
+
         // Ruta de la imagen del Shade History Report actualmente cargada
         private string _lastShadeImagePath;
         private ShadeExtractionResult _lastShadeResult;
@@ -415,7 +416,7 @@ namespace Color
         {
             try
             {
-                // Prioridad 1: Intentar cargar desde SQL Server (Estructura V4)
+                // Intentar cargar desde SQL Server (Estructura V4)
                 DataTable tabla = null;
                 try 
                 {
@@ -462,8 +463,6 @@ namespace Color
                 foreach (var i in result.Recipe) sb.AppendLine($"{i.Code} - {i.Name}: {i.Percentage}%");
             return sb.ToString();
         }
-
-        // ── Orquestador del pipeline geométrico (DESACOPLADO) ─────────────────
 
         /// Clasifica el reporte y extrae la receta con lógica limpia y desacoplada.
         private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)

@@ -130,7 +130,7 @@ namespace Color.Tolerancias
                             // 1. Asignamos el valor ingresado al Delta E global
                             _manualProfile.DE = val;
 
-                            // 2. IMPLEMENTACIÓN OBLIGATORIA DE LA FÓRMULA DE EXCEL (COATS)
+                            // 2. IMPLEMENTACIÓN OBLIGATORIA DE LA FÓRMULA DE EXCEL 
                             double ejeCalculado = Math.Sqrt(Math.Pow(val, 2) / 3);
 
                             _manualProfile.DL = ejeCalculado;

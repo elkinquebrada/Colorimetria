@@ -47,7 +47,7 @@ namespace Color
         private Label lblTypeTolDc;
         private Label lblTypeTolDh;
 
-        // Etiquetas del panel de metadatos textiles (superior izquierdo)
+        // Etiquetas del panel de metadatos textiles 
         private Label lblValueShadeName;
         private Label lblValueDyeingClass;
         private Label lblValueSubstrate;
@@ -101,7 +101,6 @@ namespace Color
             };
             this.Controls.Add(pnlLogoStrip);
 
-            // pnlWhitePaper ocupa el resto del espacio debajo de la barra del logo
             this.Controls.Add(pnlWhitePaper);
 
             // Cuando la ventana cambia de tamaño, el FlowPanel y los bloques se adaptan al nuevo ancho
@@ -140,8 +139,10 @@ namespace Color
             dgvShadeHistory.ColumnCount = 4;
             dgvShadeHistory.Columns[0].HeaderText = "Dye code";
             dgvShadeHistory.Columns[1].HeaderText = "Dye name";
+            dgvShadeHistory.Columns[1].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             dgvShadeHistory.Columns[2].HeaderText = "[ Dye ] ";
             dgvShadeHistory.Columns[3].HeaderText = "Proportion ";
+            dgvShadeHistory.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             SetupShadeHistoryPainting();
 
             lblRightShadeValue = new Label { Text = "Shade Name:", AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Regular) };
@@ -450,6 +451,16 @@ namespace Color
             dgv.Columns[0].Name = "Colorante"; dgv.Columns[2].Name = "Receta 1"; dgv.Columns[3].Name = "Part ";
             dgv.Columns[4].Name = "Receta 2"; dgv.Columns[5].Name = "Part "; dgv.Columns[6].Name = "Receta 3"; dgv.Columns[7].Name = "Part ";
             dgv.Columns[1].Visible = false;
+            
+            dgv.CellPainting += (s, e) =>
+            {
+                if (e.ColumnIndex >= 0 && dgv.Columns.Count > e.ColumnIndex && dgv.Columns[e.ColumnIndex].Name.StartsWith("colSpace"))
+                {
+                    e.Graphics.FillRectangle(Brushes.White, e.CellBounds);
+                    e.Handled = true;
+                }
+            };
+            
             return dgv;
         }
 
@@ -485,18 +496,56 @@ namespace Color
             {
                 lblRightShadeValue.Text = "Shade: " + (shadeData.ShadeName ?? "N/A");
                 dgvShadeHistory.Rows.Clear();
-                if (shadeData.Recipe != null)
+                if (shadeData.Recipe != null && shadeData.Recipe.Count > 0)
                 {
                     double total = shadeData.Recipe.Sum(ing => ParsePercentageValue(ing.Percentage));
+                    double maxDyeVal = shadeData.Recipe.Max(ing => ParsePercentageValue(ing.Percentage));
+                    
                     foreach (var ing in shadeData.Recipe)
                     {
-                        double p = total > 0 ? (ParsePercentageValue(ing.Percentage) / total * 100) : 0;
-                        dgvShadeHistory.Rows.Add(ing.Code, ing.Name, ing.Percentage.Replace("%", ""), ((int)Math.Round(p)).ToString() + "%");
+                        double val = ParsePercentageValue(ing.Percentage);
+                        double p = total > 0 ? (val / total * 100) : 0;
+                        int idx = dgvShadeHistory.Rows.Add(ing.Code, ing.Name, val.ToString("0.00000", CultureInfo.InvariantCulture) + "%", ((int)Math.Round(p)).ToString() + "%");
+                        
+                        string nameUpper = (ing.Name ?? "").ToUpper();
+                        System.Drawing.Color dyeColor = System.Drawing.Color.Black;
+                        
+                        if (nameUpper.Contains("RED") || nameUpper.Contains("RUBINE") || nameUpper.Contains("SCARLET") || nameUpper.Contains("CRIMSON") || nameUpper.Contains("PINK") || nameUpper.Contains("ROSE") || nameUpper.Contains("BORDEAUX"))
+                            dyeColor = System.Drawing.Color.Red;
+                        else if (nameUpper.Contains("BLU") || nameUpper.Contains("NAVY") || nameUpper.Contains("CYAN") || nameUpper.Contains("TURQUOISE") || nameUpper.Contains("ROYAL"))
+                            dyeColor = System.Drawing.Color.DodgerBlue;
+                        else if (nameUpper.Contains("YELLOW") || nameUpper.Contains("GOLDEN") || nameUpper.Contains("LEMON") || nameUpper.Contains("GOLD"))
+                            dyeColor = System.Drawing.Color.DarkGoldenrod;
+                        else if (nameUpper.Contains("GREEN") || nameUpper.Contains("OLIVE") || nameUpper.Contains("LIME"))
+                            dyeColor = System.Drawing.Color.Green;
+                        else if (nameUpper.Contains("BLACK") || nameUpper.Contains("GREY") || nameUpper.Contains("GRAY") || nameUpper.Contains("CARBON"))
+                            dyeColor = System.Drawing.Color.Black;
+                        else if (nameUpper.Contains("BROWN") || nameUpper.Contains("CHOCOLATE") || nameUpper.Contains("EARTH"))
+                            dyeColor = System.Drawing.Color.SaddleBrown;
+                        else if (nameUpper.Contains("ORANGE") || nameUpper.Contains("CORAL"))
+                            dyeColor = System.Drawing.Color.DarkOrange;
+                        else if (nameUpper.Contains("VIOLET") || nameUpper.Contains("PURPLE") || nameUpper.Contains("MAGENTA"))
+                            dyeColor = System.Drawing.Color.Purple;
+
+                        dgvShadeHistory.Rows[idx].Cells[1].Style.ForeColor = dyeColor;
+                        dgvShadeHistory.Rows[idx].Cells[1].Style.SelectionForeColor = dyeColor;
+                        dgvShadeHistory.Rows[idx].Cells[1].Style.SelectionBackColor = System.Drawing.Color.White;
+
+                        if (val == maxDyeVal && maxDyeVal > 0)
+                        {
+                            Font largerBoldFont = new Font(dgvShadeHistory.Font.FontFamily, dgvShadeHistory.Font.Size + 1.5f, FontStyle.Bold);
+                            dgvShadeHistory.Rows[idx].DefaultCellStyle.Font = largerBoldFont;
+                            dgvShadeHistory.Rows[idx].Cells[1].Style.Font = largerBoldFont;
+                        }
                     }
 
-                    int totalRowIdx = dgvShadeHistory.Rows.Add("[Dyes]", "", total.ToString("F5"), "100%");
+                    int totalRowIdx = dgvShadeHistory.Rows.Add("[Dyes]", "", total.ToString("0.00000", CultureInfo.InvariantCulture) + "%", "100%");
                     dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.Font = new Font(dgvShadeHistory.Font, FontStyle.Bold);
-                    dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+                    dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.BackColor = System.Drawing.Color.White;
+                    dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+                    dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
+                    dgvShadeHistory.Rows[totalRowIdx].DefaultCellStyle.SelectionForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+                    dgvShadeHistory.ClearSelection();
                 }
             }
 
@@ -506,7 +555,7 @@ namespace Color
                 var tl84 = results.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
                 var cwf = results.FirstOrDefault(r => r.Illuminant.Contains("CWF")) ?? results.FirstOrDefault(r => r.Illuminant.Contains("A"));
 
-                // FASE 2 del pliego: inyección limpia con refresco explícito de interfaz
+                // inyección limpia con refresco explícito de interfaz
                 blockD65.UpdateData(d65);
                 blockD65.Invalidate();
 
@@ -545,7 +594,7 @@ namespace Color
                 pnlNewRecipesHeader.Controls.Add(lblNewRecipesTitle);
                 pnlNewRecipesHeader.Controls.Add(lineNewRecipes);
 
-                // PRIMERO: Inyectamos el título al contenedor de flujo
+                // Inyectamos el título al contenedor de flujo
                 pnlReportFlow.Controls.Add(pnlNewRecipesHeader);
 
                 //  LA TABLA DE RECETAS SE AGREGA INMEDIATAMENTE DESPUÉS
@@ -673,12 +722,27 @@ namespace Color
             dgvCorrectiveRecipe.Columns.Clear();
 
             dgvCorrectiveRecipe.Columns.Add("colColorante", " Colorante");
-            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 Variacion");
-            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 Variacion");
-            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 Variacion");
+            dgvCorrectiveRecipe.Columns["colColorante"].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+
+            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 [ ] "); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 Variacion");
+
+            var colS1 = dgvCorrectiveRecipe.Columns.Add("colSpace1", "");
+            dgvCorrectiveRecipe.Columns[colS1].Width = 15;
+            dgvCorrectiveRecipe.Columns[colS1].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            dgvCorrectiveRecipe.Columns[colS1].DefaultCellStyle.BackColor = System.Drawing.Color.White;
+            dgvCorrectiveRecipe.Columns[colS1].HeaderCell.Style.BackColor = System.Drawing.Color.White;
+
+            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 [ ] "); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 Variacion");
+
+            var colS2 = dgvCorrectiveRecipe.Columns.Add("colSpace2", "");
+            dgvCorrectiveRecipe.Columns[colS2].Width = 15;
+            dgvCorrectiveRecipe.Columns[colS2].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            dgvCorrectiveRecipe.Columns[colS2].DefaultCellStyle.BackColor = System.Drawing.Color.White;
+            dgvCorrectiveRecipe.Columns[colS2].HeaderCell.Style.BackColor = System.Drawing.Color.White;
+
+            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 [ ] "); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 Variacion");
 
             string[] colsVar = { "colR1_Var", "colR2_Var", "colR3_Var" };
-            foreach (var c in new[] { "colR1_Con", "colR2_Con", "colR3_Con" }) dgvCorrectiveRecipe.Columns[c].DefaultCellStyle.Format = "N5";
             foreach (var p in new[] { "colR1_Part", "colR2_Part", "colR3_Part" }) dgvCorrectiveRecipe.Columns[p].DefaultCellStyle.Format = "P1";
 
             foreach (var v in colsVar)
@@ -718,47 +782,56 @@ namespace Color
                 sumaVariacionR3 += varR3;
 
                 // R1
-                dgvCorrectiveRecipe.Rows[idx].Cells["colR1_Con"].Value = r1;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colR1_Con"].Value = r1.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR1_Part"].Value = totalR1 > 0 ? r1 / totalR1 : 0;
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR1_Var"].Value = varR1;
 
                 // R2
-                dgvCorrectiveRecipe.Rows[idx].Cells["colR2_Con"].Value = r2;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colR2_Con"].Value = r2.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR2_Part"].Value = totalR2 > 0 ? r2 / totalR2 : 0;
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR2_Var"].Value = varR2;
 
                 // R3
-                dgvCorrectiveRecipe.Rows[idx].Cells["colR3_Con"].Value = r3;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colR3_Con"].Value = r3.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR3_Part"].Value = totalR3 > 0 ? r3 / totalR3 : 0;
                 dgvCorrectiveRecipe.Rows[idx].Cells["colR3_Var"].Value = varR3;
 
                 foreach (var col in colsVar)
                 {
-                    dgvCorrectiveRecipe.Rows[idx].Cells[col].Style.ForeColor = System.Drawing.Color.Black;
+                    dgvCorrectiveRecipe.Rows[idx].Cells[col].Style.ForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+                    dgvCorrectiveRecipe.Rows[idx].Cells[col].Style.SelectionForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
                     dgvCorrectiveRecipe.Rows[idx].Cells[col].Style.Font = new System.Drawing.Font(dgvCorrectiveRecipe.Font, System.Drawing.FontStyle.Bold);
                 }
             }
 
-            // 3. FILA TOTAL CON VARIACIÓN NETAS GLOBAL ALGEBRAICA (=+D57/D11-1)
+            // 3. FILA TOTAL CON VARIACIÓN ALGEBRAICA (=+D57/D11-1)
             int totalIdx = dgvCorrectiveRecipe.Rows.Add();
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colColorante"].Value = "TOTAL";
 
-            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Con"].Value = totalR1;
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Con"].Value = totalR1.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Part"].Value = 1.00;
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR1_Var"].Value = Math.Abs(totalOriginalBase > 0 ? (totalR1 / totalOriginalBase) - 1.0 : 0);
 
-            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR2_Con"].Value = totalR2;
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR2_Con"].Value = totalR2.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR2_Part"].Value = 1.00;
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR2_Var"].Value = Math.Abs(totalOriginalBase > 0 ? (totalR2 / totalOriginalBase) - 1.0 : 0);
 
-            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR3_Con"].Value = totalR3;
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR3_Con"].Value = totalR3.ToString("0.00000", CultureInfo.InvariantCulture) + "%";
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR3_Part"].Value = 1.00;
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colR3_Var"].Value = Math.Abs(totalOriginalBase > 0 ? (totalR3 / totalOriginalBase) - 1.0 : 0);
 
             dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.Font = new System.Drawing.Font(dgvCorrectiveRecipe.Font, System.Drawing.FontStyle.Bold);
-            dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.BackColor = System.Drawing.Color.White;
+            dgvCorrectiveRecipe.Rows[totalIdx].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colSpace1"].Style.BackColor = System.Drawing.Color.White;
+            dgvCorrectiveRecipe.Rows[totalIdx].Cells["colSpace2"].Style.BackColor = System.Drawing.Color.White;
 
-            foreach (var col in colsVar) dgvCorrectiveRecipe.Rows[totalIdx].Cells[col].Style.ForeColor = System.Drawing.Color.Black;
+            foreach (var col in colsVar)
+            {
+                dgvCorrectiveRecipe.Rows[totalIdx].Cells[col].Style.ForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+                dgvCorrectiveRecipe.Rows[totalIdx].Cells[col].Style.SelectionForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
+            }
+            dgvCorrectiveRecipe.ClearSelection();
         }
 
         private void UpdateChart(EngineRes res)
@@ -798,7 +871,7 @@ namespace Color
                 if (conOriginales.Count > 0 && (resPrincipal.RecetaR1_Luminosidad == null || resPrincipal.RecetaR1_Luminosidad.Count == 0))
                     EngineCalc.CalcularNuevasRecetasMaestras(resPrincipal, conOriginales);
 
-                // 2. GUARDAR EN SQL SERVER (ESTRUCTURA EXACTA CLIENTE V4)
+                // 2. GUARDAR EN SQL SERVER 
                 bool guardadoSQL = false;
                 try
                 {
