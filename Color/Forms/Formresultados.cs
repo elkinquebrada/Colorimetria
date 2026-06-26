@@ -458,59 +458,6 @@ namespace Color
             return new Button { Text = text, Size = new Size(130, 35), BackColor = color, ForeColor = System.Drawing.Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
         }
 
-        private void AddBrandingLogo()
-        {
-            try
-            {
-                string finalPath = null;
-                string currentDir = AppDomain.CurrentDomain.BaseDirectory;
-
-                // Búsqueda dinámica en bucle ascendente de directorios
-                for (int i = 0; i < 5; i++)
-                {
-                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
-                    if (File.Exists(candidate)) { finalPath = candidate; break; }
-                    currentDir = Path.GetDirectoryName(currentDir);
-                    if (string.IsNullOrEmpty(currentDir)) break;
-                }
-
-                if (!string.IsNullOrEmpty(finalPath))
-                {
-                    // Buscar la barra de logo creada en InitializeComponents
-                    var pnlLogoStrip = this.Controls.OfType<Panel>()
-                        .FirstOrDefault(p => p.Dock == DockStyle.Top && p.Height == 50);
-
-                    if (pnlLogoStrip != null)
-                    {
-                        var logo = new PictureBox
-                        {
-                            Image = Image.FromFile(finalPath),
-                            SizeMode = PictureBoxSizeMode.Zoom,
-                            Width = 130,
-                            Height = 44,
-
-                            // Anclado a la derecha dentro de la barra fija
-                            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                            BackColor = System.Drawing.Color.White,
-                            Location = new Point(pnlLogoStrip.Width - 136, 3)
-                        };
-
-                        // Reposicionar el logo dentro de la barra cuando el formulario se redimensiona
-                        this.Resize += (s, e) =>
-                        {
-                            logo.Location = new Point(pnlLogoStrip.Width - 136, 3);
-                        };
-
-                        pnlLogoStrip.Controls.Add(logo);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-
-            }
-        }
-
         private void PopulateFromObjects(ShadeExtractionResult shadeData, List<EngineRes> results)
         {
             // LEER LAS TOLERANCIAS ELEGIDAS POR EL USUARIO DESDE EL ORIGEN DE CONFIGURACIÓN
@@ -726,9 +673,9 @@ namespace Color
             dgvCorrectiveRecipe.Columns.Clear();
 
             dgvCorrectiveRecipe.Columns.Add("colColorante", " Colorante");
-            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "Variacion");
-            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "Variacion");
-            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "Variacion");
+            dgvCorrectiveRecipe.Columns.Add("colR1_Con", "R1 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR1_Part", "R1 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR1_Var", "R1 Variacion");
+            dgvCorrectiveRecipe.Columns.Add("colR2_Con", "R2 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR2_Part", "R2 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR2_Var", "R2 Variacion");
+            dgvCorrectiveRecipe.Columns.Add("colR3_Con", "R3 [ ]. "); dgvCorrectiveRecipe.Columns.Add("colR3_Part", "R3 Proportion."); dgvCorrectiveRecipe.Columns.Add("colR3_Var", "R3 Variacion");
 
             string[] colsVar = { "colR1_Var", "colR2_Var", "colR3_Var" };
             foreach (var c in new[] { "colR1_Con", "colR2_Con", "colR3_Con" }) dgvCorrectiveRecipe.Columns[c].DefaultCellStyle.Format = "N5";
@@ -907,8 +854,6 @@ namespace Color
                 }
 
                 string msg = "Análisis guardado exitosamente.\n";
-                if (guardadoSQL) msg += "✔ Sincronizado con SQL Server (Estructura V4).\n";
-                msg += $"✔ {registrosGuardadosCsv} registro(s) escritos en archivo de respaldo.";
 
                 MessageBox.Show(msg, "Guardado exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -979,7 +924,7 @@ namespace Color
                             };
 
                             pd.Print();
-                            MessageBox.Show(this, "Archivo PDF guardado exitosamente en:\n" + sfd.FileName, "Guardado Directo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show( "Archivo PDF guardado exitosamente" );
                         }
                     }
                 }

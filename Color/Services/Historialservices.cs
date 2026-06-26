@@ -16,9 +16,6 @@ namespace Color.Services
 
         // Cadena de conexión - Ajustada tras validación exitosa en (localdb)\MSSQLLocalDB
         private static string connectionString = @"Server=(localdb)\MSSQLLocalDB;Database=ColorimetriaDB;Trusted_Connection=True;Connect Timeout=5;";
-        // Alternativas:
-        // private static string connectionString = @"Server=.;Database=ColorimetriaDB;Trusted_Connection=True;";
-        // private static string connectionString = @"Server=(localdb)\MSSQLLocalDB;Database=ColorimetriaDB;Trusted_Connection=True;";
 
         // PERSISTENCIA INDUSTRIAL (SQL SERVER V4)
         public static bool GuardarAnalisisCompleto(
@@ -64,12 +61,6 @@ namespace Color.Services
                             }
 
                             // 2. Insertar Detalle (Colorantes y sus 3 recetas)
-                            // Usamos un solo resultado (normalmente D65 o el principal) para las recetas correctivas
-                            // En FormResultados se usa 'res' que suele ser el principal. 
-                            // Aquí asumiremos que el llamador ya calculó las recetas en uno de los objetos EngineRes.
-                            
-                            // Usaremos resTL84 como referencia si resA es nulo para las recetas, 
-                            // pero lo ideal es que el llamador pase el objeto que tiene las recetas calculadas.
                             var resRecetas = resTL84 ?? resA;
 
                             if (recetaOriginal != null && resRecetas != null && resRecetas.RecetaR1_Luminosidad != null)
