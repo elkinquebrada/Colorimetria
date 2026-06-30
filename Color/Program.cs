@@ -10,6 +10,9 @@ namespace Color
         [STAThread]
         static void Main()
         {
+            // Fix for ClickOnce paths with native DLLs like Tesseract
+            Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            
             // Habilita los estilos visuales modernos (temas de Windows) para la aplicación.
             Application.EnableVisualStyles();
 
