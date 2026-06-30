@@ -166,54 +166,54 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="big_data\ExcelReader.cs" />
-    <Compile Include="big_data\ExcelWriter.cs" />
-    <Compile Include="big_data\ReportExtractor.cs" />
-    <Compile Include="Services\ColorimetriaApiClient.cs" />
-    <Compile Include="Services\Colorimetriccalculator.cs" />
-    <Compile Include="extractors\Dataextraxtor.cs" />
-    <Compile Include="extractors\Formconfirmacionocr.cs">
+    <Compile Include="Data\big_data\ExcelReader.cs" />
+    <Compile Include="Data\big_data\ExcelWriter.cs" />
+    <Compile Include="Data\big_data\ReportExtractor.cs" />
+    <Compile Include="Src\Services\ColorimetriaApiClient.cs" />
+    <Compile Include="Src\Services\Colorimetriccalculator.cs" />
+    <Compile Include="Src\extractors\Dataextraxtor.cs" />
+    <Compile Include="Src\extractors\Formconfirmacionocr.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="extractors\DynamicSplitGridExtractor.cs" />
-    <Compile Include="extractors\Opencvtabledetector.cs" />
-    <Compile Include="extractors\ShadeReportExtractor.cs" />
-    <Compile Include="Forms\Form1.cs">
+    <Compile Include="Src\extractors\DynamicSplitGridExtractor.cs" />
+    <Compile Include="Src\extractors\Opencvtabledetector.cs" />
+    <Compile Include="Src\extractors\ShadeReportExtractor.cs" />
+    <Compile Include="Presentation\Forms\Form1.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\Form1.Designer.cs">
+    <Compile Include="Presentation\Forms\Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormHistorial.cs">
+    <Compile Include="Presentation\Forms\FormHistorial.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormHistorial.Designer.cs">
+    <Compile Include="Presentation\Forms\FormHistorial.Designer.cs">
       <DependentUpon>FormHistorial.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\Formresultados.cs">
+    <Compile Include="Presentation\Forms\Formresultados.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\FormGraficoCielab.cs">
+    <Compile Include="Presentation\Forms\FormGraficoCielab.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\CielabChartControl.cs">
+    <Compile Include="Presentation\Forms\CielabChartControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Forms\IluminantReportBlock.cs">
+    <Compile Include="Presentation\Forms\IluminantReportBlock.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Services\Historialservices.cs" />
+    <Compile Include="Src\Services\Historialservices.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\RecipeCorrector.cs" />
-    <Compile Include="Services\ColorDecisionEngine.cs" />
-    <Compile Include="Services\ReportFormatRouter.cs" />
-    <Compile Include="Models\TextileMetadata.cs" />
-    <Compile Include="Services\TextileMetadataExtractor.cs" />
-    <Compile Include="Tolerancias\FormConfigTolerancias.cs">
+    <Compile Include="Src\Services\RecipeCorrector.cs" />
+    <Compile Include="Src\Services\ColorDecisionEngine.cs" />
+    <Compile Include="Src\Services\ReportFormatRouter.cs" />
+    <Compile Include="Data\Models\TextileMetadata.cs" />
+    <Compile Include="Src\Services\TextileMetadataExtractor.cs" />
+    <Compile Include="Data\Tolerancias\FormConfigTolerancias.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Tolerancias\FormConfigTolerancias.Designer.cs">
+    <Compile Include="Data\Tolerancias\FormConfigTolerancias.Designer.cs">
       <DependentUpon>FormConfigTolerancias.cs</DependentUpon>
     </Compile>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -226,12 +226,12 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <None Include="Color_TemporaryKey.pfx" />
-    <None Include="LogicDocs\App.config" />
-    <Content Include="LogicDocs\formulas y funciones .xlsx">
+    <None Include="Src\LogicDocs\App.config" />
+    <Content Include="Src\LogicDocs\formulas y funciones .xlsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <None Include="LogicDocs\GUIA_INTEGRACION.md" />
-    <None Include="LogicDocs\packages.config" />
+    <None Include="Src\LogicDocs\GUIA_INTEGRACION.md" />
+    <None Include="Src\LogicDocs\packages.config" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -242,11 +242,11 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Content Include="LogicDocs\Coats_logo.svg.png" />
-    <Content Include="tesdata\spa.traineddata">
+    <Content Include="Src\LogicDocs\Coats_logo.svg.png" />
+    <Content Include="Data\tesdata\spa.traineddata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="tesdata\eng.traineddata">
+    <Content Include="Data\tesdata\eng.traineddata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="..\packages\Tesseract.5.2.0\x64\leptonica-1.82.0.dll">
