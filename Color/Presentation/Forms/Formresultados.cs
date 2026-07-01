@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Color.Services;
 using Color.Models;
 using System;
@@ -513,25 +513,7 @@ namespace Color
                         double p = total > 0 ? (val / total * 100) : 0;
                         int idx = dgvShadeHistory.Rows.Add(ing.Code, ing.Name, val.ToString("0.00000", CultureInfo.InvariantCulture) + "%", ((int)Math.Round(p)).ToString() + "%");
                         
-                        string nameUpper = (ing.Name ?? "").ToUpper();
-                        System.Drawing.Color dyeColor = System.Drawing.Color.Black;
-                        
-                        if (nameUpper.Contains("RED") || nameUpper.Contains("RUBINE") || nameUpper.Contains("SCARLET") || nameUpper.Contains("CRIMSON") || nameUpper.Contains("PINK") || nameUpper.Contains("ROSE") || nameUpper.Contains("BORDEAUX"))
-                            dyeColor = System.Drawing.Color.Red;
-                        else if (nameUpper.Contains("BLU") || nameUpper.Contains("NAVY") || nameUpper.Contains("CYAN") || nameUpper.Contains("TURQUOISE") || nameUpper.Contains("ROYAL"))
-                            dyeColor = System.Drawing.Color.DodgerBlue;
-                        else if (nameUpper.Contains("YELLOW") || nameUpper.Contains("GOLDEN") || nameUpper.Contains("LEMON") || nameUpper.Contains("GOLD"))
-                            dyeColor = System.Drawing.Color.DarkGoldenrod;
-                        else if (nameUpper.Contains("GREEN") || nameUpper.Contains("OLIVE") || nameUpper.Contains("LIME"))
-                            dyeColor = System.Drawing.Color.Green;
-                        else if (nameUpper.Contains("BLACK") || nameUpper.Contains("GREY") || nameUpper.Contains("GRAY") || nameUpper.Contains("CARBON"))
-                            dyeColor = System.Drawing.Color.Black;
-                        else if (nameUpper.Contains("BROWN") || nameUpper.Contains("CHOCOLATE") || nameUpper.Contains("EARTH"))
-                            dyeColor = System.Drawing.Color.SaddleBrown;
-                        else if (nameUpper.Contains("ORANGE") || nameUpper.Contains("CORAL"))
-                            dyeColor = System.Drawing.Color.DarkOrange;
-                        else if (nameUpper.Contains("VIOLET") || nameUpper.Contains("PURPLE") || nameUpper.Contains("MAGENTA"))
-                            dyeColor = System.Drawing.Color.Purple;
+                        System.Drawing.Color dyeColor = GetDyeColor(ing.Name);
 
                         dgvShadeHistory.Rows[idx].Cells[1].Style.ForeColor = dyeColor;
                         dgvShadeHistory.Rows[idx].Cells[1].Style.SelectionForeColor = dyeColor;
@@ -777,7 +759,14 @@ namespace Color
                 double r2 = res.RecetaR2_Croma[i];
                 double r3 = res.RecetaR3_Tono[i];
 
-                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Value = _shadeData.Recipe[i].Name;
+                string dyeName = _shadeData.Recipe[i].Name;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Value = dyeName;
+
+                // Colorear el nombre del colorante según su tipo
+                System.Drawing.Color dyeColor = GetDyeColor(dyeName);
+                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Style.ForeColor = dyeColor;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Style.SelectionForeColor = dyeColor;
+                dgvCorrectiveRecipe.Rows[idx].Cells["colColorante"].Style.SelectionBackColor = System.Drawing.Color.White;
 
                 double varR1 = Math.Abs((orig > 0) ? ((r1 / orig) - 1.0) : 0.0);
                 double varR2 = Math.Abs((orig > 0) ? ((r2 / orig) - 1.0) : 0.0);
@@ -838,6 +827,33 @@ namespace Color
                 dgvCorrectiveRecipe.Rows[totalIdx].Cells[col].Style.SelectionForeColor = System.Drawing.Color.FromArgb(150, 150, 150);
             }
             dgvCorrectiveRecipe.ClearSelection();
+        }
+
+        /// Devuelve el color de texto apropiado para un nombre de colorante
+        /// basándose en palabras clave de color industriales reconocidas.
+        private static System.Drawing.Color GetDyeColor(string dyeName)
+        {
+            if (string.IsNullOrEmpty(dyeName)) return System.Drawing.Color.Black;
+            string n = dyeName.ToUpper();
+
+            if (n.Contains("RED") || n.Contains("RUBINE") || n.Contains("SCARLET") || n.Contains("CRIMSON") || n.Contains("PINK") || n.Contains("ROSE") || n.Contains("BORDEAUX"))
+                return System.Drawing.Color.Red;
+            if (n.Contains("BLU") || n.Contains("NAVY") || n.Contains("CYAN") || n.Contains("TURQUOISE") || n.Contains("ROYAL"))
+                return System.Drawing.Color.DodgerBlue;
+            if (n.Contains("YELLOW") || n.Contains("GOLDEN") || n.Contains("LEMON") || n.Contains("GOLD"))
+                return System.Drawing.Color.DarkGoldenrod;
+            if (n.Contains("GREEN") || n.Contains("OLIVE") || n.Contains("LIME"))
+                return System.Drawing.Color.Green;
+            if (n.Contains("BLACK") || n.Contains("GREY") || n.Contains("GRAY") || n.Contains("CARBON"))
+                return System.Drawing.Color.Black;
+            if (n.Contains("BROWN") || n.Contains("CHOCOLATE") || n.Contains("EARTH"))
+                return System.Drawing.Color.SaddleBrown;
+            if (n.Contains("ORANGE") || n.Contains("CORAL"))
+                return System.Drawing.Color.DarkOrange;
+            if (n.Contains("VIOLET") || n.Contains("PURPLE") || n.Contains("MAGENTA"))
+                return System.Drawing.Color.Purple;
+
+            return System.Drawing.Color.Black;
         }
 
         private void UpdateChart(EngineRes res)
