@@ -57,7 +57,7 @@ namespace Color
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Fondo con degradado profesional
+            // Fondo con degradado 
             using (LinearGradientBrush backBrush = new LinearGradientBrush(this.ClientRectangle,
                 System.Drawing.Color.FromArgb(252, 252, 254),
                 System.Drawing.Color.FromArgb(240, 242, 248), 45f))

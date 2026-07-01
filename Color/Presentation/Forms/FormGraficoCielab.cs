@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
@@ -17,29 +17,33 @@ namespace Color
             double absL = 50, double absA = 0, double absB = 0)
         {
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             
-            // Asignación de datos (Deltas)
+            // Asignacion de datos (Deltas)
             chartFull.DeltaL = dL;
             chartFull.DeltaA = dA;
             chartFull.DeltaB = dB;
             chartFull.DeltaE = dE;
             chartFull.ToleranceDE = tolerance;
 
-            chartFull.Title = "Grafico de Desviación de Color (CIELAB)";
+            chartFull.Title = "Grafico de Desviacion de Color (CIELAB)";
             chartFull.InstructionMessage = advice;
 
-            // Inmersión de Datos (Valores Absolutos)
+            // Inmersion de Datos (Valores Absolutos)
             chartFull.AbsoluteL = absL;
             chartFull.AbsoluteA = absA;
             chartFull.AbsoluteB = absB;
             
-            // Inmersión de Datos Lote (Requerido por nueva UI)
+            // Inmersion de Datos Lote (Requerido por nueva UI)
             chartFull.LotL = absL + dL;
             chartFull.LotA = absA + dA;
             chartFull.LotB = absB + dB;
             
             txtAdvice.Text = advice;
-            lblTitle.Text = $"Análisis Grafico — Lote vs Estándar";
+            lblTitle.Text = $"Analiisis Grafico â€” Lote vs Estandar";
             AddBrandingLogo();
         }
 
@@ -84,7 +88,7 @@ namespace Color
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.BackColor = System.Drawing.Color.FromArgb(245, 245, 250);
 
-            // Cabecera (Título Premium)
+            // Cabecera 
             lblTitle = new Label
             {
                 Dock = DockStyle.Top,
@@ -93,7 +97,7 @@ namespace Color
                 TextAlign = ContentAlignment.MiddleCenter,
                 BackColor = System.Drawing.Color.FromArgb(20, 40, 80),
                 ForeColor = System.Drawing.Color.White,
-                Text = "Análisis de Colorimetría"
+                Text = "Analisis de Colorimetria"
             };
 
             // Barra de controles superior
@@ -120,7 +124,7 @@ namespace Color
             };
             pnlControls.Controls.Add(chkViewMode);
 
-            // Pie (Contenedor de botón)
+            // Pie (Contenedor de boton)
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 70, BackColor = System.Drawing.Color.FromArgb(230, 230, 235) };
             btnClose = new Button
             {
@@ -160,7 +164,7 @@ namespace Color
                 btnSave.Top = (pnlBottom.Height - btnSave.Height) / 2;
             };
 
-            // Área Central con SplitContainer
+            // Area Central con SplitContainer
             var split = new SplitContainer
             {
                 Dock = DockStyle.Fill,
@@ -210,7 +214,7 @@ namespace Color
             using (SaveFileDialog sfd = new SaveFileDialog())
             {
                 sfd.Filter = "Imagen PNG (*.png)|*.png|Imagen JPEG (*.jpg)|*.jpg";
-                sfd.Title = "Guardar Diagnóstico CIELAB";
+                sfd.Title = "Guardar Diagnostico CIELAB";
                 sfd.FileName = "Diagnostico_CIELAB.png";
 
                 if (sfd.ShowDialog() == DialogResult.OK)
@@ -219,7 +223,7 @@ namespace Color
                     {
                         using (Bitmap bmp = new Bitmap(this.Width, this.Height))
                         {
-                            // Captura toda la ventana con la gráfica completa e información.
+                            // Captura toda la ventana con la grafica completa e informacion.
                             this.DrawToBitmap(bmp, new Rectangle(0, 0, this.Width, this.Height));
                             
                             var format = sfd.FileName.EndsWith(".jpg") ? 

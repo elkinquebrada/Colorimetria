@@ -1,4 +1,4 @@
-using Color;
+﻿using Color;
 using Color.Services;
 using System;
 using System.Collections.Generic;
@@ -28,7 +28,7 @@ namespace Colorimetria
         private OcrReport _report;
         private ShadeExtractionResult _shadeResult;
 
-        // ===== Pipeline de extracción (para procesamiento asíncrono) =====
+        // ===== Pipeline de extracciÃ³n (para procesamiento asÃ­ncrono) =====
         private string _lastImagePath;  
         private readonly string pathTessData = @".\tessdata";
 
@@ -60,11 +60,15 @@ namespace Colorimetria
                 ? _report.Measures : new List<ColorimetricRow>();
 
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             LoadData();
             HookSizingEvents();
             AddBrandingLogo();
 
-            // ===== Minimización diferida del MainForm =====
+            // ===== MinimizaciÃ³n diferida del MainForm =====
             this.Load += FormConfirmacionOCR_Load;
         }
 
@@ -105,13 +109,17 @@ namespace Colorimetria
         {
             if (extractor == null) throw new ArgumentNullException("extractor");
             if (string.IsNullOrWhiteSpace(imagePath)) throw new ArgumentNullException("imagePath");
-            if (!System.IO.File.Exists(imagePath)) throw new System.IO.FileNotFoundException("No se encontró la imagen", imagePath);
+            if (!System.IO.File.Exists(imagePath)) throw new System.IO.FileNotFoundException("No se encontrÃ³ la imagen", imagePath);
 
             _report = extractor.ExtractReportFromFile(imagePath);
             _rows = (_report != null && _report.Measures != null)
                 ? _report.Measures : new List<ColorimetricRow>();
 
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             LoadData();
             HookSizingEvents();
             AddBrandingLogo();
@@ -129,6 +137,10 @@ namespace Colorimetria
             Color.ShadeReportExtractor.LastResult = shadeResult;
 
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             LoadData();
             HookSizingEvents();
             AddBrandingLogo();
@@ -141,6 +153,10 @@ namespace Colorimetria
             _rows = _report.Measures ?? new List<ColorimetricRow>();
 
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             LoadData();
             HookSizingEvents();
             AddBrandingLogo();
@@ -148,20 +164,24 @@ namespace Colorimetria
             this.Load += FormConfirmacionOCR_Load;
         }
 
-        [Obsolete("Usa los constructores con OcrReport o con extractor+imagen para ver también la CMC(2:1).")]
+        [Obsolete("Usa los constructores con OcrReport o con extractor+imagen para ver tambiÃ©n la CMC(2:1).")]
         public FormConfirmacionOCR(List<ColorimetricRow> rows)
         {
             _rows = rows ?? new List<ColorimetricRow>();
             _report = null;
 
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             LoadData();
             HookSizingEvents();
 
             this.Load += FormConfirmacionOCR_Load;
         }
         // =========================================================
-        //  Load → mostrar delante y minimizar MainForm
+        //  Load â†’ mostrar delante y minimizar MainForm
         // =========================================================
         private void FormConfirmacionOCR_Load(object sender, EventArgs e)
         {
@@ -182,7 +202,7 @@ namespace Colorimetria
             // ---- Ventana y escalado ----
             this.Text = "TINT COATS CADENA";
 
-            // Barra estándar con min/max y redimensionamiento
+            // Barra estÃ¡ndar con min/max y redimensionamiento
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = true;
@@ -198,10 +218,10 @@ namespace Colorimetria
             this.WindowState = FormWindowState.Maximized;
             this.ResizeRedraw = true;
 
-            // ---- Títulos ----
+            // ---- TÃ­tulos ----
             lblTitulo = new Label
             {
-                Text = "DATOS EXTRAÍDOS POR OCR",
+                Text = "DATOS EXTRAÃDOS POR OCR",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 ForeColor = SysColor.White,
                 AutoSize = false,
@@ -218,18 +238,18 @@ namespace Colorimetria
                 Location = new Point(20, 45)
             };
 
-            // ---- TabControl con una sola pestaña ("Combinado") ----
+            // ---- TabControl con una sola pestaÃ±a ("Combinado") ----
             tabControl = new TabControl
             {
                 Location = new Point(20, 75),
                 Font = new Font("Segoe UI", 9)
             };
-            var tabCombined = new TabPage("📎 REPORTES")
+            var tabCombined = new TabPage("ðŸ“Ž REPORTES")
             {
                 BackColor = SysColor.White
             };
 
-            // Layout pestaña Combinado: 6 filas (2 títulos + 4 grillas)
+            // Layout pestaÃ±a Combinado: 6 filas (2 tÃ­tulos + 4 grillas)
             var tlp = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -246,7 +266,7 @@ namespace Colorimetria
             tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 24f));   
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
-            // Fila 0: Título "DATOS DE MEDICIÓN"
+            // Fila 0: TÃ­tulo "DATOS DE MEDICIÃ“N"
             var lblDatosMedicion = new Label
             {
                 Text = "PASS / FAIL (LOTE)",
@@ -269,7 +289,7 @@ namespace Colorimetria
             dgvCmc.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvCmc, 0, 2);
 
-            // Fila 3: Título "DATOS DE RECETA"
+            // Fila 3: TÃ­tulo "DATOS DE RECETA"
             lblDatosReceta = new Label
             {
                 Text = "SHADE HISTORY REPORT (RECETA)",
@@ -282,7 +302,7 @@ namespace Colorimetria
             };
             tlp.Controls.Add(lblDatosReceta, 0, 3);
 
-            // Fila 4: Receta (Código / Nombre / %)
+            // Fila 4: Receta (CÃ³digo / Nombre / %)
             dgvReceta = BuildRecetaGrid();
             dgvReceta.Dock = DockStyle.Fill;
             tlp.Controls.Add(dgvReceta, 0, 4);
@@ -295,7 +315,7 @@ namespace Colorimetria
             tabCombined.Controls.Add(tlp);
             tabControl.TabPages.Add(tabCombined);
 
-            // txtRaw se mantiene solo para exportación, no se muestra en UI
+            // txtRaw se mantiene solo para exportaciÃ³n, no se muestra en UI
             txtRaw = new TextBox { Multiline = true, Visible = false };
 
             // ---- Botones y etiquetas inferiores ----
@@ -330,7 +350,7 @@ namespace Colorimetria
 
             btnRegresar = new Button
             {
-                Text = "↩ Regresar",
+                Text = "â†© Regresar",
                 Size = new Size(150, 40),
                 BackColor = SysColor.FromArgb(200, 110, 0),
                 ForeColor = SysColor.White,
@@ -357,7 +377,7 @@ namespace Colorimetria
                 AutoSize = true
             };
 
-            // Posicionar controles inferiores según tamaño actual
+            // Posicionar controles inferiores segÃºn tamaÃ±o actual
             PositionBottomControls();
 
             // Agregar a la ventana
@@ -374,7 +394,7 @@ namespace Colorimetria
             this.ResumeLayout(false);
         }
 
-        // Reposiciona botones y etiquetas al cambiar tamaño
+        // Reposiciona botones y etiquetas al cambiar tamaÃ±o
         private void PositionBottomControls()
         {
             int margin = 20;
@@ -386,7 +406,7 @@ namespace Colorimetria
             if (btnConfirmar != null && btnCancelar != null)
                 btnConfirmar.Location = new Point(btnCancelar.Left - 10 - btnConfirmar.Width, bottomY);
 
-            // Botón Regresar a la izquierda
+            // BotÃ³n Regresar a la izquierda
             if (btnRegresar != null) btnRegresar.Location = new Point(margin, bottomY);
 
             // Labels entre Regresar y botones derecha
@@ -409,7 +429,7 @@ namespace Colorimetria
 
         private void HookSizingEvents()
         {
-            // Aplica proporción del divisor al cargar y cada vez que cambie el tamaño
+            // Aplica proporciÃ³n del divisor al cargar y cada vez que cambie el tamaÃ±o
             this.Load += (s, e) => { ApplySplitRatio(); };
             this.Resize += (s, e) =>
             {
@@ -461,7 +481,7 @@ namespace Colorimetria
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "A", HeaderText = "a*", DataPropertyName = "A" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "B", HeaderText = "b*", DataPropertyName = "B" });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Chroma", HeaderText = "Chroma", DataPropertyName = "Chroma" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Hue", HeaderText = "Hue°", DataPropertyName = "Hue" });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Hue", HeaderText = "HueÂ°", DataPropertyName = "Hue" });
 
             DataGridViewColumn col;
             col = dgv.Columns["L"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -525,7 +545,7 @@ namespace Colorimetria
             col = dgv.Columns["Deltadb"]; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             col = dgv.Columns["DeltaCMC"]; col.ValueType = typeof(double); col.DefaultCellStyle.Format = "0.00"; col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
-            // Mantener números en una sola línea
+            // Mantener nÃºmeros en una sola lÃ­nea
             dgv.Columns["Illuminant"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             dgv.Columns["Deltadl"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             dgv.Columns["Deltada"].DefaultCellStyle.WrapMode = DataGridViewTriState.False;
@@ -555,7 +575,7 @@ namespace Colorimetria
                 {
                     var d65Std = _report.Measures.Find(m => m.Illuminant == "D65" && m.Type == "Std");
 
-                    // Priorizar los valores del reporte si existen. Solo sincronizar si están vacíos.
+                    // Priorizar los valores del reporte si existen. Solo sincronizar si estÃ¡n vacÃ­os.
                     if (d65Std != null && string.IsNullOrWhiteSpace(_shadeResult.StdL))
                     {
                         _shadeResult.StdL = d65Std.L.ToString("F2", CultureInfo.InvariantCulture);
@@ -571,7 +591,7 @@ namespace Colorimetria
             txtRaw.Text = BuildTextView();
         }
 
-        // ── Métodos de refresco de grillas (invocan los loaders existentes) ────
+        // â”€â”€ MÃ©todos de refresco de grillas (invocan los loaders existentes) â”€â”€â”€â”€
 
         private void LoadMeasuresSection()
         {
@@ -601,7 +621,7 @@ namespace Colorimetria
             dgvData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
             dgvData.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            // Pesos/mínimos
+            // Pesos/mÃ­nimos
             dgvData.Columns["Illuminant"].FillWeight = 85f; dgvData.Columns["Illuminant"].MinimumWidth = 90;
             dgvData.Columns["Type"].FillWeight = 70f; dgvData.Columns["Type"].MinimumWidth = 70;
             dgvData.Columns["L"].FillWeight = 80f; dgvData.Columns["L"].MinimumWidth = 80;
@@ -610,7 +630,7 @@ namespace Colorimetria
             dgvData.Columns["Chroma"].FillWeight = 95f; dgvData.Columns["Chroma"].MinimumWidth = 90;
             dgvData.Columns["Hue"].FillWeight = 70f; dgvData.Columns["Hue"].MinimumWidth = 70;
 
-            // Filas: números en una línea
+            // Filas: nÃºmeros en una lÃ­nea
             dgvData.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
         }
 
@@ -624,7 +644,7 @@ namespace Colorimetria
                 CmcDifferenceRow r = cmc[i];
                 object cmcVal = r.DeltaCMC.HasValue ? (object)r.DeltaCMC.Value : null;
 
-                // ETAPA : Formato idéntico al reporte (Valor Etiqueta) sin paréntesis
+                // ETAPA : Formato idÃ©ntico al reporte (Valor Etiqueta) sin parÃ©ntesis
                 string tagL = !string.IsNullOrWhiteSpace(r.LightnessFlagOcr) ? r.LightnessFlagOcr : r.LightnessFlag;
                 string tagC = !string.IsNullOrWhiteSpace(r.ChromaFlagOcr) ? r.ChromaFlagOcr : r.ChromaFlag;
                 string tagH = !string.IsNullOrWhiteSpace(r.HueFlagOcr) ? r.HueFlagOcr : r.HueFlag;
@@ -652,7 +672,7 @@ namespace Colorimetria
             // 1) Mide por contenido visible
             dgvCmc.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
 
-            // 2) Rellenar con Fill equilibrando pesos y mínimos
+            // 2) Rellenar con Fill equilibrando pesos y mÃ­nimos
             dgvCmc.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvCmc.Columns["Illuminant"].FillWeight = 80f; dgvCmc.Columns["Illuminant"].MinimumWidth = 90;
             dgvCmc.Columns["Deltadl"].FillWeight = 70f; dgvCmc.Columns["Deltadl"].MinimumWidth = 90;
@@ -660,7 +680,7 @@ namespace Colorimetria
             dgvCmc.Columns["Deltadb"].FillWeight = 70f; dgvCmc.Columns["Deltadb"].MinimumWidth = 80;
             dgvCmc.Columns["DeltaCMC"].FillWeight = 110f; dgvCmc.Columns["DeltaCMC"].MinimumWidth = 130;
 
-            // 3) Alto automático por celdas mostradas 
+            // 3) Alto automÃ¡tico por celdas mostradas 
             dgvCmc.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
         }
 
@@ -669,13 +689,13 @@ namespace Colorimetria
             if (e.RowIndex < 0 || e.Value == null) return;
             string colName = dgvCmc.Columns[e.ColumnIndex].Name;
 
-            // Columnas de interés para alerta visual
+            // Columnas de interÃ©s para alerta visual
             if (colName == "Deltadl" || colName == "Deltada" || colName == "Deltadb" || colName == "DeltaCMC")
             {
                 double val = 0;
                 string strVal = e.Value.ToString();
                 
-                // Extraer número para comparación de límite (0.25)
+                // Extraer nÃºmero para comparaciÃ³n de lÃ­mite (0.25)
                 string numPart = Regex.Match(strVal.Replace(',', '.'), @"\-?\d+\.?\d*").Value;
                 if (double.TryParse(numPart, NumberStyles.Any, CultureInfo.InvariantCulture, out val))
                 {
@@ -704,22 +724,22 @@ namespace Colorimetria
         {
             var sb = new System.Text.StringBuilder();
 
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
-            sb.AppendLine(" DATOS COLORIMÉTRICOS EXTRAÍDOS (OCR)");
+            sb.AppendLine("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+            sb.AppendLine(" DATOS COLORIMÃ‰TRICOS EXTRAÃDOS (OCR)");
             sb.AppendLine(string.Format(" Fecha: {0:dd/MM/yyyy HH:mm:ss}", DateTime.Now));
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
+            sb.AppendLine("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
             sb.AppendLine();
             sb.AppendLine("Mediciones");
             sb.AppendLine(string.Format("{0,-10} {1,-6} {2,8} {3,8} {4,8} {5,8} {6,8}",
-                "Iluminante", "Tipo", "L*", "a*", "b*", "Chroma", "Hue°"));
-            sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                "Iluminante", "Tipo", "L*", "a*", "b*", "Chroma", "HueÂ°"));
+            sb.AppendLine("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€");
 
             string lastIll = "";
             for (int i = 0; i < _rows.Count; i++)
             {
                 ColorimetricRow r = _rows[i];
                 if (r.Illuminant != lastIll && lastIll != "")
-                    sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                    sb.AppendLine("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€");
 
                 sb.AppendLine(string.Format("{0,-10} {1,-6} {2,8:0.00} {3,8:0.00} {4,8:0.00} {5,8:0.00} {6,8:0}",
                     r.Illuminant, r.Type, r.L, r.A, r.B, r.Chroma, r.Hue));
@@ -729,10 +749,10 @@ namespace Colorimetria
             if (_report != null && _report.CmcDifferences != null && _report.CmcDifferences.Count > 0)
             {
                 sb.AppendLine();
-                sb.AppendLine("CMC(2:1) — Difference in (Lightness / Chroma / Hue) [Col Diff CMC(2:1)]");
+                sb.AppendLine("CMC(2:1) â€” Difference in (Lightness / Chroma / Hue) [Col Diff CMC(2:1)]");
                 sb.AppendLine(string.Format("{0,-10} {1,8} {2,8} {3,8} {4,8} {5,-10} {6,-14}",
-                    "Iluminante", "ΔL", "ΔC", "ΔH", "CMC", "Claridad", "Croma/Hue"));
-                sb.AppendLine("──────────────────────────────────────────────────────────────────────────────────────────────────────────");
+                    "Iluminante", "Î”L", "Î”C", "Î”H", "CMC", "Claridad", "Croma/Hue"));
+                sb.AppendLine("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€");
 
                 for (int i = 0; i < _report.CmcDifferences.Count; i++)
                 {
@@ -761,7 +781,7 @@ namespace Colorimetria
                 sb.AppendLine(_report.PrintDate);
             }
 
-            sb.AppendLine("══════════════════════════════════════════════════════════════════════════════════════════════════════════");
+            sb.AppendLine("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
             return sb.ToString();
         }
 
@@ -935,7 +955,7 @@ namespace Colorimetria
 
             dgv.AlternatingRowsDefaultCellStyle.BackColor = SysColor.FromArgb(230, 240, 255);
 
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Codigo", HeaderText = "Código", FillWeight = 90f });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Codigo", HeaderText = "CÃ³digo", FillWeight = 90f });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Nombre", HeaderText = "Nombre", FillWeight = 300f });
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "Porcentaje", HeaderText = "%", FillWeight = 80f });
 
@@ -952,7 +972,7 @@ namespace Colorimetria
             if (dgvReceta == null || shade == null) return;
             dgvReceta.Rows.Clear();
 
-            // Actualizar título con el Número de Lote si se encontró
+            // Actualizar tÃ­tulo con el NÃºmero de Lote si se encontrÃ³
             if (!string.IsNullOrWhiteSpace(shade.LotNo))
             {
                 lblDatosReceta.Text = $"SHADE HISTORY REPORT (RECETA)";
@@ -1027,7 +1047,7 @@ namespace Colorimetria
             if (dgvLab == null || shade == null) return;
             dgvLab.Rows.Clear();
 
-            // 1. Agregar Estándar (Std L A B) si existe
+            // 1. Agregar EstÃ¡ndar (Std L A B) si existe
             if (!string.IsNullOrWhiteSpace(shade.StdL))
             {
                 string label = "Std";

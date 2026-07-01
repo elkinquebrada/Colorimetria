@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -21,6 +21,10 @@ namespace Color.Tolerancias
         public FormConfigTolerancias()
         {
             InitializeComponent();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             this.Load += FormConfigTolerancias_Load;
             AddBrandingLogo();
         }
@@ -63,7 +67,7 @@ namespace Color.Tolerancias
                 new ToleranceResult { DE = 1.20, DL = 0.693, DC = 0.693, DH = 0.693 },
                 new ToleranceResult { DE = 1.80, DL = 1.039, DC = 1.039, DH = 1.039 }
             };
-            // La tarjeta dinámica siempre al final (Índice 3)
+            // La tarjeta dinamica siempre al final (Ãndice 3)
             _profiles.Add(_manualProfile);
         }
 
@@ -130,14 +134,14 @@ namespace Color.Tolerancias
                             // 1. Asignamos el valor ingresado al Delta E global
                             _manualProfile.DE = val;
 
-                            // 2. IMPLEMENTACIÓN OBLIGATORIA DE LA FÓRMULA DE EXCEL 
+                            // 2. IMPLEMENTACION OBLIGATORIA DE LA FORMULA DE EXCEL 
                             double ejeCalculado = Math.Sqrt(Math.Pow(val, 2) / 3);
 
                             _manualProfile.DL = ejeCalculado;
                             _manualProfile.DC = ejeCalculado;
                             _manualProfile.DH = ejeCalculado;
 
-                            // Seleccionamos la tarjeta automáticamente al escribir
+                            // Seleccionamos la tarjeta automaticamente al escribir
                             SelectCard(pnlCard, _manualProfile);
                         }
                         else
@@ -160,7 +164,7 @@ namespace Color.Tolerancias
                 // Evento de clic para seleccionar cualquier tarjeta
                 pnlCard.Click += (s, e) => SelectCard(pnlCard, profile);
 
-                // Resaltar la tarjeta que coincide con la configuración actual del programa
+                // Resaltar la tarjeta que coincide con la configuracion actual del programa
                 if (Math.Abs(profile.DE - activeDE) < 0.01 && profile.DE > 0)
                     SelectCard(pnlCard, profile);
             }
@@ -182,23 +186,23 @@ namespace Color.Tolerancias
 
         private void btnGuardar_Click(object sender, EventArgs e)
         {
-            // Validación de seguridad
+            // Validacion de seguridad
             if (_selectedProfile == null || _selectedProfile.DE <= 0)
             {
-                MessageBox.Show("Por favor seleccione una tarjeta de tolerancia válida.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Por favor seleccione una tarjeta de tolerancia valida.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // ENVÍO DE DATOS AL PROGRAMA:
+            // ENVIO DE DATOS AL PROGRAMA:
             Properties.Settings.Default.ToleranciaDE = _selectedProfile.DE;
             Properties.Settings.Default.ToleranciaDL = _selectedProfile.DL;
             Properties.Settings.Default.ToleranciaDC = _selectedProfile.DC;
             Properties.Settings.Default.ToleranciaDH = _selectedProfile.DH;
             Properties.Settings.Default.Save();
 
-            // Mensaje de confirmación con los valores reales enviados
+            // Mensaje de confirmacion con los valores reales enviados
             MessageBox.Show($"Tolerancia Enviada:\nDE: {_selectedProfile.DE:0.00}\nL: {_selectedProfile.DL:0.000}\nC: {_selectedProfile.DC:0.000}\nHue: {_selectedProfile.DH:0.000}",
-                            "Confirmación de Envío", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            "Confirmacion de EnvÃ­o", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             this.Close();
         }

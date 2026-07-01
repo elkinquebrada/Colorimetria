@@ -35,7 +35,6 @@ namespace Color.Tolerancias
             this.flowCards.AutoScroll = true;
             this.flowCards.WrapContents = false;
 
-            // Center the flow layout if there's enough space
             this.flowCards.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
             // btnGuardar
@@ -61,7 +60,8 @@ namespace Color.Tolerancias
             this.ClientSize = new System.Drawing.Size(650, 380);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.MinimizeBox = true;
+            this.ShowInTaskbar = true;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.BackColor = System.Drawing.Color.White;

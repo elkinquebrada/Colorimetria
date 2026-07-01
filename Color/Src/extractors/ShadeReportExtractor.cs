@@ -698,8 +698,7 @@ namespace Color
             // Eliminar espacios y limpiar caracteres no numericos (excepto punto y signo)
             string clean = Regex.Replace(val, @"[^\d.-]", "");
 
-            // Si tiene 4 dígitos sin punto 
-            // Si tiene 3 dígitos sin punto 
+            // Si tiene 3 o 4 dígitos sin punto 
             if (!clean.Contains(".") && clean.Length >= 3)
             {
                 int len = clean.Length;

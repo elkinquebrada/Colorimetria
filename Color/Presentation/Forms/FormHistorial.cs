@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -14,6 +14,10 @@ namespace Color
         public FormHistorial()
         {
             InitializeComponent();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             this.WindowState = FormWindowState.Maximized;
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.TopMost = false;
@@ -24,10 +28,10 @@ namespace Color
             this.btnExportar.Visible = true;
             this.btnCerrar.Visible = true;
             
-            this.btnCerrar.Text = "← Regresar";
+            this.btnCerrar.Text = " Regresar";
             this.btnCerrar.Click += (s, e) => this.Close();
 
-            // Asegurar posición en el panel (fuerza bruta para evitar errores)
+            // Asegurar posicion en el panel (fuerza bruta para evitar errores)
             this.btnCerrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             this.btnExportar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             this.btnBorrar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -83,25 +87,24 @@ namespace Color
             dgvHistorial.Columns.Add("colFechaHora", "Fecha/Hora");
             dgvHistorial.Columns.Add("colDyeCode", "Dye Code");
             dgvHistorial.Columns.Add("colDyeName", "Dye Name");
-            dgvHistorial.Columns.Add("colConcentration", "Concentración %");
-            dgvHistorial.Columns.Add("colProportion", "Proporción %");
+            dgvHistorial.Columns.Add("colConcentration", "Concentracion %");
+            dgvHistorial.Columns.Add("colProportion", "Proporcion %");
 
             // Receta 1
             dgvHistorial.Columns.Add("colR1Con", "R1 Conc.");
-            dgvHistorial.Columns.Add("colR1Part", "R1 Part.");
+            dgvHistorial.Columns.Add("colR1Part", "R1 Propor.");
             dgvHistorial.Columns.Add("colR1Ajuste", "R1 Ajuste");
 
             // Receta 2
             dgvHistorial.Columns.Add("colR2Con", "R2 Conc.");
-            dgvHistorial.Columns.Add("colR2Part", "R2 Part.");
+            dgvHistorial.Columns.Add("colR2Part", "R2 Propor.");
             dgvHistorial.Columns.Add("colR2Ajuste", "R2 Ajuste");
 
             // Receta 3
             dgvHistorial.Columns.Add("colR3Con", "R3 Conc.");
-            dgvHistorial.Columns.Add("colR3Part", "R3 Part.");
+            dgvHistorial.Columns.Add("colR3Part", "R3 Propor.");
             dgvHistorial.Columns.Add("colR3Ajuste", "R3 Ajuste");
 
-            dgvHistorial.Columns.Add("colDeltaE", "Delta E");
             dgvHistorial.Columns.Add("colStatus", "Status");
 
             // Estilos
@@ -127,12 +130,12 @@ namespace Color
                 lblShadeHistoryHeader.Width = x2 - x1;
                 lblShadeHistoryHeader.Text = "DATOS DEL LOTE / REPORTE";
 
-                // Grupo 2: Formulación Original
+                // Grupo 2: FormulaciÃ³n Original
                 int x3 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colDyeCode"].Index, true).X;
                 int x4 = dgvHistorial.GetColumnDisplayRectangle(dgvHistorial.Columns["colProportion"].Index, true).Right;
                 lblCalculoRecetaHeader.Location = new Point(x3, 0);
                 lblCalculoRecetaHeader.Width = x4 - x3;
-                lblCalculoRecetaHeader.Text = "FORMULACIÓN ORIGINAL";
+                lblCalculoRecetaHeader.Text = "FORMULACION ORIGINAL";
 
                 // Grupo 3: Recetas Correctivas (V4)
                 if (!pnlGroupHeaders.Controls.ContainsKey("lblV4Header"))
@@ -196,13 +199,10 @@ namespace Color
                 if (tabla.Columns.Contains("R3_Part")) fila.Cells["colR3Part"].Value = row["R3_Part"];
                 if (tabla.Columns.Contains("R3_Ajuste")) fila.Cells["colR3Ajuste"].Value = row["R3_Ajuste"];
 
-                string colDE = tabla.Columns.Contains("DeltaE_TL84") ? "DeltaE_TL84" : "DeltaE";
-                if (tabla.Columns.Contains(colDE)) fila.Cells["colDeltaE"].Value = row[colDE];
-
                 string colSt = tabla.Columns.Contains("Status_TL84") ? "Status_TL84" : "Status";
                 if (tabla.Columns.Contains(colSt)) fila.Cells["colStatus"].Value = row[colSt];
             }
-            lblContador.Text = "Análisis encontrados: " + dgvHistorial.Rows.Count;
+            lblContador.Text = "Analisis encontrados: " + dgvHistorial.Rows.Count;
         }
 
         private void txtBuscar_TextChanged(object sender, EventArgs e)
@@ -256,7 +256,7 @@ namespace Color
                     }
                     sb.AppendLine("</Table></Worksheet></Workbook>");
                     System.IO.File.WriteAllText(dlg.FileName, sb.ToString(), new System.Text.UTF8Encoding(true));
-                    MessageBox.Show("Exportación completada exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Exportacion completada exitosamente.", "Exito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex) { MessageBox.Show("Error al exportar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
@@ -279,7 +279,7 @@ namespace Color
                     dt.Columns.Add("R1_Con"); dt.Columns.Add("R1_Part"); dt.Columns.Add("R1_Ajuste");
                     dt.Columns.Add("R2_Con"); dt.Columns.Add("R2_Part"); dt.Columns.Add("R2_Ajuste");
                     dt.Columns.Add("R3_Con"); dt.Columns.Add("R3_Part"); dt.Columns.Add("R3_Ajuste");
-                    dt.Columns.Add("DeltaE"); dt.Columns.Add("Status");
+                    dt.Columns.Add("Status");
 
                     foreach (DataGridViewRow r in dgvHistorial.Rows)
                     {
@@ -290,7 +290,7 @@ namespace Color
                             r.Cells["colR1Con"].Value, r.Cells["colR1Part"].Value, r.Cells["colR1Ajuste"].Value,
                             r.Cells["colR2Con"].Value, r.Cells["colR2Part"].Value, r.Cells["colR2Ajuste"].Value,
                             r.Cells["colR3Con"].Value, r.Cells["colR3Part"].Value, r.Cells["colR3Ajuste"].Value,
-                            r.Cells["colDeltaE"].Value, r.Cells["colStatus"].Value
+                            r.Cells["colStatus"].Value
                         );
                     }
                     HistorialService.GuardarHistorialCompleto(dt);

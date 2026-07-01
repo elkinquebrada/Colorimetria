@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Color.Services;
 using Color.Models;
 using System;
@@ -58,6 +58,10 @@ namespace Color
         {
             _report = report ?? new OcrReport();
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             PopulateFromReport(_report);
             
         }
@@ -68,6 +72,10 @@ namespace Color
             _recipeResults = recipeResults;
             _shadeData = shadeData;
             InitializeComponents();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             PopulateFromObjects(_shadeData, _resultsLegacy);
            
         }
@@ -92,7 +100,6 @@ namespace Color
             };
             pnlWhitePaper.Controls.Add(pnlReportFlow);
 
-            // ── BARRA DE LOGO ESTÁTICA (Dock=Top) ────────────────────────────────
             var pnlLogoStrip = new Panel
             {
                 Dock = DockStyle.Top,
@@ -117,7 +124,7 @@ namespace Color
             var pnlHeader = new Panel { Width = 940, Height = 100, Margin = new Padding(0, 0, 0, 20) };
             pnlHeader.Controls.Add(new Label
             {
-                Text = "Análisis de Color",
+                Text = "Analisis de Color",
                 BackColor = System.Drawing.Color.FromArgb(0, 102, 204),
                 ForeColor = System.Drawing.Color.White,
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
@@ -174,7 +181,7 @@ namespace Color
             pnlReportFlow.Controls.Add(pnlTopInfo);
 
             // =================================================================
-            // --- DECLARACIÓN DE TÍTULOS (Cobertura Bloque 1 y 2) ---
+            // --- DECLARACION DE TITULOS (Cobertura Bloque 1 y 2) ---
             // =================================================================
             Panel pnlTitlesHeader = new Panel();
             pnlTitlesHeader.Width = 940;
@@ -188,10 +195,10 @@ namespace Color
             Font fontTitulos = new Font("Segoe UI", 10, FontStyle.Bold);
             System.Drawing.Color negroPuro = System.Drawing.Color.Black;
 
-            // --- CALCULO DE POSICIÓN PARA EL ACOPLE DE BLOQUES --
+            // --- CALCULO DE POSICION PARA EL ACOPLE DE BLOQUES --
             int posXDerecha = (int)(pnlTitlesHeader.Width * 0.58);
 
-            // 1. TÍTULO IZQUIERDO: L, a, b (lot - std)
+            // 1. TITULO IZQUIERDO: L, a, b (lot - std)
             Label lblLabTitle = new Label();
             lblLabTitle.Text = "L, a, b (Lot - Std)";
             lblLabTitle.Font = fontTitulos;
@@ -200,7 +207,7 @@ namespace Color
             lblLabTitle.Location = locLabTitle;
             lblLabTitle.AutoSize = true;
 
-            // Línea negra izquierda
+            // Li­nea negra izquierda
             Label lineLab = new Label();
             lineLab.BackColor = negroPuro;
             Point locLineLab = new Point(0, 28);
@@ -209,7 +216,7 @@ namespace Color
             lineLab.Size = sizeLineLab;
             lineLab.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
-            // 2. TÍTULO CENTRAL: 
+            // 2. TITULO CENTRAL: 
             Label lblLchTitle = new Label();
             lblLchTitle.Text = "L, C, H ";
             lblLchTitle.Font = fontTitulos;
@@ -219,7 +226,7 @@ namespace Color
             lblLchTitle.AutoSize = true;
             lblLchTitle.Anchor = AnchorStyles.Top | AnchorStyles.Right;
 
-            // Línea negra derecha
+            // Li­nea negra derecha
             Label lineLch = new Label();
             lineLch.BackColor = negroPuro;
             Point locLineLch = new Point(posXDerecha, 28);
@@ -243,7 +250,7 @@ namespace Color
             pnlTitlesHeader.Controls.Add(lblLchTitle);
             pnlTitlesHeader.Controls.Add(lineLch);
 
-            // Inyectamos la barra de títulos completa al flujo del reporte
+            // Inyectamos la barra de ti­tulos completa al flujo del reporte
             pnlReportFlow.Controls.Add(pnlTitlesHeader);
 
             // BLOQUES - Ancho responsivo controlado por el evento Resize
@@ -285,7 +292,7 @@ namespace Color
             btnRegresar.Click += (s, e) => { this.DialogResult = DialogResult.Retry; this.Close(); };
         }
 
-        /// Inyecta los metadatos textiles extraídos por TextileMetadataExtractor
+        /// Inyecta los metadatos textiles extrai­dos por TextileMetadataExtractor
         public void UpdateTextileMetadataPanel(TextileMetadata metadata)
         {
 
@@ -315,7 +322,7 @@ namespace Color
             if (lblTypeTolDc != null) lblTypeTolDc.Text = (dc * -1).ToString("0.00#", CultureInfo.InvariantCulture);
             if (lblTypeTolDh != null) lblTypeTolDh.Text = (dh * -1).ToString("0.00#", CultureInfo.InvariantCulture);
 
-            // Pasamos estas tolerancias también a los bloques visuales de los iluminantes
+            // Pasamos estas tolerancias tambien a los bloques visuales de los iluminantes
             if (blockD65 != null) blockD65.UpdateTolerances(de, dl, dc, dh);
             if (blockTL84 != null) blockTL84.UpdateTolerances(de, dl, dc, dh);
             if (blockCWF != null) blockCWF.UpdateTolerances(de, dl, dc, dh);
@@ -381,7 +388,6 @@ namespace Color
             pnl.Controls.Add(lblValTolDc, 2, 2);
             pnl.Controls.Add(lblValTolDh, 3, 2);
 
-            // lblTypeTolDe ya no se agrega para unificar la celda DE= 
             pnl.Controls.Add(lblTypeTolDl, 1, 3);
             pnl.Controls.Add(lblTypeTolDc, 2, 3);
             pnl.Controls.Add(lblTypeTolDh, 3, 3);
@@ -410,7 +416,7 @@ namespace Color
                     e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
                     string valStr = e.Value.ToString().Replace("%", "");
                     string rowVal = dgvShadeHistory.Rows[e.RowIndex].Cells[0].Value?.ToString();
-                    if (rowVal != "¨[Dyes]" && float.TryParse(valStr, out float porcentaje))
+                    if (rowVal != "[Dyes]" && float.TryParse(valStr, out float porcentaje))
                     {
                         int barWidth = (int)((e.CellBounds.Width - 10) * (porcentaje / 100f));
                         using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(220, 220, 220)))
@@ -471,7 +477,7 @@ namespace Color
 
         private void PopulateFromObjects(ShadeExtractionResult shadeData, List<EngineRes> results)
         {
-            // LEER LAS TOLERANCIAS ELEGIDAS POR EL USUARIO DESDE EL ORIGEN DE CONFIGURACIÓN
+            // LEER LAS TOLERANCIAS ELEGIDAS POR EL USUARIO DESDE EL ORIGEN DE CONFIGURACION
             double tolDE = Properties.Settings.Default.ToleranciaDE;
             double tolDL = Properties.Settings.Default.ToleranciaDL;
             double tolDC = Properties.Settings.Default.ToleranciaDC;
@@ -555,7 +561,7 @@ namespace Color
                 var tl84 = results.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
                 var cwf = results.FirstOrDefault(r => r.Illuminant.Contains("CWF")) ?? results.FirstOrDefault(r => r.Illuminant.Contains("A"));
 
-                // inyección limpia con refresco explícito de interfaz
+                // inyeccion limpia con refresco explicito de interfaz
                 blockD65.UpdateData(d65);
                 blockD65.Invalidate();
 
@@ -594,15 +600,15 @@ namespace Color
                 pnlNewRecipesHeader.Controls.Add(lblNewRecipesTitle);
                 pnlNewRecipesHeader.Controls.Add(lineNewRecipes);
 
-                // Inyectamos el título al contenedor de flujo
+                // Inyectamos el titulo al contenedor de flujo
                 pnlReportFlow.Controls.Add(pnlNewRecipesHeader);
 
-                //  LA TABLA DE RECETAS SE AGREGA INMEDIATAMENTE DESPUÉS
+                //  LA TABLA DE RECETAS SE AGREGA INMEDIATAMENTE DESPUES
                 dgvCorrectiveRecipe.Width = 940;
                 dgvCorrectiveRecipe.Height = 150;
                 pnlReportFlow.Controls.Add(dgvCorrectiveRecipe);
 
-                //  CONDICIONES Y GRÁFICO LADO A LADO
+                //  CONDICIONES Y GRAFICO LADO A LADO
                 if (_cielabChart != null)
                 {
                     var pnlBottomSplit = new TableLayoutPanel { Width = 940, Height = 320, ColumnCount = 2 };
@@ -613,7 +619,7 @@ namespace Color
                     pnlCondiciones.Dock = DockStyle.Fill;
 
                     var pnlGraficoFlow = new Panel { Dock = DockStyle.Fill };
-                    var lblGrTitle = new Label { Text = "Gráfico", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, AutoSize = true, Location = new Point(0, 5) };
+                    var lblGrTitle = new Label { Text = "Grafico", Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = System.Drawing.Color.Black, AutoSize = true, Location = new Point(0, 5) };
                     var lineGr = new Label { BackColor = System.Drawing.Color.Black, Size = new Size(400, 2), Location = new Point(0, 28) };
 
                     _cielabChart.Location = new Point(0, 35);
@@ -717,7 +723,7 @@ namespace Color
         {
             if (dgvCorrectiveRecipe == null || res == null || _shadeData == null || _shadeData.Recipe == null) return;
 
-            // 1. CONFIGURACIÓN MORFOLÓGICA HORIZONTAL RIGIDA
+            // 1. CONFIGURACION MORFOLOGICA HORIZONTAL RIGIDA
             dgvCorrectiveRecipe.Rows.Clear();
             dgvCorrectiveRecipe.Columns.Clear();
 
@@ -762,7 +768,7 @@ namespace Color
             double sumaVariacionR2 = 0.0;
             double sumaVariacionR3 = 0.0;
 
-            // 2. INYECCIÓN FILA POR FILA (COLORANTES)
+            // 2. INYECCION FILA POR FILA (COLORANTES)
             for (int i = 0; i < _shadeData.Recipe.Count; i++)
             {
                 int idx = dgvCorrectiveRecipe.Rows.Add();
@@ -804,7 +810,7 @@ namespace Color
                 }
             }
 
-            // 3. FILA TOTAL CON VARIACIÓN ALGEBRAICA (=+D57/D11-1)
+            // 3. FILA TOTAL CON VARIACION ALGEBRAICA (=+D57/D11-1)
             int totalIdx = dgvCorrectiveRecipe.Rows.Add();
             dgvCorrectiveRecipe.Rows[totalIdx].Cells["colColorante"].Value = "TOTAL";
 
@@ -853,7 +859,7 @@ namespace Color
 
                 if (todosLosResultados.Count == 0)
                 {
-                    MessageBox.Show("No hay resultados de análisis para guardar.", "Sin datos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("No hay resultados de analisis para guardar.", "Sin datos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -861,12 +867,12 @@ namespace Color
                 string lotNo = _shadeData?.LotNo ?? "-";
                 DateTime fechaActual = DateTime.Now;
 
-                // 1. OBTENER RESULTADOS ESPECÍFICOS PARA LA ESTRUCTURA V4 (TL84 y A)
+                // 1. OBTENER RESULTADOS ESPECIFICOS PARA LA ESTRUCTURA V4 (TL84 y A)
                 var resTL84 = todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("TL84"));
                 var resA = todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("A")) ?? todosLosResultados.FirstOrDefault(r => r.Illuminant.Contains("CWF"));
                 var resPrincipal = resTL84 ?? resA ?? todosLosResultados[0];
 
-                // Asegurar que las recetas estén calculadas en el resultado principal
+                // Asegurar que las recetas estan calculadas en el resultado principal
                 List<double> conOriginales = _shadeData?.Recipe?.Select(x => ParsePercentageValue(x.Percentage)).ToList() ?? new List<double>();
                 if (conOriginales.Count > 0 && (resPrincipal.RecetaR1_Luminosidad == null || resPrincipal.RecetaR1_Luminosidad.Count == 0))
                     EngineCalc.CalcularNuevasRecetasMaestras(resPrincipal, conOriginales);
@@ -888,7 +894,7 @@ namespace Color
                     MessageBox.Show("Error al guardar en SQL Server (V4):\n" + sqlEx.Message, "Error DB", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
 
-                // 3. PERSISTENCIA LEGACY (CSV) - Mantenemos trazabilidad histórica por ahora
+                // 3. PERSISTENCIA LEGACY (CSV) - Mantenemos trazabilidad historica
                 int registrosGuardadosCsv = 0;
                 foreach (var res in todosLosResultados)
                 {
@@ -926,16 +932,16 @@ namespace Color
                     }
                 }
 
-                string msg = "Análisis guardado exitosamente.\n";
+                string msg = "Analisis guardado exitosamente.\n";
 
                 MessageBox.Show(msg, "Guardado exitoso", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 btnGuardar.Enabled = false;
-                btnGuardar.Text = "✔ Guardado";
+                btnGuardar.Text = " Guardado";
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error crítico al guardar:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error cri­tico al guardar:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -961,7 +967,7 @@ namespace Color
 
                             if (string.IsNullOrEmpty(pdfPrinter))
                             {
-                                MessageBox.Show(this, "No se encontró la impresora 'Microsoft Print to PDF'. Por favor instálela o seleccione una impresora PDF manualmente.", "Error de Configuración", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                MessageBox.Show(this, "No se encontro la impresora 'Microsoft Print to PDF'. Por favor instalela o seleccione una impresora PDF manualmente.", "Error de Configuracion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                 using (var dlg = new PrintDialog { Document = pd })
                                 {
                                     if (dlg.ShowDialog(this) != DialogResult.OK) return;

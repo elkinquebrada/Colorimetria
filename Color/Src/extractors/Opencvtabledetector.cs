@@ -297,7 +297,7 @@ namespace Color
                 }
                 else if (!string.IsNullOrEmpty(rowType))
                 {
-                    // rowType viene de col 1 (Lot/Std)
+                    
                 }
                 else
                 {

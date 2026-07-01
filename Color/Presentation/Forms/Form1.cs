@@ -31,6 +31,10 @@ namespace Color
         public Form1()
         {
             InitializeComponent();
+            this.TopMost = false;
+            this.ShowInTaskbar = true;
+            this.MinimizeBox = true;
+            this.MaximizeBox = true;
             this.WindowState = FormWindowState.Maximized;
             this.TopMost = false;
             this.FormBorderStyle = FormBorderStyle.Sizable;
@@ -71,7 +75,7 @@ namespace Color
 
                 logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
 
-                // Reposicionar automáticamente al redimensionar
+                // Reposicionar automaticamente al redimensionar
                 this.Resize += (s, e) =>
                 {
                     logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
@@ -134,7 +138,7 @@ namespace Color
         {
             if (imgOriginal.Width <= maxAncho) return new Bitmap(imgOriginal);
 
-            // Calcular proporción
+            // Calcular proporcion
             double ratio = (double)maxAncho / imgOriginal.Width;
             int nuevoAncho = maxAncho;
             int nuevoAlto = (int)(imgOriginal.Height * ratio);
@@ -270,6 +274,7 @@ namespace Color
 
             lblStatus.Text = "Procesando Datos...";
             Cursor = Cursors.WaitCursor;
+            btnIniciar.Enabled = false;
 
             try
             {
@@ -286,76 +291,43 @@ namespace Color
                     return;
                 }
 
-                // --- TRANSICIÓN FLUIDA ---
                 this.TopMost = false;
-
                 OcrReport.SetLastReport(ocrMediciones);
-                using (var dlgConfirm = new Colorimetria.FormConfirmacionOCR(ocrMediciones, _lastShadeResult))
+
+                // Calcular correcciones
+                var correcciones = ColorimetricCalculator.CalculateAllIlluminants(ocrMediciones);
+                var mainResult   = correcciones.FirstOrDefault(r => r.Illuminant == "D65") ?? correcciones.FirstOrDefault();
+                var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
+                var corrReceta   = new List<CorrectiveRecipeResult> {
+                    RecipeCorrector.CalculateCorrectiveRecipe(ingredientes, mainResult)
+                };
+
+                // Abrir FormResultados de forma NO-BLOQUEANTE (Show en lugar de ShowDialog)
+                var frmRes = new FormResultados(
+                    BuildResumenReceta(_lastShadeResult), correcciones, corrReceta, _lastShadeResult);
+
+                if (_lastTextileMetadata != null)
+                    frmRes.UpdateTextileMetadataPanel(_lastTextileMetadata);
+
+                frmRes.FormClosed += (s2, e2) =>
                 {
-                    dlgConfirm.MainFormOwner = this;
+                    // Reactivar pantalla principal cuando se cierre la de resultados
+                    lblStatus.Text = "";
+                    btnIniciar.Enabled = true;
+                    Cursor = Cursors.Default;
+                };
 
-                    // Flujo automatizado
-                    bool mostrarOCR = false; 
-                    bool continuar = true;
-
-                    while (continuar)
-                    {
-                        if (mostrarOCR)
-                        {
-                            if (dlgConfirm.ShowDialog() == DialogResult.OK) 
-                            {
-                                // Sincronizacion del reporte si el usuario corrige datos en UI
-                                dlgConfirm.Report.Measures = dlgConfirm.RowsConfirmed;
-                                mostrarOCR = false;
-                            }
-                            else
-                            {
-                                continuar = false; 
-                                break;
-                            }
-                        }
-
-                        if (!mostrarOCR)
-                        {
-                            // Motores Industriales (D65, TL84, A) (Mapeo directo)
-                            var correcciones = ColorimetricCalculator.CalculateAllIlluminants(dlgConfirm.Report);
-                            var mainResult = correcciones.FirstOrDefault(r => r.Illuminant == "D65") ?? correcciones.FirstOrDefault();
-
-                            // Motor de Receta (Basado en D65)
-                            var ingredientes = RecipeCorrector.IngredientsFromShade(_lastShadeResult);
-                            var corrReceta = new List<CorrectiveRecipeResult> { 
-                                RecipeCorrector.CalculateCorrectiveRecipe(ingredientes, mainResult) 
-                            };
-
-                            // 5. REDIRECCIÓN INMEDIATA DE LA INTERFAZ a FormResultados
-                            using (var frmRes = new FormResultados(BuildResumenReceta(_lastShadeResult), correcciones, corrReceta, _lastShadeResult))
-                            {
-                                if (_lastTextileMetadata != null)
-                                {
-                                    frmRes.UpdateTextileMetadataPanel(_lastTextileMetadata);
-                                }
-
-                                if (frmRes.ShowDialog() == DialogResult.Retry)
-                                {
-                                    mostrarOCR = true; 
-                                }
-                                else
-                                {
-                                    continuar = false; 
-                                }
-                            }
-                        }
-                    }
-                }
+                frmRes.Show(); 
             }
-            catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); }
-            finally 
-            { 
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+                btnIniciar.Enabled = true;
+            }
+            finally
+            {
                 Cursor = Cursors.Default;
-                lblStatus.Text = "";
-
-                // Restaurar estado normal al finalizar sin bloquear el sistema
-                this.WindowState = FormWindowState.Maximized;
+                lblStatus.Text = "Análisis abierto. Puede minimizar y seguir trabajando.";
             }
         }
 
@@ -369,7 +341,7 @@ namespace Color
             if (lblRightLoaded != null) lblRightLoaded.Visible = false;
             btnCambiarLeft.Visible = btnCambiarRight.Visible = false;
 
-            lblStatus.Text = "Cargue Imágenes";
+            lblStatus.Text = "Cargue Imagenes";
             lblStatus.ForeColor = System.Drawing.Color.Black;
             UpdateHints();
             ShowActionButtons(false);
@@ -378,7 +350,7 @@ namespace Color
         #region Helpers UI
         private void CheckIfBothImagesLoaded()
         {
-            // Solo permite el botón Iniciar si picRight tiene una receta validada en _lastShadeResult
+            // Solo permite el boton Iniciar si picRight tiene una receta validada en _lastShadeResult
             bool listo = picLeft.Image != null && picRight.Image != null && _lastShadeResult != null;
             ShowActionButtons(listo);
         }
@@ -428,7 +400,7 @@ namespace Color
                     Debug.WriteLine("Fallo en lectura SQL: " + sqlEx.Message);
                 }
 
-                // Prioridad 2: Si SQL no tiene datos o falló, cargar desde CSV (Legacy)
+                // Prioridad 2: Si SQL no tiene datos o falla³, cargar desde CSV (Legacy)
                 if (tabla == null || tabla.Rows.Count == 0)
                 {
                     tabla = HistorialService.ObtenerHistorial();
@@ -437,7 +409,7 @@ namespace Color
                 if (tabla == null || tabla.Rows.Count == 0)
                 {
                     MessageBox.Show(
-                        "La base de datos no contiene registros todavía.\n\n" +
+                        "La base de datos no contiene registros todavi­a.\n\n" +
                         "Los registros se generan al guardar resultados en SQL Server (V4) o en el archivo de respaldo.",
                         "Sin datos",
                         MessageBoxButtons.OK,
@@ -447,7 +419,7 @@ namespace Color
 
                 var frm = new FormHistorial();
                 frm.CargarHistorial(tabla);
-                frm.ShowDialog(this);
+                frm.Show(); 
             }
             catch (Exception ex)
             {
@@ -458,16 +430,16 @@ namespace Color
         private string BuildResumenReceta(ShadeExtractionResult result)
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Shade History Report EXTRAÍDA");
+            sb.AppendLine("Shade History Report EXTRAÃDA");
             if (result?.Recipe != null)
                 foreach (var i in result.Recipe) sb.AppendLine($"{i.Code} - {i.Name}: {i.Percentage}%");
             return sb.ToString();
         }
 
-        /// Clasifica el reporte y extrae la receta con lógica limpia y desacoplada.
+        /// Clasifica el reporte y extrae la receta con logica limpia y desacoplada.
         private ShadeExtractionResult OnShadeHistoryImageLoaded(string imagePath, Bitmap bmp)
         {
-            // 1. El Clasificador identifica qué tipo de reporte envió el usuario
+            // 1. El Clasificador identifica que tipo de reporte envio el usuario
             Color.Services.ReportFormatType format =
                 Color.Services.ReportFormatRouter.DetermineFormat(imagePath);
 
@@ -475,58 +447,54 @@ namespace Color
 
             if (format == Color.Services.ReportFormatType.LegacyCombinedFormat)
             {
-                // ══════════════════════════════════════════════════════════════
-                // REQUERIMIENTO 1: Reporte Completo (Extractor Tradicional)
-                // ══════════════════════════════════════════════════════════════
+
                 shadeResult = _shadeExtractor.ExtractFromBitmap(bmp);
 
-                // Limpiar porcentajes a valores numéricos puros
+                // Limpiar porcentajes a valores numericos puros
                 if (shadeResult.Recipe != null)
                 {
                     shadeResult.Recipe = CleanRecipeItems(shadeResult.Recipe);
                 }
 
-                // Diagnóstico y fallback si el tradicional no encontró receta
+                // Diagnostico y fallback si el tradicional no encuentra receta
                 if (shadeResult.Recipe == null || shadeResult.Recipe.Count == 0)
                 {
-                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined→FALLBACK a Split");
+                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombinedâ†’FALLBACK a Split");
                     var fallbackItems = _splitExtractor.ExtractFromBitmap(bmp, null);
                     if (fallbackItems != null && fallbackItems.Count > 0)
                     {
                         shadeResult.Recipe = CleanRecipeItems(fallbackItems);
-                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "Fallback Split → OK");
+                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "Fallback Split â†’ OK");
                     }
                     else
                     {
-                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined → VACÍO (ambos fallaron)");
+                        WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined â†’ VACIO (ambos fallaron)");
                     }
                 }
                 else
                 {
-                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined → OK");
+                    WriteDiag(imagePath, bmp, format, shadeResult.Recipe, "LegacyCombined â†’ OK");
                 }
             }
             else
             {
-                // ══════════════════════════════════════════════════════════════
-                // REQUERIMIENTO 2: Tickets planos de matriz de puntos
-                // ══════════════════════════════════════════════════════════════
+
                 var cleanRecipeItems = _splitExtractor.ExtractFromBitmap(bmp, null);
 
-                // ── FALLBACK: si el split no encontró nada, probar el extractor tradicional ──
+                // FALLBACK: si el split no encuentra nada, probar el extractor tradicional 
                 if (cleanRecipeItems == null || cleanRecipeItems.Count == 0)
                 {
-                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Split→FALLBACK a Traditional");
+                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Splitâ†’FALLBACK a Traditional");
                     var fallback = _shadeExtractor.ExtractFromBitmap(bmp);
                     if (fallback?.Recipe != null && fallback.Recipe.Count > 0)
                     {
                         cleanRecipeItems = fallback.Recipe;
-                        WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Fallback Traditional → OK");
+                        WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Fallback Traditional â†’ OK");
                     }
                 }
                 else
                 {
-                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Split → OK");
+                    WriteDiag(imagePath, bmp, format, cleanRecipeItems, "Split â†’ OK");
                 }
 
                 var finalRecipe = CleanRecipeItems(cleanRecipeItems ?? new List<RecipeItem>());
@@ -541,7 +509,7 @@ namespace Color
             return shadeResult;
         }
 
-        /// Limpia porcentajes a valores numéricos puros.
+        /// Limpia porcentajes a valores numericos puros.
         private static List<RecipeItem> CleanRecipeItems(List<RecipeItem> items)
         {
             var clean = new List<RecipeItem>();
@@ -564,7 +532,7 @@ namespace Color
             return clean;
         }
 
-        /// Escribe diagnóstico completo 
+        /// Escribe diagnostico completo 
         private static void WriteDiag(string imagePath, Bitmap bmp,
             Color.Services.ReportFormatType format,
             List<RecipeItem> items, string etapa)
@@ -574,7 +542,7 @@ namespace Color
                 System.IO.Directory.CreateDirectory(@"C:\Temp");
                 string logPath = @"C:\Temp\shade_diag.txt";
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine("══════════════════════════════════════════════");
+                sb.AppendLine("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
                 sb.AppendLine($"[{DateTime.Now:HH:mm:ss}] ETAPA: {etapa}");
                 sb.AppendLine($"Imagen : {System.IO.Path.GetFileName(imagePath)}");
                 sb.AppendLine($"Tamaño : {bmp?.Width}x{bmp?.Height} px");
@@ -595,7 +563,7 @@ namespace Color
                 sb.AppendLine($"Items encontrados: {count}");
                 if (items != null)
                     foreach (var it in items)
-                        sb.AppendLine($"  → [{it.Code}] {it.Name} | {it.Percentage}");
+                        sb.AppendLine($"  â†’ [{it.Code}] {it.Name} | {it.Percentage}");
 
                 sb.AppendLine();
                 System.IO.File.AppendAllText(logPath, sb.ToString());

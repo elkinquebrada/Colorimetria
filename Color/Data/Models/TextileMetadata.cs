@@ -1,7 +1,6 @@
 namespace Color.Models
 {
     /// Entidad de transporte para los metadatos de produccion textil del encabezado del reporte.
-    /// Totalmente desacoplada del OcrReport y del motor de calculo matematico.
     public class TextileMetadata
     {
         public string ShadeName  { get; set; } = "-";

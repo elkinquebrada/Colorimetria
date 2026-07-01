@@ -33,9 +33,6 @@ namespace Color.Services
             _tessDataPath = tessDataPath;
         }
 
-        // =====================================================================
-        // API PUBLICA
-        // =====================================================================
         /// Extrae los metadatos del encabezado superior izquierdo de la imagen.
         public TextileMetadata Extract(string imagePath)
         {
@@ -171,9 +168,6 @@ namespace Color.Services
             }
         }
 
-        // =====================================================================
-        // PARSER DE CLAVE-VALOR
-        // =====================================================================
         /// Mapea las lineas del texto OCR a los campos del modelo usando
         private static void ParseKeyValue(string text, TextileMetadata meta)
         {
