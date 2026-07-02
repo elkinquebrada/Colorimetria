@@ -8,7 +8,7 @@
     <ProjectGuid>{83C4F3BE-AC57-4EEC-BE91-9129699269E3}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Color</RootNamespace>
-    <AssemblyName>PASSFAIL</AssemblyName>
+    <AssemblyName>ColorAdjustment</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -26,9 +26,9 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <ProductName>PASSFAIL</ProductName>
+    <ProductName>Color Adjustment</ProductName>
     <AutorunEnabled>true</AutorunEnabled>
-    <ApplicationRevision>6</ApplicationRevision>
+    <ApplicationRevision>7</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>

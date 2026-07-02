@@ -201,7 +201,7 @@ namespace Colorimetria
         private void InitializeComponents()
         {
             // ---- Ventana y escalado ----
-            this.Text = "TINT COATS CADENA";
+            this.Text = "Color Adjustment";
 
             // Barra estÃ¡ndar con min/max y redimensionamiento
             this.FormBorderStyle = FormBorderStyle.Sizable;

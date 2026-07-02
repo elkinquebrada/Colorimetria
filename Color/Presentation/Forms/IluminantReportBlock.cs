@@ -818,8 +818,8 @@ namespace Color
                 // Mapeo Fórmula 1 (Luminosidad L*) -> Condicional Estricto Excel
                 // ---------------------------------------------------------------------
                 string accionLStr = "";
-                if (res.DeltaL > 0 && diagL.Contains("Claro"))       accionLStr = "Aumentar [ ]"; 
-                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Aumentar [ ]";
+                if (res.DeltaL > 0 && diagL.Contains("Claro"))       accionLStr = "Aumentar [ ]";  
+                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Disminuir [ ]"; 
                 else accionLStr = "Aumentar [ ]";
 
                 // ---------------------------------------------------------------------

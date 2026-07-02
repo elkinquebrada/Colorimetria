@@ -56,7 +56,7 @@ namespace Color.Tolerancias
             this.btnCancelar.Click += new System.EventHandler(this.btnCancelar_Click);
 
             // FormConfigTolerancias
-            this.Text = "TINT COATS CADENA";
+            this.Text = "Color Adjustment";
             this.ClientSize = new System.Drawing.Size(650, 380);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;

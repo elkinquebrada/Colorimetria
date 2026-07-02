@@ -292,7 +292,7 @@ namespace Color
             this.ClientSize = new System.Drawing.Size(960, 580);
             this.MinimumSize = new System.Drawing.Size(760, 420);
             this.Name = "FormHistorial";
-            this.Text = " TINT COATS CADENA";
+            this.Text = "Color Adjustment";
             this.StartPosition =
                 System.Windows.Forms.FormStartPosition.CenterParent;
             this.Font = new System.Drawing.Font("Segoe UI", 9F,

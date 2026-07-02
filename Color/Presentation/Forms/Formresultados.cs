@@ -82,7 +82,7 @@ namespace Color
 
         private void InitializeComponents()
         {
-            this.Text = "TINT COATS CADENA";
+            this.Text = "Color Adjustment";
             this.Size = new Size(1100, 850);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
