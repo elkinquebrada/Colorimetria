@@ -7,7 +7,7 @@ using Color;
 
 namespace OCR
 {
-    
+
     /// REGLA DE ORO: El Excel recibe los valores numéricos del OCR.
     public static class ExcelWriter
     {
@@ -59,9 +59,9 @@ namespace OCR
             catch { return false; }
 
             // --- Limpieza previa de celdas azules ---
-            ClearCell(ws, 3, 2); ClearCell(ws, 3, 3); 
-            ClearCell(ws, 4, 2); ClearCell(ws, 4, 3); 
-            ClearCell(ws, 5, 2); ClearCell(ws, 5, 3); 
+            ClearCell(ws, 3, 2); ClearCell(ws, 3, 3);
+            ClearCell(ws, 4, 2); ClearCell(ws, 4, 3);
+            ClearCell(ws, 5, 2); ClearCell(ws, 5, 3);
 
             // Limpieza tabla expandida (filas 15-20, cols D-F)
             for (int r = 15; r <= 20; r++)
@@ -109,15 +109,15 @@ namespace OCR
 
                 if (std != null)
                 {
-                    SetNumericCell(ws, baseRow, 4, std.L);     
+                    SetNumericCell(ws, baseRow, 4, std.L);
                 }
 
                 if (lot != null)
                 {
-                    SetNumericCell(ws, baseRow + 1, 4, lot.L); 
+                    SetNumericCell(ws, baseRow + 1, 4, lot.L);
                 }
 
-                baseRow += 2; 
+                baseRow += 2;
             }
 
             return true;
@@ -162,10 +162,10 @@ namespace OCR
 
                     if (cmc == null) continue;
 
-                    SetNumericCell(ws, row, 3, cmc.CmcLightness);  
-                    SetNumericCell(ws, row, 4, cmc.CmcChroma);     
-                    SetNumericCell(ws, row, 5, cmc.CmcHue);        
-                    SetNumericCell(ws, row, 6, cmc.CmcValue);   
+                    SetNumericCell(ws, row, 3, cmc.CmcLightness);
+                    SetNumericCell(ws, row, 4, cmc.CmcChroma);
+                    SetNumericCell(ws, row, 5, cmc.CmcHue);
+                    SetNumericCell(ws, row, 6, cmc.CmcValue);
 
                     // HUE Std / Lot (cols I y J en filas 5, 7, 9)
                     var stdRow = ocrRows?.FirstOrDefault(r =>
@@ -175,8 +175,8 @@ namespace OCR
                         string.Equals(r.Illuminant, illuminant, StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(r.Type, "Lot", StringComparison.OrdinalIgnoreCase));
 
-                    if (stdRow != null) SetNumericCell(ws, row, 9, stdRow.Hue);   
-                    if (lotRow != null) SetNumericCell(ws, row, 10, lotRow.Hue);  
+                    if (stdRow != null) SetNumericCell(ws, row, 9, stdRow.Hue);
+                    if (lotRow != null) SetNumericCell(ws, row, 10, lotRow.Hue);
 
                     anyWrite = true;
                 }
@@ -203,18 +203,18 @@ namespace OCR
                     // Limpiar las filas de tintes antes de escribir
                     for (int r = startRow; r < startRow + result.Ingredients.Count; r++)
                     {
-                        ClearCell(ws, r, 2); 
-                        ClearCell(ws, r, 3); 
+                        ClearCell(ws, r, 2);
+                        ClearCell(ws, r, 3);
                     }
 
                     int rowIdx = startRow;
                     foreach (var ing in result.Ingredients)
                     {
-                        SetTextCell(ws, rowIdx, 2, ing.Name);            
-                        SetNumericCell(ws, rowIdx, 3, ing.Original);     
+                        SetTextCell(ws, rowIdx, 2, ing.Name);
+                        SetNumericCell(ws, rowIdx, 3, ing.Original);
 
                         rowIdx++;
-                        if (rowIdx > startRow + 10) break; 
+                        if (rowIdx > startRow + 10) break;
                     }
 
                     anyWrite = true;

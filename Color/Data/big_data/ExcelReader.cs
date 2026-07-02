@@ -143,7 +143,7 @@ namespace OCR
             {
                 // Si ClosedXML ya identifica la celda como número, lo tomamos directamente
                 if (cell.Value.IsNumber) return cell.Value.GetNumber();
-                
+
                 // Si es texto o fórmula, usamos el parseo seguro
                 return ParseDoubleSafe(GetCellValueSafe(cell));
             }

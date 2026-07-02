@@ -21,8 +21,7 @@ namespace Color
         private Label lblCmcStatus;   
         private Label lblMiLeft;      
         private Label lblMiRight;     
-        private Label lblBrighter;
-        private Label lblYellower;
+
 
         private Label lblSL, lblSC, lblH_Angle, lblSH, lblT, lblF;
 

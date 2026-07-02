@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -75,7 +75,7 @@ namespace Color.Tolerancias
         {
             flowCards.Controls.Clear();
             // Valor actualmente activo en los Settings del programa
-            double activeDE = Math.Round(Properties.Settings.Default.ToleranciaDE, 2);
+            double activeDE = Math.Round(Color.Properties.Settings.Default.ToleranciaDE, 2);
 
             for (int i = 0; i < _profiles.Count; i++)
             {
@@ -194,11 +194,11 @@ namespace Color.Tolerancias
             }
 
             // ENVIO DE DATOS AL PROGRAMA:
-            Properties.Settings.Default.ToleranciaDE = _selectedProfile.DE;
-            Properties.Settings.Default.ToleranciaDL = _selectedProfile.DL;
-            Properties.Settings.Default.ToleranciaDC = _selectedProfile.DC;
-            Properties.Settings.Default.ToleranciaDH = _selectedProfile.DH;
-            Properties.Settings.Default.Save();
+            Color.Properties.Settings.Default.ToleranciaDE = _selectedProfile.DE;
+            Color.Properties.Settings.Default.ToleranciaDL = _selectedProfile.DL;
+            Color.Properties.Settings.Default.ToleranciaDC = _selectedProfile.DC;
+            Color.Properties.Settings.Default.ToleranciaDH = _selectedProfile.DH;
+            Color.Properties.Settings.Default.Save();
 
             // Mensaje de confirmacion con los valores reales enviados
             MessageBox.Show($"Tolerancia Enviada:\nDE: {_selectedProfile.DE:0.00}\nL: {_selectedProfile.DL:0.000}\nC: {_selectedProfile.DC:0.000}\nHue: {_selectedProfile.DH:0.000}",

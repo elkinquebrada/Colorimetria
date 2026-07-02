@@ -78,13 +78,13 @@ namespace OCR
             words.Sort((a, b) => a.Y.CompareTo(b.Y));
 
             // margen vertical para determinar filas
-            int tolerance = 10;  
+            int tolerance = 10;
             int currentRowY = -9999;
             List<OcrWord> currentRow = null;
 
             foreach (var w in words)
             {
-                
+
                 if (Math.Abs(w.Y - currentRowY) > tolerance)
                 {
                     if (currentRow != null)

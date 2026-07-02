@@ -181,6 +181,7 @@ namespace Color.Services
             DataTable dt = new DataTable();
             // Definimos columnas para la estructura V4
             dt.Columns.Add("Id_Lote");
+            dt.Columns.Add("Id_Detalle");
             dt.Columns.Add("ShadeName");
             dt.Columns.Add("LotNo");
             dt.Columns.Add("FechaRegistro");
@@ -219,6 +220,7 @@ namespace Color.Services
                             {
                                 var row = dt.NewRow();
                                 row["Id_Lote"] = reader["Id_Lote"];
+                                row["Id_Detalle"] = reader["Id_Detalle"];
                                 row["ShadeName"] = reader["ShadeName"];
                                 row["LotNo"] = reader["LotNo"];
                                 row["FechaRegistro"] = reader["FechaRegistro"];
@@ -350,6 +352,36 @@ namespace Color.Services
                 }
             }
             catch { }
+        }
+
+        public static void EliminarDetallesSQL(List<int> idDetalles)
+        {
+            if (idDetalles == null || idDetalles.Count == 0) return;
+            try
+            {
+                using (var conn = new System.Data.SqlClient.SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string ids = string.Join(",", idDetalles);
+                    // Eliminar los detalles correspondientes
+                    string sql = $"DELETE FROM tbl_analisis_detalle WHERE Id_Detalle IN ({ids})";
+                    using (var cmd = new System.Data.SqlClient.SqlCommand(sql, conn))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                    
+                    // Limpiar cabeceras que se hayan quedado huérfanas
+                    string sqlClean = "DELETE FROM tbl_analisis_cabecera WHERE Id_Lote NOT IN (SELECT Id_Lote FROM tbl_analisis_detalle)";
+                    using (var cmdClean = new System.Data.SqlClient.SqlCommand(sqlClean, conn))
+                    {
+                        cmdClean.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error al eliminar de SQL: " + ex.Message);
+            }
         }
     }
 }

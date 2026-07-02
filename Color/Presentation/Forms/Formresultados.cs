@@ -37,7 +37,7 @@ namespace Color
         private CielabChartControl _cielabChart;
         private EngineRes _lastMainResult;
         private TableLayoutPanel pnlTolerances;
-        private Label lblTolDe, lblTolDl, lblTolDc, lblTolDh;
+
         private Label lblValTolDe;
         private Label lblValTolDl;
         private Label lblValTolDc;
@@ -289,7 +289,34 @@ namespace Color
             btnGuardar.Click += BtnGuardar_Click;
             btnExportarPDF.Click += BtnExportarPDF_Click;
             btnCerrar.Click += (s, e) => this.Close();
-            btnRegresar.Click += (s, e) => { this.DialogResult = DialogResult.Retry; this.Close(); };
+            
+            btnRegresar.Click += (s, e) => 
+            { 
+#pragma warning disable
+                if (Color.OcrReport.LastReport != null)
+                {
+                    var frmOcr = new Colorimetria.FormConfirmacionOCR(Color.OcrReport.LastReport, _shadeData);
+                    frmOcr.FormClosed += (senderOcr, argsOcr) =>
+                    {
+                        if (frmOcr.DialogResult == DialogResult.OK)
+                        {
+                            var confirmReport = frmOcr.Report;
+                            Color.OcrReport.SetLastReport(confirmReport);
+                            var shadeRes = Color.ShadeReportExtractor.LastResult ?? _shadeData;
+
+                            var correcciones = EngineCalc.CalculateAllIlluminants(confirmReport);
+                            var mainResult = Enumerable.FirstOrDefault(correcciones, r => r.Illuminant == "D65") ?? Enumerable.FirstOrDefault(correcciones);
+                            var ingredientes = Color.RecipeCorrector.IngredientsFromShade(shadeRes);
+                            var corrReceta = new List<CorrectiveRecipeResult> { Color.RecipeCorrector.CalculateCorrectiveRecipe(ingredientes, mainResult) };
+
+                            var frmRes = new FormResultados("", correcciones, corrReceta, shadeRes);
+                            frmRes.Show();
+                        }
+                    };
+                    frmOcr.Show();
+                }
+                this.Close(); 
+            };
         }
 
         /// Inyecta los metadatos textiles extrai­dos por TextileMetadataExtractor
@@ -478,10 +505,10 @@ namespace Color
         private void PopulateFromObjects(ShadeExtractionResult shadeData, List<EngineRes> results)
         {
             // LEER LAS TOLERANCIAS ELEGIDAS POR EL USUARIO DESDE EL ORIGEN DE CONFIGURACION
-            double tolDE = Properties.Settings.Default.ToleranciaDE;
-            double tolDL = Properties.Settings.Default.ToleranciaDL;
-            double tolDC = Properties.Settings.Default.ToleranciaDC;
-            double tolDH = Properties.Settings.Default.ToleranciaDH;
+            double tolDE = Color.Properties.Settings.Default.ToleranciaDE;
+            double tolDL = Color.Properties.Settings.Default.ToleranciaDL;
+            double tolDC = Color.Properties.Settings.Default.ToleranciaDC;
+            double tolDH = Color.Properties.Settings.Default.ToleranciaDH;
 
             if (lblValTolDe != null)
             {
@@ -830,7 +857,6 @@ namespace Color
         }
 
         /// Devuelve el color de texto apropiado para un nombre de colorante
-        /// basándose en palabras clave de color industriales reconocidas.
         private static System.Drawing.Color GetDyeColor(string dyeName)
         {
             if (string.IsNullOrEmpty(dyeName)) return System.Drawing.Color.Black;

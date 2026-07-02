@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -107,6 +107,9 @@ namespace Color
 
             dgvHistorial.Columns.Add("colStatus", "Status");
 
+            dgvHistorial.Columns.Add("colIdDetalle", "IdDetalle");
+            dgvHistorial.Columns["colIdDetalle"].Visible = false;
+
             // Estilos
             foreach (DataGridViewColumn col in dgvHistorial.Columns)
             {
@@ -201,6 +204,8 @@ namespace Color
 
                 string colSt = tabla.Columns.Contains("Status_TL84") ? "Status_TL84" : "Status";
                 if (tabla.Columns.Contains(colSt)) fila.Cells["colStatus"].Value = row[colSt];
+
+                if (tabla.Columns.Contains("Id_Detalle")) fila.Cells["colIdDetalle"].Value = row["Id_Detalle"];
             }
             lblContador.Text = "Analisis encontrados: " + dgvHistorial.Rows.Count;
         }
@@ -270,7 +275,21 @@ namespace Color
             {
                 if (MessageBox.Show("¿Borrar registro seleccionado?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
-                    foreach (DataGridViewRow row in dgvHistorial.SelectedRows) dgvHistorial.Rows.Remove(row);
+                    List<int> idsSQL = new List<int>();
+                    
+                    foreach (DataGridViewRow row in dgvHistorial.SelectedRows) 
+                    {
+                        if (row.Cells["colIdDetalle"]?.Value != null && int.TryParse(row.Cells["colIdDetalle"].Value.ToString(), out int idDetalle))
+                        {
+                            idsSQL.Add(idDetalle);
+                        }
+                        dgvHistorial.Rows.Remove(row);
+                    }
+                    
+                    if (idsSQL.Count > 0)
+                    {
+                        HistorialService.EliminarDetallesSQL(idsSQL);
+                    }
                     
                     DataTable dt = new DataTable();
                     dt.Columns.Add("ShadeName"); dt.Columns.Add("LotNo"); dt.Columns.Add("FechaHora"); 
