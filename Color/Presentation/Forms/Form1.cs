@@ -55,8 +55,10 @@ namespace Color
                 string currentDir = AppDomain.CurrentDomain.BaseDirectory;
                 for (int i = 0; i < 5; i++)
                 {
-                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
-                    if (File.Exists(candidate)) { finalPath = candidate; break; }
+                    string candidate1 = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
+                    string candidate2 = Path.Combine(currentDir, "Src", "LogicDocs", "Coats_logo.svg.png");
+                    if (File.Exists(candidate1)) { finalPath = candidate1; break; }
+                    if (File.Exists(candidate2)) { finalPath = candidate2; break; }
                     currentDir = Path.GetDirectoryName(currentDir);
                     if (string.IsNullOrEmpty(currentDir)) break;
                 }
@@ -73,16 +75,16 @@ namespace Color
                     BackColor = System.Drawing.Color.White
                 };
 
-                logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
+                logo.Location = new Point(this.mainArea.ClientSize.Width - logo.Width - 20, 8);
 
                 // Reposicionar automaticamente al redimensionar
-                this.Resize += (s, e) =>
+                this.mainArea.Resize += (s, e) =>
                 {
-                    logo.Location = new Point(this.ClientSize.Width - logo.Width - 10, 8);
+                    logo.Location = new Point(this.mainArea.ClientSize.Width - logo.Width - 20, 8);
                 };
 
-                // Se agrega al formulario directamente 
-                this.Controls.Add(logo);
+                // Se agrega al area principal
+                this.mainArea.Controls.Add(logo);
                
                 logo.BringToFront();
             }

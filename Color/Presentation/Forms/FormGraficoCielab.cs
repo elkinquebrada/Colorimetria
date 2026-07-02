@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
@@ -55,8 +55,10 @@ namespace Color
                 string currentDir = AppDomain.CurrentDomain.BaseDirectory;
                 for (int i = 0; i < 5; i++)
                 {
-                    string candidate = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
-                    if (File.Exists(candidate)) { finalPath = candidate; break; }
+                    string candidate1 = Path.Combine(currentDir, "logicDocs", "Coats_logo.svg.png");
+                    string candidate2 = Path.Combine(currentDir, "Src", "LogicDocs", "Coats_logo.svg.png");
+                    if (File.Exists(candidate1)) { finalPath = candidate1; break; }
+                    if (File.Exists(candidate2)) { finalPath = candidate2; break; }
                     currentDir = Path.GetDirectoryName(currentDir);
                     if (string.IsNullOrEmpty(currentDir)) break;
                 }

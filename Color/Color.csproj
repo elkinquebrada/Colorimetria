@@ -28,7 +28,7 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ProductName>PASSFAIL</ProductName>
     <AutorunEnabled>true</AutorunEnabled>
-    <ApplicationRevision>4</ApplicationRevision>
+    <ApplicationRevision>5</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -171,6 +171,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Src\LogicDocs\Coats_logo.svg.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Data\big_data\ExcelReader.cs" />
     <Compile Include="Data\big_data\ExcelWriter.cs" />
     <Compile Include="Data\big_data\ReportExtractor.cs" />
@@ -295,7 +300,6 @@
       <IncludeHash>True</IncludeHash>
       <FileType>File</FileType>
     </PublishFile>
-
     <PublishFile Include="x64\leptonica-1.82.0.dll">
       <Visible>False</Visible>
       <Group>
