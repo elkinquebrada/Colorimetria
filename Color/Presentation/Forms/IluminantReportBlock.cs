@@ -183,7 +183,7 @@ namespace Color
             dgvActions.Columns[0].Width = 55;
 
             // Fila 0: Encabezados de Acción
-            int ra0 = dgvActions.Rows.Add("Accion", "Aumentar [ ]", "Aumentar Verde", "Aumentar Azul");
+            int ra0 = dgvActions.Rows.Add("Accion", "Disminuir [ ]", "Aumentar Verde", "Aumentar Azul");
             dgvActions.Rows[ra0].Height = 32; 
             dgvActions.Rows[ra0].DefaultCellStyle.ForeColor = System.Drawing.Color.Black;
             dgvActions.Rows[ra0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -818,9 +818,9 @@ namespace Color
                 // Mapeo Fórmula 1 (Luminosidad L*) -> Condicional Estricto Excel
                 // ---------------------------------------------------------------------
                 string accionLStr = "";
-                if (res.DeltaL > 0 && diagL.Contains("Claro"))       accionLStr = "Aumentar [ ]";  
-                else if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Disminuir [ ]"; 
-                else accionLStr = "Aumentar [ ]";
+                if (res.DeltaL < 0 && diagL.Contains("Oscuro")) accionLStr = "Disminuir [ ]";
+                else if (res.DeltaL > 0 && diagL.Contains("Claro")) accionLStr = "Aumentar [ ]";
+                else accionLStr = "Mantener [ ]";
 
                 // ---------------------------------------------------------------------
                 // Mapeo Fórmula 2 (Eje a* Rojo/Verde) -> Condicional Estricto Excel
